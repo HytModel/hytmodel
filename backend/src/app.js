@@ -29,8 +29,11 @@ app.use("/api/tags", require("./routes/tags.routes"));
 app.use("/api/cart", require("./routes/cart.routes"));
 app.use("/api/checkout", require("./routes/checkout.routes"));
 app.use("/api/invoices", require("./routes/invoices.routes"));
-const invoicesRoutes = require("./routes/invoices.routes");
-app.use("/api/invoices", invoicesRoutes);
+app.use("/api/invoices", require("./routes/invoices.routes"));
+app.use("/api/stripe", require("./routes/stripe.routes"));
+app.use("/api", require("./routes/sellerDashboard.routes"));
+app.use("/api", require("./routes/adminDashboard.routes"));
+
 /**
  * 🧪 ROUTES TEST
  */

@@ -12,7 +12,7 @@ function isUuid(value) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ================================
-// 🚀 CHECKOUT STRIPE (FINAL)
+// 🚀 CHECKOUT STRIPE (SOURCE DE VÉRITÉ)
 // ================================
 router.post("/checkout", requireAuth, async (req, res) => {
     const userId = req.user.id;
@@ -27,7 +27,10 @@ router.post("/checkout", requireAuth, async (req, res) => {
 
     const { rows: items } = await pool.query(
         `
-            SELECT m.id, m.title, m.price
+            SELECT
+                m.id,
+                m.title,
+                m.price
             FROM cart_items ci
                      JOIN models m ON m.id = ci.model_id
             WHERE ci.cart_id = $1
@@ -42,6 +45,7 @@ router.post("/checkout", requireAuth, async (req, res) => {
         return res.status(400).json({ error: "Cart is empty" });
     }
 
+    // Stripe line_items
     const line_items = items.map(item => ({
         price_data: {
             currency: "eur",
@@ -51,7 +55,7 @@ router.post("/checkout", requireAuth, async (req, res) => {
         quantity: 1
     }));
 
-    // 🔑 SOURCE DE VÉRITÉ POUR LA FACTURE
+    // 🔒 SNAPSHOT IMMUTABLE POUR LE WEBHOOK
     const metadataItems = items.map(i => ({
         model_id: i.id,
         title: i.title,

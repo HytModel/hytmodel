@@ -38,7 +38,7 @@ module.exports = async function generateInvoicePdf({
     const displayEmail = user?.email || "";
 
     // 📁 DOSSIERS
-    const invoicesDir = path.join(process.cwd(), "backend", "pdf", "invoices");
+    const invoicesDir = path.join(process.cwd(), "pdf", "invoices");
     if (!fs.existsSync(invoicesDir)) {
         fs.mkdirSync(invoicesDir, { recursive: true });
     }
