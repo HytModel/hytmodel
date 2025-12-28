@@ -1,49 +1,64 @@
 const router = require("express").Router();
-const pool = require("../db/pool");
+const tagsController = require("../controllers/tags.controller");
 const { requireAuth } = require("../middlewares/requireAuth");
 const { requireRole } = require("../middlewares/requireRole");
 
-// Créer un tag (STAFF)
+// Lister tous les tags (public)
+router.get("/", tagsController.getAllTags);
+
+// Lister les tags d'un jeu (public)
+router.get("/game/:gameId", tagsController.getTagsByGame);
+
+// Lister les tags globaux (public)
+router.get("/global", tagsController.getGlobalTags);
+
+// Récupérer un tag par ID (public)
+router.get("/:id", tagsController.getTagById);
+
+// Stats d'un tag (public)
+router.get("/:id/stats", tagsController.getTagStats);
+
+// Créer un tag (STAFF/ADMIN)
 router.post(
     "/",
     requireAuth,
     requireRole("STAFF", "ADMIN"),
-    async (req, res) => {
-        const { name } = req.body;
-
-        if (!name || name.length < 2) {
-            return res.status(400).json({ error: "Invalid tag name" });
-        }
-
-        const { rows } = await pool.query(
-            "INSERT INTO tags (name) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *",
-            [name.toLowerCase()]
-        );
-
-        res.status(201).json({ tag: rows[0] });
-    }
+    tagsController.createTag
 );
 
-// Liste des tags (public)
-router.get("/", async (req, res) => {
-    const { rows } = await pool.query(
-        "SELECT id, name FROM tags ORDER BY name"
-    );
+// Mettre à jour un tag (STAFF/ADMIN)
+router.put(
+    "/:id",
+    requireAuth,
+    requireRole("STAFF", "ADMIN"),
+    tagsController.updateTag
+);
 
-    res.json({ tags: rows });
-});
-
-// Supprimer un tag (STAFF)
+// Supprimer un tag (STAFF/ADMIN)
 router.delete(
     "/:id",
     requireAuth,
     requireRole("STAFF", "ADMIN"),
-    async (req, res) => {
-        const { id } = req.params;
+    tagsController.deleteTag
+);
 
-        await pool.query("DELETE FROM tags WHERE id = $1", [id]);
-        res.json({ success: true });
-    }
+// Récupérer les tags d'un modèle
+router.get("/models/:modelId", tagsController.getModelTags);
+
+// Ajouter un tag à un modèle (STAFF/ADMIN)
+router.post(
+    "/models/:modelId/:tagId",
+    requireAuth,
+    requireRole("STAFF", "ADMIN"),
+    tagsController.addTagToModel
+);
+
+// Retirer un tag d'un modèle (STAFF/ADMIN)
+router.delete(
+    "/models/:modelId/:tagId",
+    requireAuth,
+    requireRole("STAFF", "ADMIN"),
+    tagsController.removeTagFromModel
 );
 
 module.exports = router;

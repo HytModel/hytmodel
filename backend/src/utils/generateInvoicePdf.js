@@ -140,7 +140,7 @@ module.exports = async function generateInvoicePdf({
 
     items.forEach(item => {
         const priceCents = Number(item.price) || 0;
-        const priceEuro  = priceCents / 10000;
+        const priceEuro  = priceCents / 100;
 
         doc
             .fillColor(DARK_COLOR)
@@ -162,7 +162,7 @@ module.exports = async function generateInvoicePdf({
     doc.moveDown(1.5);
 
     const totalY = doc.y;
-    const totalEuro = totalCents / 10000;
+    const totalEuro = totalCents / 100;
 
     doc
         .rect(TOTAL_BOX_X, totalY - 8, TOTAL_BOX_W, 32)
