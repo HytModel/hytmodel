@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import {
     Menu, X, ShoppingCart, User, LogOut, Settings,
-    LayoutDashboard, Package, ChevronDown, Sparkles,
+    LayoutDashboard, Package, ChevronDown,
     Upload, FileText
 } from 'lucide-react'
 
@@ -32,12 +32,11 @@ export default function Navbar() {
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-2 group">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center group-hover:shadow-glow transition-shadow">
-                            <Sparkles className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="font-display font-bold text-xl text-white">
-              Hyt<span className="text-hyt-accent">Model</span>
-            </span>
+                        <img
+                            src="/logo_navbar.png"
+                            alt="HytModel"
+                            className="h-12 w-auto group-hover:opacity-80 transition-opacity"
+                        />
                     </Link>
 
                     {/* Desktop Navigation */}
@@ -79,8 +78,8 @@ export default function Navbar() {
                                     <ShoppingCart className="w-5 h-5" />
                                     {itemCount > 0 && (
                                         <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold bg-hyt-accent text-hyt-dark rounded-full">
-                      {itemCount}
-                    </span>
+                                            {itemCount}
+                                        </span>
                                     )}
                                 </Link>
 
@@ -91,9 +90,9 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-hyt-card transition-colors"
                                     >
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
-                      <span className="text-sm font-bold text-white">
-                        {user?.username?.charAt(0).toUpperCase()}
-                      </span>
+                                            <span className="text-sm font-bold text-white">
+                                                {user?.username?.charAt(0).toUpperCase()}
+                                            </span>
                                         </div>
                                         <span className="text-sm font-medium text-white">{user?.username}</span>
                                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
@@ -106,19 +105,22 @@ export default function Navbar() {
                                                 <p className="text-sm font-medium text-white">{user?.username}</p>
                                                 <p className="text-xs text-gray-500">{user?.email}</p>
                                                 <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-hyt-accent/10 text-hyt-accent rounded-full">
-                          {user?.role}
-                        </span>
+                                                    {user?.role}
+                                                </span>
                                             </div>
 
                                             <div className="py-2">
-                                                <Link
-                                                    to="/dashboard"
-                                                    onClick={() => setUserMenuOpen(false)}
-                                                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
-                                                >
-                                                    <LayoutDashboard className="w-4 h-4" />
-                                                    Dashboard
-                                                </Link>
+                                                {/* Dashboard - Seulement pour Créateurs et Staff */}
+                                                {(isCreator() || isStaff()) && (
+                                                    <Link
+                                                        to="/dashboard"
+                                                        onClick={() => setUserMenuOpen(false)}
+                                                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
+                                                    >
+                                                        <LayoutDashboard className="w-4 h-4" />
+                                                        Dashboard
+                                                    </Link>
+                                                )}
 
                                                 <Link
                                                     to="/purchases"
@@ -216,17 +218,48 @@ export default function Navbar() {
                                     <span>Panier</span>
                                     {itemCount > 0 && (
                                         <span className="px-2 py-0.5 text-xs font-bold bg-hyt-accent text-hyt-dark rounded-full">
-                      {itemCount}
-                    </span>
+                                            {itemCount}
+                                        </span>
                                     )}
                                 </Link>
+
+                                {/* Dashboard Mobile - Seulement pour Créateurs et Staff */}
+                                {(isCreator() || isStaff()) && (
+                                    <Link
+                                        to="/dashboard"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                )}
+
                                 <Link
-                                    to="/dashboard"
+                                    to="/purchases"
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
-                                    Dashboard
+                                    Mes achats
                                 </Link>
+
+                                <Link
+                                    to="/invoices"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                >
+                                    Factures
+                                </Link>
+
+                                {isStaff() && (
+                                    <Link
+                                        to="/admin"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                    >
+                                        Administration
+                                    </Link>
+                                )}
+
                                 <button
                                     onClick={() => {
                                         handleLogout()

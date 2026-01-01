@@ -54,11 +54,11 @@ export default function Upload() {
     const fetchData = async () => {
         try {
             const [gamesRes, tagsRes] = await Promise.all([
-                gamesAPI.list(),
-                tagsAPI.list()
+                gamesAPI.getAll(),
+                tagsAPI.getAll()
             ])
-            setGames(gamesRes.data.games || [])
-            setAllTags(tagsRes.data.tags || [])
+            setGames(gamesRes.data.games || gamesRes.data || [])
+            setAllTags(tagsRes.data.tags || tagsRes.data || [])
         } catch (error) {
             console.error('Failed to fetch data:', error)
         }
@@ -70,33 +70,22 @@ export default function Upload() {
                 categoriesAPI.getByGame(gameId),
                 versionsAPI.getByGame(gameId)
             ])
-            setCategories(categoriesRes.data.categories || [])
-            setVersions(versionsRes.data.versions || [])
+            setCategories(categoriesRes.data.categories || categoriesRes.data || [])
+            setVersions(versionsRes.data.versions || versionsRes.data || [])
         } catch (error) {
             console.error('Failed to fetch categories/versions:', error)
         }
     }
 
-    const handleFileChange = (e) => {
+    const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0]
         if (selectedFile) {
-            if (selectedFile.size > 50 * 1024 * 1024) {
-                toast.error('Le fichier ne doit pas dépasser 50 MB')
+            // Check file size (max 100MB)
+            if (selectedFile.size > 100 * 1024 * 1024) {
+                toast.error('Le fichier est trop volumineux (max 100MB)')
                 return
             }
             setFile(selectedFile)
-        }
-    }
-
-    const handleDrop = (e) => {
-        e.preventDefault()
-        const droppedFile = e.dataTransfer.files[0]
-        if (droppedFile) {
-            if (droppedFile.size > 50 * 1024 * 1024) {
-                toast.error('Le fichier ne doit pas dépasser 50 MB')
-                return
-            }
-            setFile(droppedFile)
         }
     }
 
@@ -119,13 +108,23 @@ export default function Upload() {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!title || !price || !gameId || !categoryId || !file) {
-            toast.error('Veuillez remplir tous les champs obligatoires')
+        if (!file) {
+            toast.error('Veuillez sélectionner un fichier')
             return
         }
 
-        if (parseFloat(price) < 5) {
-            toast.error('Le prix minimum est de 5€')
+        if (!title.trim()) {
+            toast.error('Veuillez entrer un titre')
+            return
+        }
+
+        if (!price || parseFloat(price) < 0) {
+            toast.error('Veuillez entrer un prix valide')
+            return
+        }
+
+        if (!gameId) {
+            toast.error('Veuillez sélectionner un jeu')
             return
         }
 
@@ -133,229 +132,220 @@ export default function Upload() {
 
         try {
             const formData = new FormData()
-            formData.append('title', title)
-            formData.append('description', description)
-            formData.append('price', price)
+            formData.append('file', file)
+            formData.append('title', title.trim())
+            formData.append('description', description.trim())
+            formData.append('price', Math.round(parseFloat(price) * 100)) // Convert to cents
             formData.append('gameId', gameId)
-            formData.append('categoryId', categoryId)
+            if (categoryId) formData.append('categoryId', categoryId)
             formData.append('tagIds', JSON.stringify(selectedTags))
             formData.append('versionIds', JSON.stringify(selectedVersions))
-            formData.append('file', file)
 
             await modelsAPI.uploadDetailed(formData)
-
-            toast.success('Modèle uploadé avec succès ! Il sera vérifié par notre équipe.')
+            toast.success('Modèle uploadé avec succès ! Il sera visible après validation.')
             navigate('/dashboard')
         } catch (error) {
-            const message = error.response?.data?.error || 'Erreur lors de l\'upload'
-            toast.error(message)
+            console.error('Upload failed:', error)
+            toast.error(error.response?.data?.error || 'Erreur lors de l\'upload')
         } finally {
             setLoading(false)
         }
     }
 
-    const gameTags = gameId
-        ? allTags.filter(t => t.game_id === gameId || !t.game_id)
-        : allTags.filter(t => !t.game_id)
-
     return (
         <div className="min-h-screen pt-20">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center shadow-glow">
-                        <UploadIcon className="w-8 h-8 text-white" />
-                    </div>
+                <div className="mb-8">
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
                         Uploader un modèle
                     </h1>
-                    <p className="text-gray-500">
+                    <p className="text-gray-400">
                         Partagez votre création avec la communauté
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* File Upload */}
-                    <div className="card">
-                        <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-                            <FileUp className="w-5 h-5 text-hyt-accent" />
-                            Fichier du modèle
-                        </h2>
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                        <label className="block text-sm font-medium text-white mb-4">
+                            <FileUp className="w-5 h-5 inline mr-2" />
+                            Fichier du modèle *
+                        </label>
 
-                        <div
-                            onDrop={handleDrop}
-                            onDragOver={(e) => e.preventDefault()}
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                                file
-                                    ? 'border-hyt-success bg-hyt-success/5'
-                                    : 'border-hyt-border hover:border-hyt-accent/50'
-                            }`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                onChange={handleFileChange}
-                                className="hidden"
-                                accept=".zip,.rar,.7z,.fbx,.obj,.blend"
-                            />
-
-                            {file ? (
-                                <div className="flex items-center justify-center gap-3">
-                                    <div className="w-12 h-12 rounded-lg bg-hyt-success/10 flex items-center justify-center">
-                                        <Check className="w-6 h-6 text-hyt-success" />
+                        {!file ? (
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="border-2 border-dashed border-hyt-border rounded-xl p-12 text-center cursor-pointer hover:border-hyt-accent/50 transition-colors"
+                            >
+                                <UploadIcon className="w-12 h-12 mx-auto text-gray-500 mb-4" />
+                                <p className="text-white font-medium mb-2">
+                                    Cliquez pour sélectionner un fichier
+                                </p>
+                                <p className="text-gray-500 text-sm">
+                                    ZIP, RAR, 7Z, FBX, OBJ... (max 100MB)
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between p-4 bg-hyt-dark rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-hyt-accent/20 flex items-center justify-center">
+                                        <Check className="w-5 h-5 text-hyt-accent" />
                                     </div>
-                                    <div className="text-left">
-                                        <p className="font-medium text-white">{file.name}</p>
-                                        <p className="text-sm text-gray-500">
-                                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                                    <div>
+                                        <p className="text-white font-medium">{file.name}</p>
+                                        <p className="text-gray-500 text-sm">
+                                            {(file.size / (1024 * 1024)).toFixed(2)} MB
                                         </p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setFile(null)
-                                        }}
-                                        className="p-2 text-gray-400 hover:text-red-400"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
                                 </div>
-                            ) : (
-                                <>
-                                    <FileUp className="w-12 h-12 mx-auto text-gray-500 mb-4" />
-                                    <p className="text-white mb-2">
-                                        Glissez votre fichier ici ou cliquez pour sélectionner
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        ZIP, RAR, 7Z, FBX, OBJ, BLEND (max 50 MB)
-                                    </p>
-                                </>
-                            )}
-                        </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFile(null)}
+                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            accept=".zip,.rar,.7z,.fbx,.obj,.blend,.max,.c4d"
+                        />
                     </div>
 
                     {/* Basic Info */}
-                    <div className="card">
-                        <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-                            <FileText className="w-5 h-5 text-hyt-accent" />
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <FileText className="w-5 h-5" />
                             Informations
-                        </h2>
+                        </h3>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Titre *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Nom de votre modèle"
-                                    className="input-field"
-                                    required
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Titre *</label>
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                placeholder="Ex: Voiture de sport HD"
+                                className="input-field w-full"
+                                required
+                            />
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Description
-                                </label>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Décrivez votre modèle..."
-                                    rows={4}
-                                    className="input-field resize-none"
-                                />
-                            </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Description</label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Décrivez votre modèle..."
+                                rows={4}
+                                className="input-field w-full resize-none"
+                            />
+                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    <DollarSign className="w-4 h-4 inline mr-1" />
-                                    Prix (€) *
-                                </label>
-                                <input
-                                    type="number"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    placeholder="5.00"
-                                    min="5"
-                                    step="0.01"
-                                    className="input-field"
-                                    required
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Prix minimum : 5€</p>
-                            </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">
+                                <DollarSign className="w-4 h-4 inline mr-1" />
+                                Prix (€) *
+                            </label>
+                            <input
+                                type="number"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                className="input-field w-full"
+                                required
+                            />
                         </div>
                     </div>
 
                     {/* Game & Category */}
-                    <div className="card">
-                        <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-                            <Gamepad2 className="w-5 h-5 text-hyt-accent" />
-                            Jeu et catégorie
-                        </h2>
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Gamepad2 className="w-5 h-5" />
+                            Jeu & Catégorie
+                        </h3>
 
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Jeu *
-                                </label>
-                                <select
-                                    value={gameId}
-                                    onChange={(e) => setGameId(e.target.value)}
-                                    className="input-field"
-                                    required
-                                >
-                                    <option value="">Sélectionner un jeu</option>
-                                    {games.map(game => (
-                                        <option key={game.id} value={game.id}>{game.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                            <select
+                                value={gameId}
+                                onChange={(e) => setGameId(e.target.value)}
+                                className="input-field w-full"
+                                required
+                            >
+                                <option value="">Sélectionner un jeu</option>
+                                {games.map(game => (
+                                    <option key={game.id} value={game.id}>{game.name}</option>
+                                ))}
+                            </select>
+                        </div>
 
+                        {categories.length > 0 && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Catégorie *
-                                </label>
+                                <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
                                 <select
                                     value={categoryId}
                                     onChange={(e) => setCategoryId(e.target.value)}
-                                    className="input-field"
-                                    required
-                                    disabled={!gameId}
+                                    className="input-field w-full"
                                 >
-                                    <option value="">
-                                        {gameId ? 'Sélectionner une catégorie' : 'Sélectionnez d\'abord un jeu'}
-                                    </option>
+                                    <option value="">Sélectionner une catégorie</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
                                 </select>
                             </div>
-                        </div>
+                        )}
+
+                        {versions.length > 0 && (
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    Versions compatibles
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {versions.map(version => (
+                                        <button
+                                            key={version.id}
+                                            type="button"
+                                            onClick={() => toggleVersion(version.id)}
+                                            className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                                                selectedVersions.includes(version.id)
+                                                    ? 'bg-hyt-accent text-white'
+                                                    : 'bg-hyt-dark text-gray-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {version.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tags */}
-                    {gameTags.length > 0 && (
-                        <div className="card">
-                            <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-                                <Tag className="w-5 h-5 text-hyt-accent" />
+                    {allTags.length > 0 && (
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+                                <Tag className="w-5 h-5" />
                                 Tags
-                            </h2>
+                            </h3>
 
                             <div className="flex flex-wrap gap-2">
-                                {gameTags.map(tag => (
+                                {allTags.map(tag => (
                                     <button
                                         key={tag.id}
                                         type="button"
                                         onClick={() => toggleTag(tag.id)}
-                                        className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
                                             selectedTags.includes(tag.id)
-                                                ? 'bg-hyt-accent text-hyt-dark'
-                                                : 'bg-hyt-darker text-gray-400 hover:text-white border border-hyt-border'
+                                                ? 'bg-hyt-accent text-white'
+                                                : 'bg-hyt-dark text-gray-400 hover:text-white'
                                         }`}
                                     >
                                         {tag.name}
@@ -365,45 +355,24 @@ export default function Upload() {
                         </div>
                     )}
 
-                    {/* Versions */}
-                    {versions.length > 0 && (
-                        <div className="card">
-                            <h2 className="font-semibold text-white mb-4">
-                                Versions compatibles
-                            </h2>
-
-                            <div className="flex flex-wrap gap-2">
-                                {versions.map(version => (
-                                    <button
-                                        key={version.id}
-                                        type="button"
-                                        onClick={() => toggleVersion(version.id)}
-                                        className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                                            selectedVersions.includes(version.id)
-                                                ? 'bg-hyt-success text-white'
-                                                : 'bg-hyt-darker text-gray-400 hover:text-white border border-hyt-border'
-                                        }`}
-                                    >
-                                        {version.version}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* Submit */}
-                    <LoadingButton
-                        type="submit"
-                        loading={loading}
-                        className="btn-primary w-full py-4 text-lg"
-                    >
-                        Publier le modèle
-                    </LoadingButton>
-
-                    <p className="text-center text-sm text-gray-500">
-                        En publiant, vous acceptez nos{' '}
-                        <a href="/terms" className="text-hyt-accent hover:underline">conditions d'utilisation</a>
-                    </p>
+                    <div className="flex items-center justify-end gap-4">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/dashboard')}
+                            className="btn-ghost"
+                        >
+                            Annuler
+                        </button>
+                        <LoadingButton
+                            type="submit"
+                            loading={loading}
+                            className="btn-primary"
+                        >
+                            <UploadIcon className="w-5 h-5 mr-2" />
+                            Uploader le modèle
+                        </LoadingButton>
+                    </div>
                 </form>
             </div>
         </div>

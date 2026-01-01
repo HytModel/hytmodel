@@ -23,7 +23,7 @@ import {
     Tag,
     Layers
 } from 'lucide-react'
-import { adminAPI, adminDashboardAPI } from '../services/api'
+import { adminAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 // Composant Stats Card
@@ -59,7 +59,7 @@ function AdminOverview() {
 
     const loadStats = async () => {
         try {
-            const { data } = await adminDashboardAPI.getStats()
+            const { data } = await adminAPI.getDashboardStats()
             setStats(data)
         } catch (error) {
             console.error('Failed to load stats:', error)
@@ -124,21 +124,7 @@ function AdminOverview() {
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                         >
                             <Users className="w-5 h-5 text-hyt-accent" />
-                            <span className="text-white">Gérer les utilisateurs</span>
-                        </Link>
-                        <Link
-                            to="/admin/sellers"
-                            className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
-                        >
-                            <BarChart3 className="w-5 h-5 text-green-500" />
-                            <span className="text-white">Stats vendeurs</span>
-                        </Link>
-                        <Link
-                            to="/admin/models"
-                            className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
-                        >
-                            <Package className="w-5 h-5 text-hyt-purple" />
-                            <span className="text-white">Top modèles</span>
+                            <span className="text-white">Utilisateurs</span>
                         </Link>
                     </div>
                 </div>
@@ -146,9 +132,7 @@ function AdminOverview() {
                 {/* Recent Activity */}
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-white mb-4">Activité récente</h3>
-                    <div className="space-y-3 text-gray-400 text-sm">
-                        <p>Le graphique d'activité sera affiché ici...</p>
-                    </div>
+                    <p className="text-gray-400">Aucune activité récente</p>
                 </div>
             </div>
         </div>
@@ -162,13 +146,13 @@ function PendingModels() {
     const [processing, setProcessing] = useState(null)
 
     useEffect(() => {
-        loadModels()
+        loadPendingModels()
     }, [])
 
-    const loadModels = async () => {
+    const loadPendingModels = async () => {
         try {
             const { data } = await adminAPI.getPendingModels()
-            setModels(data.models || [])
+            setModels(data || [])
         } catch (error) {
             console.error('Failed to load pending models:', error)
         } finally {
@@ -181,9 +165,9 @@ function PendingModels() {
         try {
             await adminAPI.approveModel(modelId)
             toast.success('Modèle approuvé')
-            loadModels()
+            loadPendingModels()
         } catch (error) {
-            toast.error("Erreur lors de l'approbation")
+            toast.error('Erreur lors de l\'approbation')
         } finally {
             setProcessing(null)
         }
@@ -194,7 +178,7 @@ function PendingModels() {
         try {
             await adminAPI.rejectModel(modelId)
             toast.success('Modèle rejeté')
-            loadModels()
+            loadPendingModels()
         } catch (error) {
             toast.error('Erreur lors du rejet')
         } finally {
@@ -202,74 +186,80 @@ function PendingModels() {
         }
     }
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Modèles en attente</h2>
-                <span className="bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-full text-sm">
-          {models.length} en attente
-        </span>
-            </div>
+            <h2 className="text-2xl font-bold text-white">Modèles en attente</h2>
 
-            {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
-                </div>
-            ) : models.length === 0 ? (
-                <div className="text-center py-12">
-                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                    <p className="text-xl text-white">Aucun modèle en attente</p>
-                    <p className="text-gray-400">Tous les modèles ont été traités</p>
+            {models.length === 0 ? (
+                <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
+                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                    <p className="text-white font-medium">Aucun modèle en attente</p>
+                    <p className="text-gray-400 text-sm mt-1">Tous les modèles ont été traités</p>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="grid gap-4">
                     {models.map((model) => (
                         <div
                             key={model.id}
-                            className="bg-hyt-card border border-hyt-border rounded-xl p-6"
+                            className="bg-hyt-card border border-hyt-border rounded-xl p-4 flex items-center gap-4"
                         >
-                            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-white">{model.title}</h3>
-                                    <p className="text-gray-400 text-sm mt-1">
-                                        Par <span className="text-hyt-accent">{model.creator_username}</span>
-                                        {' • '}
-                                        {new Date(model.created_at).toLocaleDateString('fr-FR')}
-                                        {' • '}
-                                        {model.price} €
-                                    </p>
-                                </div>
+                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
+                                {model.thumbnail_url ? (
+                                    <img
+                                        src={model.thumbnail_url}
+                                        alt={model.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                        <Package className="w-8 h-8" />
+                                    </div>
+                                )}
+                            </div>
 
-                                <div className="flex items-center gap-3">
-                                    <Link
-                                        to={`/models/${model.id}`}
-                                        target="_blank"
-                                        className="btn-secondary py-2 px-4 flex items-center gap-2"
-                                    >
-                                        <Eye className="w-4 h-4" />
-                                        Voir
-                                    </Link>
-                                    <button
-                                        onClick={() => handleApprove(model.id)}
-                                        disabled={processing === model.id}
-                                        className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
-                                    >
-                                        {processing === model.id ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <CheckCircle className="w-4 h-4" />
-                                        )}
-                                        Approuver
-                                    </button>
-                                    <button
-                                        onClick={() => handleReject(model.id)}
-                                        disabled={processing === model.id}
-                                        className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
-                                    >
-                                        <XCircle className="w-4 h-4" />
-                                        Rejeter
-                                    </button>
-                                </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-white font-medium truncate">{model.title}</h3>
+                                <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
+                                <p className="text-hyt-accent font-medium">
+                                    {(model.price / 100).toFixed(2)} €
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    to={`/models/${model.id}`}
+                                    className="p-2 text-gray-400 hover:text-white transition-colors"
+                                >
+                                    <Eye className="w-5 h-5" />
+                                </Link>
+                                <button
+                                    onClick={() => handleApprove(model.id)}
+                                    disabled={processing === model.id}
+                                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                                >
+                                    {processing === model.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <CheckCircle className="w-4 h-4" />
+                                    )}
+                                    Approuver
+                                </button>
+                                <button
+                                    onClick={() => handleReject(model.id)}
+                                    disabled={processing === model.id}
+                                    className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                                >
+                                    <XCircle className="w-4 h-4" />
+                                    Rejeter
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -296,7 +286,7 @@ function UsersManagement() {
                 role: roleFilter || undefined,
                 search: searchQuery || undefined
             })
-            setUsers(data.users || [])
+            setUsers(data.users || data || [])
         } catch (error) {
             console.error('Failed to load users:', error)
         } finally {
@@ -326,7 +316,7 @@ function UsersManagement() {
 
     const handleRoleChange = async (userId, newRole) => {
         try {
-            await adminAPI.setUserRole({ userId, role: newRole })
+            await adminAPI.setRole(userId, newRole)
             toast.success('Rôle modifié')
             loadUsers()
         } catch (error) {
@@ -384,18 +374,23 @@ function UsersManagement() {
                         </thead>
                         <tbody>
                         {users.map((user) => (
-                            <tr key={user.id} className="border-b border-hyt-border/50 hover:bg-hyt-card/50">
+                            <tr key={user.id} className="border-b border-hyt-border/50 hover:bg-hyt-dark/30">
                                 <td className="py-4 px-4">
-                                    <span className="text-white font-medium">{user.username}</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
+                                                <span className="text-sm font-bold text-white">
+                                                    {user.username?.charAt(0).toUpperCase()}
+                                                </span>
+                                        </div>
+                                        <span className="text-white font-medium">{user.username}</span>
+                                    </div>
                                 </td>
-                                <td className="py-4 px-4">
-                                    <span className="text-gray-400">{user.email}</span>
-                                </td>
+                                <td className="py-4 px-4 text-gray-400">{user.email}</td>
                                 <td className="py-4 px-4">
                                     <select
                                         value={user.role}
                                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                                        className="bg-hyt-dark border border-hyt-border rounded px-2 py-1 text-sm text-white"
+                                        className="bg-hyt-dark border border-hyt-border rounded-lg px-3 py-1 text-white text-sm"
                                     >
                                         <option value="USER">User</option>
                                         <option value="CREATOR">Creator</option>
@@ -403,15 +398,13 @@ function UsersManagement() {
                                         <option value="ADMIN">Admin</option>
                                     </select>
                                 </td>
-                                <td className="py-4 px-4">
-                    <span className="text-gray-400 text-sm">
-                      {new Date(user.created_at).toLocaleDateString('fr-FR')}
-                    </span>
+                                <td className="py-4 px-4 text-gray-400">
+                                    {new Date(user.created_at).toLocaleDateString('fr-FR')}
                                 </td>
                                 <td className="py-4 px-4 text-right">
                                     <button
                                         onClick={() => handleBan(user.id, user.is_banned)}
-                                        className={`px-3 py-1 rounded text-sm ${
+                                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                                             user.is_banned
                                                 ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30'
                                                 : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
@@ -443,7 +436,7 @@ export default function Admin() {
     ]
 
     return (
-        <div className="min-h-screen bg-hyt-dark">
+        <div className="min-h-screen bg-hyt-dark pt-20">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar */}
@@ -458,14 +451,14 @@ export default function Admin() {
                                 {navItems.map((item) => {
                                     const isActive = item.exact
                                         ? location.pathname === item.path
-                                        : location.pathname.startsWith(item.path)
+                                        : location.pathname.startsWith(item.path) && location.pathname !== '/admin'
 
                                     return (
                                         <Link
                                             key={item.path}
                                             to={item.path}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                                                isActive
+                                                isActive || (item.exact && location.pathname === '/admin')
                                                     ? 'bg-hyt-accent/20 text-hyt-accent'
                                                     : 'text-gray-400 hover:text-white hover:bg-hyt-dark/50'
                                             }`}

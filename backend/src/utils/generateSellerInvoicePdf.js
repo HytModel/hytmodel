@@ -38,7 +38,7 @@ module.exports = async function generateSellerNotePdf({
     // 🖼️ LOGO
     // ─────────────────────────
     let logoBottomY = 40;
-    const logoPath = path.join(process.cwd(), "assets", "logo-hytmodels.png");
+    const logoPath = path.join(process.cwd(), "assets", "logo.png");
 
     if (fs.existsSync(logoPath)) {
         doc.image(logoPath, PAGE_LEFT, 40, { width: LOGO_WIDTH });

@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { LoadingButton } from '../components/Loading'
 import toast from 'react-hot-toast'
 
 export default function Login() {
@@ -13,12 +12,14 @@ export default function Login() {
 
     const { login } = useAuth()
     const navigate = useNavigate()
-    const location = useLocation()
-
-    const from = location.state?.from?.pathname || '/'
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
+        // DEBUG - Affiche dans la console
+        console.log('=== FORM SUBMITTED ===')
+        console.log('Email:', email)
+        console.log('Password:', password)
 
         if (!email || !password) {
             toast.error('Veuillez remplir tous les champs')
@@ -28,12 +29,16 @@ export default function Login() {
         setLoading(true)
 
         try {
-            await login(email, password)
-            toast.success('Connexion réussie !')
-            navigate(from, { replace: true })
+            console.log('Calling login...')
+            const result = await login(email, password)
+            console.log('Login result:', result)
+
+            if (result?.success) {
+                navigate('/')
+            }
         } catch (error) {
-            const message = error.response?.data?.error || 'Erreur de connexion'
-            toast.error(message)
+            console.error('Login error:', error)
+            toast.error('Erreur de connexion')
         } finally {
             setLoading(false)
         }
@@ -41,26 +46,21 @@ export default function Login() {
 
     return (
         <div className="min-h-screen flex items-center justify-center px-4 py-20">
-            {/* Background */}
             <div className="absolute inset-0 mesh-bg" />
 
             <div className="relative w-full max-w-md">
-                {/* Logo */}
                 <div className="text-center mb-8">
                     <Link to="/" className="inline-flex items-center gap-2 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center shadow-glow">
-                            <Sparkles className="w-6 h-6 text-white" />
-                        </div>
+                        <img src="/logo.png" alt="HytModel" className="h-12 w-auto" />
                     </Link>
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
-                        Bon retour !
+                        Connexion
                     </h1>
                     <p className="text-gray-500">
-                        Connectez-vous pour accéder à votre compte
+                        Connectez-vous à votre compte
                     </p>
                 </div>
 
-                {/* Form */}
                 <div className="card">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {/* Email */}
@@ -75,8 +75,8 @@ export default function Login() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="vous@exemple.com"
-                                    className="input-field pl-12"
-                                    autoComplete="email"
+                                    className="input-field pl-12 w-full"
+                                    required
                                 />
                             </div>
                         </div>
@@ -93,8 +93,8 @@ export default function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="input-field pl-12 pr-12"
-                                    autoComplete="current-password"
+                                    className="input-field pl-12 pr-12 w-full"
+                                    required
                                 />
                                 <button
                                     type="button"
@@ -106,40 +106,28 @@ export default function Login() {
                             </div>
                         </div>
 
-                        {/* Forgot Password */}
-                        <div className="flex justify-end">
-                            <Link to="/forgot-password" className="text-sm text-hyt-accent hover:underline">
-                                Mot de passe oublié ?
-                            </Link>
-                        </div>
-
-                        {/* Submit */}
-                        <LoadingButton
+                        {/* Submit Button */}
+                        <button
                             type="submit"
-                            loading={loading}
-                            className="btn-primary w-full py-3"
+                            disabled={loading}
+                            className="btn-primary w-full py-3 flex items-center justify-center"
                         >
-                            Se connecter
-                        </LoadingButton>
+                            {loading ? (
+                                <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                            ) : (
+                                'Se connecter'
+                            )}
+                        </button>
                     </form>
 
-                    {/* Divider */}
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-hyt-border" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-hyt-card text-gray-500">ou</span>
-                        </div>
+                    <div className="mt-6 text-center">
+                        <p className="text-gray-400">
+                            Pas encore de compte ?{' '}
+                            <Link to="/register" className="text-hyt-accent font-medium hover:underline">
+                                Créer un compte
+                            </Link>
+                        </p>
                     </div>
-
-                    {/* Register Link */}
-                    <p className="text-center text-gray-400">
-                        Pas encore de compte ?{' '}
-                        <Link to="/register" className="text-hyt-accent font-medium hover:underline">
-                            Créer un compte
-                        </Link>
-                    </p>
                 </div>
             </div>
         </div>

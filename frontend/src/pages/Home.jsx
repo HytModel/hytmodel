@@ -17,13 +17,21 @@ export default function Home() {
     const fetchData = async () => {
         try {
             const [modelsRes, gamesRes] = await Promise.all([
-                modelsAPI.list(),
-                gamesAPI.list()
+                modelsAPI.getAll().catch(() => ({ data: [] })),
+                gamesAPI.getAll().catch(() => ({ data: [] }))
             ])
-            setModels(modelsRes.data.models?.slice(0, 8) || [])
-            setGames(gamesRes.data.games?.slice(0, 6) || [])
+
+            // Gestion flexible des différents formats de réponse API
+            const modelsData = modelsRes?.data?.models || modelsRes?.data || []
+            const gamesData = gamesRes?.data?.games || gamesRes?.data || []
+
+            // S'assurer que c'est bien un tableau
+            setModels(Array.isArray(modelsData) ? modelsData.slice(0, 8) : [])
+            setGames(Array.isArray(gamesData) ? gamesData.slice(0, 6) : [])
         } catch (error) {
             console.error('Failed to fetch data:', error)
+            setModels([])
+            setGames([])
         } finally {
             setLoading(false)
         }
@@ -87,10 +95,10 @@ export default function Home() {
                         Qualité professionnelle, prix accessibles.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/models" className="btn-primary text-lg px-8 py-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Link to="/models" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
                             Explorer les modèles
-                            <ArrowRight className="inline-block ml-2 w-5 h-5" />
+                            <ArrowRight className="w-5 h-5" />
                         </Link>
                         <Link to="/register" className="btn-secondary text-lg px-8 py-4">
                             Devenir créateur
@@ -98,10 +106,10 @@ export default function Home() {
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 pt-10 border-t border-hyt-border">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20">
                         {stats.map((stat, index) => (
                             <div key={index} className="text-center">
-                                <div className="font-display text-4xl font-bold gradient-text mb-2">
+                                <div className="text-3xl md:text-4xl font-bold gradient-text mb-1">
                                     {stat.value}
                                 </div>
                                 <div className="text-gray-500">{stat.label}</div>
@@ -116,13 +124,14 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-10">
                         <div>
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">
+                            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">
                                 Modèles populaires
                             </h2>
-                            <p className="text-gray-500">Les modèles les plus appréciés par notre communauté</p>
+                            <p className="text-gray-400">Découvrez les créations les plus appréciées</p>
                         </div>
                         <Link to="/models" className="btn-ghost flex items-center gap-2">
-                            Voir tout <ArrowRight className="w-4 h-4" />
+                            Voir tout
+                            <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>
 
@@ -135,44 +144,75 @@ export default function Home() {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-20">
-                            <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                            <p className="text-gray-500">Aucun modèle disponible pour le moment</p>
+                        <div className="text-center py-12">
+                            <Box className="w-12 h-12 mx-auto text-gray-600 mb-4" />
+                            <p className="text-gray-400">Aucun modèle disponible pour le moment</p>
                         </div>
                     )}
                 </div>
             </section>
 
+            {/* Features */}
+            <section className="py-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-16">
+                        <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
+                            Pourquoi choisir HytModel ?
+                        </h2>
+                        <p className="text-gray-400 max-w-2xl mx-auto">
+                            Une plateforme pensée pour les créateurs et les acheteurs
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {features.map((feature, index) => (
+                            <div
+                                key={index}
+                                className="bg-hyt-card border border-hyt-border rounded-2xl p-6 hover:border-hyt-accent/50 transition-colors"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-hyt-accent/20 to-hyt-purple/20 flex items-center justify-center mb-4">
+                                    <feature.icon className="w-6 h-6 text-hyt-accent" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                                <p className="text-gray-400 text-sm">{feature.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* Games Section */}
             {games.length > 0 && (
-                <section className="py-20">
+                <section className="py-20 bg-hyt-darker">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-12">
-                            <h2 className="font-display text-3xl font-bold text-white mb-4">
-                                Parcourez par jeu
+                            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
+                                Parcourir par jeu
                             </h2>
-                            <p className="text-gray-500 max-w-2xl mx-auto">
-                                Trouvez des modèles adaptés à votre jeu préféré
-                            </p>
+                            <p className="text-gray-400">Trouvez des modèles pour vos jeux préférés</p>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             {games.map((game) => (
                                 <Link
                                     key={game.id}
-                                    to={`/games/${game.slug}`}
-                                    className="card-hover text-center group"
+                                    to={`/models?game=${game.id}`}
+                                    className="group bg-hyt-card border border-hyt-border rounded-xl p-4 text-center hover:border-hyt-accent/50 transition-all"
                                 >
-                                    <div className="w-16 h-16 mx-auto mb-3 rounded-xl bg-gradient-to-br from-hyt-accent/20 to-hyt-purple/20 flex items-center justify-center group-hover:shadow-glow transition-shadow">
-                                        {game.icon_url ? (
-                                            <img src={game.icon_url} alt={game.name} className="w-10 h-10 rounded-lg" />
-                                        ) : (
+                                    {game.icon_url ? (
+                                        <img
+                                            src={game.icon_url}
+                                            alt={game.name}
+                                            className="w-16 h-16 mx-auto mb-3 rounded-lg object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-16 h-16 mx-auto mb-3 rounded-lg bg-gradient-to-br from-hyt-accent/20 to-hyt-purple/20 flex items-center justify-center">
                                             <span className="text-2xl font-bold text-hyt-accent">
-                        {game.name.charAt(0)}
-                      </span>
-                                        )}
-                                    </div>
-                                    <h3 className="font-semibold text-white group-hover:text-hyt-accent transition-colors">
+                                                {game.name?.charAt(0)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <h3 className="text-white font-medium group-hover:text-hyt-accent transition-colors">
                                         {game.name}
                                     </h3>
                                 </Link>
@@ -182,48 +222,21 @@ export default function Home() {
                 </section>
             )}
 
-            {/* Features */}
-            <section className="py-20 bg-hyt-darker">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-12">
-                        <h2 className="font-display text-3xl font-bold text-white mb-4">
-                            Pourquoi choisir HytModel ?
-                        </h2>
-                        <p className="text-gray-500 max-w-2xl mx-auto">
-                            Une plateforme pensée pour les créateurs et les acheteurs
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {features.map((feature, index) => (
-                            <div key={index} className="card group">
-                                <div className="w-12 h-12 mb-4 rounded-xl bg-hyt-accent/10 flex items-center justify-center group-hover:bg-hyt-accent/20 transition-colors">
-                                    <feature.icon className="w-6 h-6 text-hyt-accent" />
-                                </div>
-                                <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
-                                <p className="text-sm text-gray-500">{feature.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
             {/* CTA */}
-            <section className="py-20 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-hyt-accent/10 to-hyt-purple/10" />
-                <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="font-display text-4xl font-bold text-white mb-6">
+            <section className="py-20">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-6">
                         Prêt à commencer ?
                     </h2>
                     <p className="text-xl text-gray-400 mb-8">
-                        Rejoignez notre communauté et découvrez des milliers de modèles 3D.
+                        Rejoignez notre communauté de créateurs et d'acheteurs dès aujourd'hui.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/register" className="btn-primary text-lg px-8 py-4">
-                            Créer un compte gratuitement
+                            Créer un compte gratuit
                         </Link>
-                        <Link to="/models" className="btn-secondary text-lg px-8 py-4">
-                            Parcourir les modèles
+                        <Link to="/models" className="btn-ghost text-lg px-8 py-4">
+                            Explorer sans compte
                         </Link>
                     </div>
                 </div>

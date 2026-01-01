@@ -1,5 +1,4 @@
-import React from 'react'
-import { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -11,18 +10,28 @@ export function AuthProvider({ children }) {
 
     // Au démarrage : vérifie si un token existe
     useEffect(() => {
-        const token = localStorage.getItem('token')
-        const savedUser = localStorage.getItem('user')
-
-        if (token && savedUser) {
+        const initAuth = () => {
             try {
-                setUser(JSON.parse(savedUser))
+                const token = localStorage.getItem('token')
+                const savedUser = localStorage.getItem('user')
+
+                console.log('AuthContext init - token:', !!token, 'user:', !!savedUser)
+
+                if (token && savedUser) {
+                    const parsedUser = JSON.parse(savedUser)
+                    console.log('Setting user:', parsedUser)
+                    setUser(parsedUser)
+                }
             } catch (e) {
+                console.error('Error loading auth:', e)
                 localStorage.removeItem('token')
                 localStorage.removeItem('user')
+            } finally {
+                setLoading(false)
             }
         }
-        setLoading(false)
+
+        initAuth()
     }, [])
 
     // Inscription
@@ -66,6 +75,8 @@ export function AuthProvider({ children }) {
     }
 
     // Vérifications de rôle
+    const isAuthenticated = !!user
+
     const isCreator = () => {
         return user && ['CREATOR', 'STAFF', 'ADMIN'].includes(user.role)
     }
@@ -78,10 +89,16 @@ export function AuthProvider({ children }) {
         return user && user.role === 'ADMIN'
     }
 
+    // Debug log
+    useEffect(() => {
+        console.log('AuthContext state - user:', user, 'loading:', loading, 'isAuthenticated:', isAuthenticated)
+    }, [user, loading])
+
     return (
         <AuthContext.Provider value={{
             user,
             loading,
+            isAuthenticated,
             register,
             login,
             logout,

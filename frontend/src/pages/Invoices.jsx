@@ -4,7 +4,6 @@ import {
     FileText,
     Download,
     Calendar,
-    Euro,
     Search,
     Receipt,
     Loader2,
@@ -82,11 +81,8 @@ export default function Invoices() {
 
     const currentInvoices = activeTab === 'buyer' ? buyerInvoices : sellerInvoices
 
-    const totalBuyer = buyerInvoices.reduce((sum, inv) => sum + Number(inv.total_amount || 0), 0) / 100
-    const totalSeller = sellerInvoices.reduce((sum, inv) => sum + Number(inv.net_amount || 0), 0) / 100
-
     return (
-        <div className="min-h-screen bg-hyt-dark py-8 px-4">
+        <div className="min-h-screen bg-hyt-dark pt-20 py-8 px-4">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <motion.div
@@ -102,21 +98,21 @@ export default function Invoices() {
                     </p>
                 </motion.div>
 
-                {/* Stats */}
+                {/* Stats - Sans les totaux */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
+                    className={`grid grid-cols-1 ${isCreator() ? 'sm:grid-cols-2' : ''} gap-4 mb-8`}
                 >
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 bg-red-500/20 rounded-lg">
-                                <ArrowUpRight className="w-6 h-6 text-red-500" />
+                            <div className="p-3 bg-hyt-accent/20 rounded-lg">
+                                <FileText className="w-6 h-6 text-hyt-accent" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-white">{totalBuyer.toFixed(2)} €</p>
-                                <p className="text-sm text-gray-400">{buyerInvoices.length} factures d'achat</p>
+                                <p className="text-2xl font-bold text-white">{buyerInvoices.length}</p>
+                                <p className="text-sm text-gray-400">Factures d'achat</p>
                             </div>
                         </div>
                     </div>
@@ -125,11 +121,11 @@ export default function Invoices() {
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-green-500/20 rounded-lg">
-                                    <ArrowDownLeft className="w-6 h-6 text-green-500" />
+                                    <Receipt className="w-6 h-6 text-green-500" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold text-white">{totalSeller.toFixed(2)} €</p>
-                                    <p className="text-sm text-gray-400">{sellerInvoices.length} notes de paiement</p>
+                                    <p className="text-2xl font-bold text-white">{sellerInvoices.length}</p>
+                                    <p className="text-sm text-gray-400">Notes de paiement</p>
                                 </div>
                             </div>
                         </div>
@@ -152,10 +148,10 @@ export default function Invoices() {
                                     : 'bg-hyt-card text-gray-400 hover:text-white'
                             }`}
                         >
-              <span className="flex items-center gap-2">
-                <ArrowUpRight className="w-4 h-4" />
-                Mes achats
-              </span>
+                            <span className="flex items-center gap-2">
+                                <ArrowUpRight className="w-4 h-4" />
+                                Mes achats
+                            </span>
                         </button>
                         <button
                             onClick={() => setActiveTab('seller')}
@@ -165,10 +161,10 @@ export default function Invoices() {
                                     : 'bg-hyt-card text-gray-400 hover:text-white'
                             }`}
                         >
-              <span className="flex items-center gap-2">
-                <ArrowDownLeft className="w-4 h-4" />
-                Mes ventes
-              </span>
+                            <span className="flex items-center gap-2">
+                                <ArrowDownLeft className="w-4 h-4" />
+                                Mes ventes
+                            </span>
                         </button>
                     </motion.div>
                 )}
@@ -195,14 +191,14 @@ export default function Invoices() {
                         animate={{ opacity: 1 }}
                         className="text-center py-16"
                     >
-                        <Receipt className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                        <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-white mb-2">
                             Aucune facture
                         </h3>
                         <p className="text-gray-400">
                             {activeTab === 'buyer'
-                                ? "Vous n'avez pas encore effectué d'achat"
-                                : "Vous n'avez pas encore réalisé de vente"
+                                ? 'Vous n\'avez pas encore de factures d\'achat'
+                                : 'Vous n\'avez pas encore de notes de paiement'
                             }
                         </p>
                     </motion.div>
@@ -218,53 +214,39 @@ export default function Invoices() {
                                 key={invoice.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.05 * index }}
+                                transition={{ delay: index * 0.05 }}
                                 className="bg-hyt-card border border-hyt-border rounded-xl p-6 hover:border-hyt-accent/30 transition-colors"
                             >
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                <div className="flex items-center gap-4">
                                     {/* Icon */}
-                                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                        activeTab === 'buyer' ? 'bg-hyt-accent/20' : 'bg-green-500/20'
+                                    <div className={`p-3 rounded-lg ${
+                                        activeTab === 'buyer'
+                                            ? 'bg-hyt-accent/20'
+                                            : 'bg-green-500/20'
                                     }`}>
                                         <FileText className={`w-6 h-6 ${
-                                            activeTab === 'buyer' ? 'text-hyt-accent' : 'text-green-500'
+                                            activeTab === 'buyer'
+                                                ? 'text-hyt-accent'
+                                                : 'text-green-500'
                                         }`} />
                                     </div>
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-lg font-semibold text-white">
-                                            {invoice.invoice_number}
+                                        <h3 className="font-semibold text-white">
+                                            Facture #{invoice.invoice_number || invoice.id.slice(0, 8)}
                                         </h3>
-                                        <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                          {new Date(invoice.created_at).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                          })}
-                      </span>
-                                            <span className="flex items-center gap-1">
-                        <Euro className="w-4 h-4" />
-                                                {activeTab === 'buyer'
-                                                    ? `${(Number(invoice.total_amount) / 100).toFixed(2)} €`
-                                                    : `${(Number(invoice.net_amount) / 100).toFixed(2)} € net`
-                                                }
-                      </span>
-                                            {activeTab === 'seller' && (
-                                                <span className="text-gray-500">
-                          (Brut: {(Number(invoice.gross_amount) / 100).toFixed(2)} € - Commission: {(Number(invoice.commission_amount) / 100).toFixed(2)} €)
-                        </span>
-                                            )}
-                                        </div>
+                                        <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
+                                            <Calendar className="w-4 h-4" />
+                                            {new Date(invoice.created_at).toLocaleDateString('fr-FR')}
+                                        </p>
                                     </div>
 
-                                    {/* Download */}
+                                    {/* Download Button */}
                                     <button
                                         onClick={() => handleDownload(invoice.id, activeTab)}
                                         disabled={downloading === invoice.id}
-                                        className="btn-primary py-2 px-4 flex items-center gap-2"
+                                        className="btn-primary flex items-center gap-2"
                                     >
                                         {downloading === invoice.id ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />

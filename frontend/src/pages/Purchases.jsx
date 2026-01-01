@@ -5,9 +5,7 @@ import {
     Download,
     Package,
     Calendar,
-    Euro,
     Search,
-    Filter,
     ExternalLink,
     Loader2
 } from 'lucide-react'
@@ -65,10 +63,8 @@ export default function Purchases() {
         purchase.title?.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const totalSpent = purchases.reduce((sum, p) => sum + Number(p.price || 0), 0)
-
     return (
-        <div className="min-h-screen bg-hyt-dark py-8 px-4">
+        <div className="min-h-screen bg-hyt-dark pt-20 py-8 px-4">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <motion.div
@@ -84,12 +80,12 @@ export default function Purchases() {
                     </p>
                 </motion.div>
 
-                {/* Stats */}
+                {/* Stats - Sans le total dépensé */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"
                 >
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <div className="flex items-center gap-3">
@@ -99,18 +95,6 @@ export default function Purchases() {
                             <div>
                                 <p className="text-2xl font-bold text-white">{purchases.length}</p>
                                 <p className="text-sm text-gray-400">Modèles achetés</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-green-500/20 rounded-lg">
-                                <Euro className="w-6 h-6 text-green-500" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-white">{totalSpent.toFixed(2)} €</p>
-                                <p className="text-sm text-gray-400">Total dépensé</p>
                             </div>
                         </div>
                     </div>
@@ -175,12 +159,12 @@ export default function Purchases() {
                         </h3>
                         <p className="text-gray-400 mb-6">
                             {searchQuery
-                                ? 'Aucun modèle ne correspond à votre recherche'
-                                : "Vous n'avez pas encore acheté de modèles"
+                                ? 'Essayez avec d\'autres termes de recherche'
+                                : 'Vous n\'avez pas encore acheté de modèles'
                             }
                         </p>
                         {!searchQuery && (
-                            <Link to="/models" className="btn-primary inline-flex items-center gap-2">
+                            <Link to="/models" className="btn-primary">
                                 Découvrir les modèles
                             </Link>
                         )}
@@ -197,58 +181,56 @@ export default function Purchases() {
                                 key={purchase.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 * index }}
+                                transition={{ delay: index * 0.05 }}
                                 className="bg-hyt-card border border-hyt-border rounded-xl p-6 hover:border-hyt-accent/30 transition-colors"
                             >
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                    {/* Thumbnail placeholder */}
-                                    <div className="w-20 h-20 bg-gradient-to-br from-hyt-accent/20 to-hyt-purple/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                                        <Package className="w-8 h-8 text-hyt-accent" />
+                                <div className="flex items-center gap-4">
+                                    {/* Thumbnail */}
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
+                                        {purchase.thumbnail_url ? (
+                                            <img
+                                                src={purchase.thumbnail_url}
+                                                alt={purchase.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent/10 to-hyt-purple/10">
+                                                <span className="text-2xl font-bold text-hyt-accent/30">3D</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-lg font-semibold text-white truncate">
+                                        <h3 className="font-semibold text-white truncate">
                                             {purchase.title}
                                         </h3>
-                                        <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                          {new Date(purchase.created_at).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                          })}
-                      </span>
-                                            <span className="flex items-center gap-1">
-                        <Euro className="w-4 h-4" />
-                                                {Number(purchase.price).toFixed(2)} €
-                      </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
+                                            <Calendar className="w-4 h-4" />
+                                            Acheté le {new Date(purchase.purchased_at).toLocaleDateString('fr-FR')}
+                                        </p>
                                         <Link
                                             to={`/models/${purchase.model_id}`}
-                                            className="btn-secondary py-2 px-4 flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                                            className="text-sm text-hyt-accent hover:underline flex items-center gap-1 mt-1"
                                         >
-                                            <ExternalLink className="w-4 h-4" />
-                                            Voir
+                                            Voir le modèle
+                                            <ExternalLink className="w-3 h-3" />
                                         </Link>
-                                        <button
-                                            onClick={() => handleDownload(purchase)}
-                                            disabled={downloading === purchase.model_id}
-                                            className="btn-primary py-2 px-4 flex items-center gap-2 flex-1 sm:flex-none justify-center"
-                                        >
-                                            {downloading === purchase.model_id ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Download className="w-4 h-4" />
-                                            )}
-                                            Télécharger
-                                        </button>
                                     </div>
+
+                                    {/* Download Button */}
+                                    <button
+                                        onClick={() => handleDownload(purchase)}
+                                        disabled={downloading === purchase.model_id}
+                                        className="btn-primary flex items-center gap-2"
+                                    >
+                                        {downloading === purchase.model_id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Download className="w-4 h-4" />
+                                        )}
+                                        Télécharger
+                                    </button>
                                 </div>
                             </motion.div>
                         ))}
