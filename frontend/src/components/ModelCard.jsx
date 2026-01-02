@@ -133,7 +133,7 @@ export default function ModelCard({ model, showActions = true }) {
                     </div>
 
                     <span className="font-display font-bold text-lg text-white">
-            {Number(model.price/100).toFixed(2)}€
+            {Number(model.price).toFixed(2)}€
           </span>
                 </div>
             </div>
