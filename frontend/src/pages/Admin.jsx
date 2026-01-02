@@ -14,6 +14,7 @@ import {
     UserCheck,
     Trash2,
     Eye,
+    EyeOff,
     Search,
     Filter,
     ChevronRight,
@@ -21,10 +22,13 @@ import {
     BarChart3,
     Gamepad2,
     Tag,
-    Layers
+    Layers,
+    AlertTriangle,
+    X
 } from 'lucide-react'
-import { adminAPI } from '../services/api'
+import { adminAPI, modelsAPI } from '../services/api'
 import toast from 'react-hot-toast'
+import AdminSellers from './AdminSellers'
 
 // Composant Stats Card
 function StatCard({ title, value, icon: Icon, color, trend }) {
@@ -117,7 +121,7 @@ function AdminOverview() {
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                         >
                             <Clock className="w-5 h-5 text-yellow-500" />
-                            <span className="text-white">Modèles en attente</span>
+                            <span className="text-white">Produits en attente</span>
                         </Link>
                         <Link
                             to="/admin/users"
@@ -140,7 +144,7 @@ function AdminOverview() {
 }
 
 // Pending Models
-function PendingModels() {
+function PendingModels({ onCountChange }) {
     const [models, setModels] = useState([])
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(null)
@@ -152,9 +156,14 @@ function PendingModels() {
     const loadPendingModels = async () => {
         try {
             const { data } = await adminAPI.getPendingModels()
-            setModels(data || [])
+            const modelsArray = Array.isArray(data) ? data : (data.models || [])
+            setModels(modelsArray)
+            if (onCountChange) {
+                onCountChange(modelsArray.length)
+            }
         } catch (error) {
             console.error('Failed to load pending models:', error)
+            setModels([])
         } finally {
             setLoading(false)
         }
@@ -163,8 +172,8 @@ function PendingModels() {
     const handleApprove = async (modelId) => {
         setProcessing(modelId)
         try {
-            await adminAPI.approveModel(modelId)
-            toast.success('Modèle approuvé')
+            await modelsAPI.approve(modelId)
+            toast.success('Produit approuvé')
             loadPendingModels()
         } catch (error) {
             toast.error('Erreur lors de l\'approbation')
@@ -176,8 +185,8 @@ function PendingModels() {
     const handleReject = async (modelId) => {
         setProcessing(modelId)
         try {
-            await adminAPI.rejectModel(modelId)
-            toast.success('Modèle rejeté')
+            await modelsAPI.reject(modelId)
+            toast.success('Produit rejeté')
             loadPendingModels()
         } catch (error) {
             toast.error('Erreur lors du rejet')
@@ -196,13 +205,13 @@ function PendingModels() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Modèles en attente</h2>
+            <h2 className="text-2xl font-bold text-white">Produits en attente</h2>
 
             {models.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucun modèle en attente</p>
-                    <p className="text-gray-400 text-sm mt-1">Tous les modèles ont été traités</p>
+                    <p className="text-white font-medium">Aucun produit en attente</p>
+                    <p className="text-gray-400 text-sm mt-1">Tous les produits ont été traités</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -226,11 +235,38 @@ function PendingModels() {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-medium truncate">{model.title}</h3>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-white font-medium truncate">{model.title}</h3>
+                                    {/* Badge selon le type */}
+                                    {model.modification_reason === 'HIDDEN_CORRECTION' ? (
+                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            Corrigé
+                                        </span>
+                                    ) : model.modification_reason === 'CREATOR_UPDATE' ? (
+                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded-full text-xs font-medium">
+                                            <Clock className="w-3 h-3" />
+                                            Modifié
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
+                                            <CheckCircle className="w-3 h-3" />
+                                            Nouveau
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
                                 <p className="text-hyt-accent font-medium">
-                                    {(model.price / 100).toFixed(2)} €
+                                    {parseFloat(model.price).toFixed(2)} €
                                 </p>
+                                {/* Afficher l'ancienne raison de masquage si corrigé */}
+                                {model.modification_reason === 'HIDDEN_CORRECTION' && model.previous_hidden_reason && (
+                                    <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                        <p className="text-xs text-orange-400">
+                                            <strong>Ancienne raison du masquage :</strong> {model.previous_hidden_reason}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -328,7 +364,6 @@ function UsersManagement() {
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">Gestion des utilisateurs</h2>
 
-            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <form onSubmit={handleSearch} className="flex-1">
                     <div className="relative">
@@ -355,7 +390,6 @@ function UsersManagement() {
                 </select>
             </div>
 
-            {/* Users List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -378,9 +412,9 @@ function UsersManagement() {
                                 <td className="py-4 px-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
-                                                <span className="text-sm font-bold text-white">
-                                                    {user.username?.charAt(0).toUpperCase()}
-                                                </span>
+                                            <span className="text-sm font-bold text-white">
+                                                {user.username?.charAt(0).toUpperCase()}
+                                            </span>
                                         </div>
                                         <span className="text-white font-medium">{user.username}</span>
                                     </div>
@@ -423,16 +457,508 @@ function UsersManagement() {
     )
 }
 
+// Modal pour cacher un produit avec raison
+function HideModelModal({ model, onClose, onConfirm }) {
+    const [reason, setReason] = useState('')
+    const [loading, setLoading] = useState(false)
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        if (!reason.trim()) {
+            toast.error('Veuillez entrer une raison')
+            return
+        }
+
+        setLoading(true)
+        try {
+            await onConfirm(model.id, reason)
+            onClose()
+        } catch (error) {
+            toast.error('Erreur lors du masquage')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <EyeOff className="w-5 h-5 text-yellow-500" />
+                        Masquer le produit
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <p className="text-gray-400 mb-4">
+                    Vous allez masquer <span className="text-white font-medium">"{model.title}"</span>.
+                    Le vendeur sera notifié de la raison.
+                </p>
+
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-4">
+                        <label className="block text-sm text-gray-400 mb-2">
+                            Raison du masquage *
+                        </label>
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="Ex: Contenu inapproprié, droits d'auteur, qualité insuffisante..."
+                            rows={4}
+                            className="input-field w-full resize-none"
+                            required
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="btn-ghost flex-1"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="btn-primary flex-1 bg-yellow-500 hover:bg-yellow-600 flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <EyeOff className="w-4 h-4" />
+                            )}
+                            Masquer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+// Modal de confirmation pour supprimer
+function DeleteModelModal({ model, onClose, onConfirm }) {
+    const [loading, setLoading] = useState(false)
+
+    const handleConfirm = async () => {
+        setLoading(true)
+        try {
+            await onConfirm(model.id)
+            onClose()
+        } catch (error) {
+            toast.error('Erreur lors de la suppression')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Trash2 className="w-5 h-5 text-red-500" />
+                        Supprimer le produit
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <p className="text-gray-400 mb-6">
+                    Êtes-vous sûr de vouloir supprimer définitivement
+                    <span className="text-white font-medium"> "{model.title}"</span> ?
+                    Cette action est irréversible.
+                </p>
+
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="btn-ghost flex-1"
+                    >
+                        Annuler
+                    </button>
+                    <button
+                        onClick={handleConfirm}
+                        disabled={loading}
+                        className="btn-primary flex-1 bg-red-500 hover:bg-red-600 flex items-center justify-center gap-2"
+                    >
+                        {loading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Trash2 className="w-4 h-4" />
+                        )}
+                        Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// Admin Models Management
+function AdminModels() {
+    const [models, setModels] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [statusFilter, setStatusFilter] = useState('')
+    const [hideModal, setHideModal] = useState(null)
+    const [deleteModal, setDeleteModal] = useState(null)
+    const [processing, setProcessing] = useState(null)
+
+    useEffect(() => {
+        loadModels()
+    }, [statusFilter])
+
+    const loadModels = async () => {
+        setLoading(true)
+        try {
+            try {
+                const { data } = await adminAPI.getAllModels({
+                    status: statusFilter || undefined
+                })
+                const modelsArray = Array.isArray(data) ? data : (data.models || [])
+                setModels(modelsArray)
+            } catch (e) {
+                const { data } = await modelsAPI.getAll()
+                const modelsArray = Array.isArray(data) ? data : (data.models || [])
+                setModels(modelsArray)
+            }
+        } catch (error) {
+            console.error('Failed to load models:', error)
+            setModels([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleHide = async (modelId, reason) => {
+        try {
+            await modelsAPI.hide(modelId, reason)
+            toast.success('Produit masqué - Le vendeur sera notifié')
+            loadModels()
+        } catch (error) {
+            throw error
+        }
+    }
+
+    const handleUnhide = async (modelId) => {
+        setProcessing(modelId)
+        try {
+            await modelsAPI.unhide(modelId)
+            toast.success('Produit réaffiché')
+            loadModels()
+        } catch (error) {
+            toast.error('Erreur lors du réaffichage')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const handleDelete = async (modelId) => {
+        try {
+            await modelsAPI.delete(modelId)
+            toast.success('Produit supprimé')
+            loadModels()
+        } catch (error) {
+            throw error
+        }
+    }
+
+    const handleApprove = async (modelId) => {
+        setProcessing(modelId)
+        try {
+            await modelsAPI.approve(modelId)
+            toast.success('Produit approuvé')
+            loadModels()
+        } catch (error) {
+            toast.error('Erreur lors de l\'approbation')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const handleReject = async (modelId) => {
+        setProcessing(modelId)
+        try {
+            await modelsAPI.reject(modelId)
+            toast.success('Produit rejeté')
+            loadModels()
+        } catch (error) {
+            toast.error('Erreur lors du rejet')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const getStatusBadge = (model) => {
+        if (model.is_hidden) {
+            return (
+                <span className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-xs font-medium">
+                    <EyeOff className="w-3 h-3" />
+                    Masqué
+                </span>
+            )
+        }
+
+        switch (model.status) {
+            case 'APPROVED':
+                return (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
+                        <CheckCircle className="w-3 h-3" />
+                        Approuvé
+                    </span>
+                )
+            case 'PENDING':
+                return (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
+                        <Clock className="w-3 h-3" />
+                        En attente
+                    </span>
+                )
+            case 'REJECTED':
+                return (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-500 rounded-full text-xs font-medium">
+                        <XCircle className="w-3 h-3" />
+                        Rejeté
+                    </span>
+                )
+            default:
+                return null
+        }
+    }
+
+    const filteredModels = models.filter(model =>
+        model.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        model.creator_username?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Gestion des produits</h2>
+                <span className="text-gray-400">{filteredModels.length} produit(s)</span>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Rechercher par titre ou créateur..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input-field pl-12 w-full"
+                        />
+                    </div>
+                </div>
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="input-field w-full sm:w-48"
+                >
+                    <option value="">Tous les statuts</option>
+                    <option value="APPROVED">Approuvés</option>
+                    <option value="PENDING">En attente</option>
+                    <option value="REJECTED">Rejetés</option>
+                </select>
+            </div>
+
+            {/* Models List */}
+            {loading ? (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
+                </div>
+            ) : filteredModels.length === 0 ? (
+                <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
+                    <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                    <p className="text-white font-medium">Aucun produit trouvé</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                        {searchQuery ? 'Essayez avec d\'autres termes' : 'Aucun produit dans la base de données'}
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {filteredModels.map((model) => (
+                        <div
+                            key={model.id}
+                            className={`bg-hyt-card border rounded-xl p-4 ${
+                                model.is_hidden
+                                    ? 'border-yellow-500/50 bg-yellow-500/5'
+                                    : 'border-hyt-border'
+                            }`}
+                        >
+                            <div className="flex items-center gap-4">
+                                {/* Thumbnail */}
+                                <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
+                                    {model.thumbnail_url ? (
+                                        <img
+                                            src={model.thumbnail_url}
+                                            alt={model.title}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                            <Package className="w-8 h-8" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="text-white font-medium truncate">{model.title}</h3>
+                                        {getStatusBadge(model)}
+                                    </div>
+                                    <p className="text-gray-400 text-sm">
+                                        Par <span className="text-hyt-accent">{model.creator_username || 'Inconnu'}</span>
+                                    </p>
+                                    <p className="text-white font-medium">
+                                        {parseFloat(model.price).toFixed(2)} €
+                                    </p>
+                                    {model.is_hidden && model.hidden_reason && (
+                                        <div className="mt-2 flex items-start gap-2 text-sm text-yellow-500">
+                                            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                            <span>Raison: {model.hidden_reason}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Link
+                                        to={`/models/${model.id}`}
+                                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                                        title="Voir"
+                                    >
+                                        <Eye className="w-5 h-5" />
+                                    </Link>
+
+                                    {model.status === 'PENDING' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleApprove(model.id)}
+                                                disabled={processing === model.id}
+                                                className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors disabled:opacity-50"
+                                            >
+                                                {processing === model.id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <CheckCircle className="w-4 h-4" />
+                                                )}
+                                                <span className="hidden sm:inline">Approuver</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(model.id)}
+                                                disabled={processing === model.id}
+                                                className="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors disabled:opacity-50"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                                <span className="hidden sm:inline">Rejeter</span>
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {model.status === 'APPROVED' && (
+                                        model.is_hidden ? (
+                                            <button
+                                                onClick={() => handleUnhide(model.id)}
+                                                disabled={processing === model.id}
+                                                className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors disabled:opacity-50"
+                                            >
+                                                {processing === model.id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Eye className="w-4 h-4" />
+                                                )}
+                                                <span className="hidden sm:inline">Réafficher</span>
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => setHideModal(model)}
+                                                className="bg-yellow-500 hover:bg-yellow-600 text-black py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors"
+                                            >
+                                                <EyeOff className="w-4 h-4" />
+                                                <span className="hidden sm:inline">Masquer</span>
+                                            </button>
+                                        )
+                                    )}
+
+                                    <button
+                                        onClick={() => setDeleteModal(model)}
+                                        className="p-2 text-red-500 hover:text-red-400 transition-colors"
+                                        title="Supprimer"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Modals */}
+            {hideModal && (
+                <HideModelModal
+                    model={hideModal}
+                    onClose={() => setHideModal(null)}
+                    onConfirm={handleHide}
+                />
+            )}
+
+            {deleteModal && (
+                <DeleteModelModal
+                    model={deleteModal}
+                    onClose={() => setDeleteModal(null)}
+                    onConfirm={handleDelete}
+                />
+            )}
+        </div>
+    )
+}
+
 // Main Admin Component
 export default function Admin() {
     const location = useLocation()
+    const [pendingCount, setPendingCount] = useState(0)
+
+    useEffect(() => {
+        loadPendingCount()
+    }, [])
+
+    const loadPendingCount = async () => {
+        try {
+            const { data } = await adminAPI.getPendingModels()
+            const models = Array.isArray(data) ? data : (data.models || [])
+            setPendingCount(models.length)
+        } catch (error) {
+            console.error('Failed to load pending count:', error)
+        }
+    }
+
+    const handlePendingCountChange = (count) => {
+        setPendingCount(count)
+    }
 
     const navItems = [
         { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-        { path: '/admin/pending', icon: Clock, label: 'En attente' },
+        {
+            path: '/admin/pending',
+            icon: Clock,
+            label: 'En attente',
+            badge: pendingCount > 0 ? pendingCount : null
+        },
         { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
         { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
-        { path: '/admin/models', icon: Package, label: 'Modèles' },
+        { path: '/admin/models', icon: Package, label: 'Produits' },
     ]
 
     return (
@@ -457,14 +983,21 @@ export default function Admin() {
                                         <Link
                                             key={item.path}
                                             to={item.path}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                                            className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
                                                 isActive || (item.exact && location.pathname === '/admin')
                                                     ? 'bg-hyt-accent/20 text-hyt-accent'
                                                     : 'text-gray-400 hover:text-white hover:bg-hyt-dark/50'
                                             }`}
                                         >
-                                            <item.icon className="w-5 h-5" />
-                                            <span>{item.label}</span>
+                                            <div className="flex items-center gap-3">
+                                                <item.icon className="w-5 h-5" />
+                                                <span>{item.label}</span>
+                                            </div>
+                                            {item.badge && (
+                                                <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                                                    {item.badge}
+                                                </span>
+                                            )}
                                         </Link>
                                     )
                                 })}
@@ -480,10 +1013,10 @@ export default function Admin() {
                     >
                         <Routes>
                             <Route index element={<AdminOverview />} />
-                            <Route path="pending" element={<PendingModels />} />
+                            <Route path="pending" element={<PendingModels onCountChange={handlePendingCountChange} />} />
                             <Route path="users" element={<UsersManagement />} />
-                            <Route path="sellers" element={<div className="text-white">Stats vendeurs - à implémenter</div>} />
-                            <Route path="models" element={<div className="text-white">Top modèles - à implémenter</div>} />
+                            <Route path="sellers" element={<AdminSellers />} />
+                            <Route path="models" element={<AdminModels />} />
                         </Routes>
                     </motion.main>
                 </div>

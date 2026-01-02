@@ -66,11 +66,11 @@ class ModelsController {
         }
     }
 
-    // Mettre à jour un modèle
+    // Mettre à jour un modèle (avec revalidation obligatoire)
     async updateModel(req, res, next) {
         try {
             const modelId = req.params.id;
-            const { title, description, price } = req.body;
+            const { title, description, price, gameId, categoryId, tagIds, versionIds } = req.body;
 
             const isOwner = await modelsService.isOwner(modelId, req.user.id);
             const isStaff = ["STAFF", "ADMIN"].includes(req.user.role);
@@ -79,17 +79,33 @@ class ModelsController {
                 return res.status(403).json({ error: "Forbidden" });
             }
 
+            // Parser les tableaux si nécessaire
+            const parsedTagIds = typeof tagIds === 'string' ? JSON.parse(tagIds || '[]') : tagIds;
+            const parsedVersionIds = typeof versionIds === 'string' ? JSON.parse(versionIds || '[]') : versionIds;
+
             const updated = await modelsService.updateModel(modelId, {
                 title,
                 description,
-                price: Number(price)
-            });
+                price: Number(price),
+                gameId,
+                categoryId,
+                tagIds: parsedTagIds,
+                versionIds: parsedVersionIds
+            }, req.user.id);
 
             if (!updated) {
                 return res.status(404).json({ error: "Model not found" });
             }
 
-            res.json({ model: updated });
+            // Retourner les infos sur la modification
+            res.json({
+                model: updated,
+                message: updated.was_hidden
+                    ? "Produit modifié suite au masquage. En attente de revalidation."
+                    : "Produit modifié. En attente de revalidation.",
+                modification_reason: updated.modification_reason,
+                requires_validation: true
+            });
         } catch (error) {
             next(error);
         }

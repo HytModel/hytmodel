@@ -4,6 +4,7 @@ const { requireAuth } = require("../middlewares/requireAuth");
 const { requireRole } = require("../middlewares/requireRole");
 const { uploadModel } = require("../utils/uploadModel");
 const { uploadLimiter } = require("../middlewares/rateLimiter");
+const pool = require("../db/pool");
 
 // Upload d'un modèle SIMPLE (ancienne méthode)
 router.post(
@@ -119,5 +120,25 @@ router.delete(
     requireRole("STAFF", "ADMIN"),
     modelsController.hardDeleteModel
 );
+// Mes produits (pour le créateur connecté - tous statuts)
+router.get('/my-products', requireAuth, async (req, res, next) => {
+    try {
+        const { rows } = await pool.query(`
+            SELECT m.*,
+                   g.name AS game_name,
+                   c.name AS category_name,
+                   u.username AS creator_username
+            FROM models m
+                     LEFT JOIN games g ON g.id = m.game_id
+                     LEFT JOIN categories c ON c.id = m.category_id
+                     LEFT JOIN users u ON u.id = m.creator_id
+            WHERE m.creator_id = $1 AND m.deleted_at IS NULL
+            ORDER BY m.created_at DESC
+        `, [req.user.id]);
 
+        res.json({ models: rows });
+    } catch (error) {
+        next(error);
+    }
+});
 module.exports = router;

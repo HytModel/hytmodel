@@ -30,7 +30,7 @@ export default function Dashboard() {
             if (isCreator()) {
                 const [statsRes, salesRes] = await Promise.all([
                     sellerAPI.getStats(),
-                    sellerAPI.getRecentSales(5)
+                    sellerAPI.getSales(5)
                 ])
                 setStats(statsRes.data)
                 setRecentSales(salesRes.data || [])
@@ -77,7 +77,7 @@ export default function Dashboard() {
                     {isCreator() && (
                         <Link to="/upload" className="btn-primary flex items-center gap-2">
                             <Upload className="w-5 h-5" />
-                            Uploader un modèle
+                            Ajouter un produit
                         </Link>
                     )}
                 </div>
@@ -93,7 +93,7 @@ export default function Dashboard() {
                         </div>
                         <div>
                             <p className="text-gray-400 text-sm">Mes achats</p>
-                            <p className="font-semibold text-white">{purchases.length} modèles</p>
+                            <p className="font-semibold text-white">{purchases.length} produits</p>
                         </div>
                     </Link>
 
@@ -120,7 +120,7 @@ export default function Dashboard() {
                                     <ShoppingBag className="w-6 h-6 text-hyt-success" />
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Mes modèles</p>
+                                    <p className="text-gray-400 text-sm">Mes produits</p>
                                     <p className="font-semibold text-white">Gérer</p>
                                 </div>
                             </Link>
@@ -242,14 +242,14 @@ export default function Dashboard() {
                                             className="flex items-center justify-between py-3 border-b border-hyt-border last:border-0"
                                         >
                                             <div>
-                                                <p className="font-medium text-white">{sale.modelTitle || 'Modèle'}</p>
+                                                <p className="font-medium text-white">{sale.modelTitle || 'Produit'}</p>
                                                 <p className="text-sm text-gray-500">
                                                     {new Date(sale.createdAt).toLocaleDateString('fr-FR')}
                                                 </p>
                                             </div>
                                             <span className="font-mono font-semibold text-hyt-success">
-                        +{(sale.amount / 100).toFixed(2)}€
-                      </span>
+                                                +{(sale.amount / 100).toFixed(2)}€
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -286,8 +286,8 @@ export default function Dashboard() {
                                         </p>
                                     </div>
                                     <span className="font-mono text-gray-400">
-                    {Number(purchase.price).toFixed(2)}€
-                  </span>
+                                        {Number(purchase.price).toFixed(2)}€
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -306,7 +306,7 @@ export default function Dashboard() {
                                     Devenez créateur
                                 </h3>
                                 <p className="text-gray-400 mb-4">
-                                    Vendez vos modèles 3D et gagnez jusqu'à 90% sur chaque vente.
+                                    Vendez vos créations et gagnez jusqu'à 90% sur chaque vente.
                                 </p>
                                 <Link to="/become-creator" className="btn-primary">
                                     En savoir plus

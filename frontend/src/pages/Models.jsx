@@ -116,9 +116,9 @@ export default function Models() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="font-display text-3xl font-bold text-white">Modèles 3D</h1>
+                        <h1 className="font-display text-3xl font-bold text-white">Produits</h1>
                         <p className="text-gray-400 mt-1">
-                            {models.length} modèle{models.length !== 1 ? 's' : ''} disponible{models.length !== 1 ? 's' : ''}
+                            {models.length} produit{models.length !== 1 ? 's' : ''} disponible{models.length !== 1 ? 's' : ''}
                         </p>
                     </div>
 
@@ -318,7 +318,7 @@ export default function Models() {
                 ) : (
                     <div className="text-center py-20">
                         <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">Aucun modèle trouvé</h3>
+                        <h3 className="text-xl font-semibold text-white mb-2">Aucun produit trouvé</h3>
                         <p className="text-gray-500 mb-6">
                             Essayez de modifier vos critères de recherche
                         </p>

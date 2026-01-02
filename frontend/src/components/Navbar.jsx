@@ -22,7 +22,7 @@ export default function Navbar() {
     }
 
     const navLinks = [
-        { to: '/models', label: 'Modèles' },
+        { to: '/models', label: 'Produits' },
         { to: '/games', label: 'Jeux' },
     ]
 

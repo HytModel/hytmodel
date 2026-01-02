@@ -41,7 +41,7 @@ export default function Home() {
         {
             icon: Shield,
             title: 'Qualité vérifiée',
-            description: 'Chaque modèle est vérifié par notre équipe avant publication.'
+            description: 'Chaque produit est vérifié par notre équipe avant publication.'
         },
         {
             icon: Zap,
@@ -61,7 +61,7 @@ export default function Home() {
     ]
 
     const stats = [
-        { value: '10K+', label: 'Modèles' },
+        { value: '10K+', label: 'Produits' },
         { value: '5K+', label: 'Créateurs' },
         { value: '50K+', label: 'Ventes' },
         { value: '4.9', label: 'Note moyenne' }
@@ -81,23 +81,23 @@ export default function Home() {
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-hyt-card border border-hyt-border">
                         <Sparkles className="w-4 h-4 text-hyt-accent" />
-                        <span className="text-sm text-gray-400">La marketplace 3D de référence</span>
+                        <span className="text-sm text-gray-400">La marketplace gaming de référence</span>
                     </div>
 
                     <h1 className="font-display text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-                        Trouvez le modèle 3D
+                        Trouvez le produit
                         <br />
                         <span className="gradient-text">parfait pour votre projet</span>
                     </h1>
 
                     <p className="max-w-2xl mx-auto text-xl text-gray-400 mb-10">
-                        Des milliers de modèles 3D premium créés par des artistes talentueux.
-                        Qualité professionnelle, prix accessibles.
+                        Des milliers de ressources premium créées par des artistes talentueux.
+                        Modèles 3D, textures, plugins, maps et plus encore.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/models" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
-                            Explorer les modèles
+                            Explorer les produits
                             <ArrowRight className="w-5 h-5" />
                         </Link>
                         <Link to="/register" className="btn-secondary text-lg px-8 py-4">
@@ -125,7 +125,7 @@ export default function Home() {
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">
-                                Modèles populaires
+                                Produits populaires
                             </h2>
                             <p className="text-gray-400">Découvrez les créations les plus appréciées</p>
                         </div>
@@ -146,7 +146,7 @@ export default function Home() {
                     ) : (
                         <div className="text-center py-12">
                             <Box className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-                            <p className="text-gray-400">Aucun modèle disponible pour le moment</p>
+                            <p className="text-gray-400">Aucun produit disponible pour le moment</p>
                         </div>
                     )}
                 </div>
@@ -189,7 +189,7 @@ export default function Home() {
                             <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
                                 Parcourir par jeu
                             </h2>
-                            <p className="text-gray-400">Trouvez des modèles pour vos jeux préférés</p>
+                            <p className="text-gray-400">Trouvez des produits pour vos jeux préférés</p>
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

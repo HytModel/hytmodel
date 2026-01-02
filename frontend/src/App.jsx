@@ -23,6 +23,8 @@ import Admin from './pages/Admin'
 import Success from './pages/Success'
 import Cancel from './pages/Cancel'
 import NotFound from './pages/NotFound'
+import MyProducts from './pages/MyProducts'
+import EditProduct from './pages/EditProduct'
 
 // Route protégée (connecté requis)
 function ProtectedRoute({ children }) {
@@ -79,14 +81,18 @@ export default function App() {
                     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+                    <Route path="/stripe/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
+                    <Route path="/stripe/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
                     <Route path="/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
                     <Route path="/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
 
                     {/* Créateurs */}
                     <Route path="/upload" element={<CreatorRoute><Upload /></CreatorRoute>} />
+                    <Route path="/dashboard/models" element={<CreatorRoute><MyProducts /></CreatorRoute>} />
+                    <Route path="/dashboard/models/:id/edit" element={<CreatorRoute><EditProduct /></CreatorRoute>} />
 
-                    {/* Admin */}
-                    <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+                    {/* Admin - avec /* pour les sous-routes */}
+                    <Route path="/admin/*" element={<AdminRoute><Admin /></AdminRoute>} />
 
                     {/* 404 */}
                     <Route path="*" element={<NotFound />} />

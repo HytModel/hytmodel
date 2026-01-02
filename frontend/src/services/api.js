@@ -1,4 +1,3 @@
-
 // Créer une instance axios configurée
 import axios from 'axios'
 
@@ -51,6 +50,7 @@ export const modelsAPI = {
     upload: (formData) => api.post('/models/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    getMyProducts: () => api.get('/models/my-products'),
     uploadDetailed: (formData) => api.post('/models/upload-detailed', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
@@ -147,15 +147,33 @@ export const adminAPI = {
     unbanUser: (id) => api.post(`/admin/users/${id}/unban`),
     deleteUser: (id) => api.delete(`/admin/users/${id}`),
 
-    // Stats
-    getStats: () => api.get('/admin/stats'),
+    // Models
+    getAllModels: (params) => api.get('/admin/models/all', { params }),
     getPendingModels: () => api.get('/admin/models/pending'),
 
-    // Dashboard
+    // Demandes créateur
+    getCreatorRequests: () => api.get('/admin/creator-requests'),
+    approveCreatorRequest: (id) => api.post(`/admin/creator-requests/${id}/approve`),
+    rejectCreatorRequest: (id, reason) => api.post(`/admin/creator-requests/${id}/reject`, { reason }),
+
+    // Vendeurs
+    getSellers: () => api.get('/admin/sellers'),
+    getSellersStats: () => api.get('/admin/sellers/stats'),
+
+    // Stats & Dashboard
+    getStats: () => api.get('/admin/stats'),
     getDashboardStats: () => api.get('/admin/dashboard/stats'),
     getRevenueChart: (days = 30) => api.get(`/admin/dashboard/chart?days=${days}`),
     getSellerStats: (days = 30) => api.get(`/admin/dashboard/sellers?days=${days}`),
     getTopModels: (days = 30) => api.get(`/admin/dashboard/top-models?days=${days}`)
+}
+
+// ============ CREATOR REQUEST (pour les utilisateurs) ============
+export const creatorRequestAPI = {
+    // Demander à devenir créateur
+    request: (message) => api.post('/creator-request', { message }),
+    // Voir le statut de ma demande
+    getMyRequest: () => api.get('/creator-request/me')
 }
 
 // ============ STRIPE ============
