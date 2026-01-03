@@ -153,12 +153,19 @@ export const adminAPI = {
 
     // Demandes créateur
     getCreatorRequests: () => api.get('/admin/creator-requests'),
-    approveCreatorRequest: (id) => api.post(`/admin/creator-requests/${id}/approve`),
+    approveCreatorRequest: (id, creatorType) => api.post(`/admin/creator-requests/${id}/approve`, { creatorType }),
     rejectCreatorRequest: (id, reason) => api.post(`/admin/creator-requests/${id}/reject`, { reason }),
 
     // Vendeurs
     getSellers: () => api.get('/admin/sellers'),
     getSellersStats: () => api.get('/admin/sellers/stats'),
+    updateCreatorType: (id, creatorType) => api.put(`/admin/sellers/${id}/type`, { creatorType }),
+    getEligibleAffiliate: () => api.get('/admin/sellers/eligible-affiliate'),
+
+    // Notifications
+    getNotifications: () => api.get('/admin/notifications'),
+    markNotificationRead: (id) => api.put(`/admin/notifications/${id}/read`),
+    deleteNotification: (id) => api.delete(`/admin/notifications/${id}`),
 
     // Stats & Dashboard
     getStats: () => api.get('/admin/stats'),
@@ -171,7 +178,7 @@ export const adminAPI = {
 // ============ CREATOR REQUEST (pour les utilisateurs) ============
 export const creatorRequestAPI = {
     // Demander à devenir créateur
-    request: (message) => api.post('/creator-request', { message }),
+    request: (data) => api.post('/creator-request', data),
     // Voir le statut de ma demande
     getMyRequest: () => api.get('/creator-request/me')
 }

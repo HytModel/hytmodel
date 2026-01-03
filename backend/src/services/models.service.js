@@ -26,12 +26,30 @@ class ModelsService {
 
             const { title, description, price, creatorId, filePath, gameId, categoryId, tagIds, versionIds, youtubeUrl } = data;
 
+            // Récupérer le type de créateur pour déterminer le statut initial
+            const { rows: userRows } = await client.query(
+                "SELECT creator_type FROM users WHERE id = $1",
+                [creatorId]
+            );
+            const creatorType = userRows[0]?.creator_type || 'NON_AFFILIATED';
+
+            // Déterminer le statut initial selon le type de créateur
+            let initialStatus = 'PENDING'; // Par défaut en attente
+
+            if (creatorType === 'HYTSTUDIO') {
+                // HytStudio : toujours auto-approuvé
+                initialStatus = 'APPROVED';
+            } else if (creatorType === 'AFFILIATED' && parseFloat(price) <= 20) {
+                // Affilié : auto-approuvé si prix <= 20€
+                initialStatus = 'APPROVED';
+            }
+
             // Créer le modèle
             const { rows } = await client.query(
-                `INSERT INTO models (title, description, price, creator_id, file_path, game_id, category_id, youtube_url)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                     RETURNING *`,
-                [title, description || "", price, creatorId, filePath, gameId, categoryId, youtubeUrl || null]
+                `INSERT INTO models (title, description, price, creator_id, file_path, game_id, category_id, youtube_url, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 RETURNING *`,
+                [title, description || "", price, creatorId, filePath, gameId, categoryId, youtubeUrl || null, initialStatus]
             );
 
             const model = rows[0];
@@ -140,8 +158,8 @@ class ModelsService {
 
             // Récupérer le modèle actuel pour vérifier s'il était masqué ET sauvegarder les anciennes valeurs
             const { rows: currentModel } = await client.query(
-                `SELECT id, title, description, price, game_id, category_id, youtube_url, 
-                        is_hidden, hidden_reason, status 
+                `SELECT id, title, description, price, game_id, category_id, youtube_url,
+                        is_hidden, hidden_reason, status
                  FROM models WHERE id = $1`,
                 [id]
             );
@@ -186,25 +204,46 @@ class ModelsService {
                 modificationReason = 'HIDDEN_CORRECTION'; // Correction suite à un masquage
             }
 
+            // Récupérer le type de créateur pour déterminer le statut
+            const { rows: userRows } = await client.query(
+                "SELECT creator_type FROM users WHERE id = $1",
+                [userId]
+            );
+            const creatorType = userRows[0]?.creator_type || 'NON_AFFILIATED';
+
+            // Déterminer le statut selon le type de créateur
+            // Si c'était masqué, toujours PENDING (correction requise)
+            let newStatus = 'PENDING';
+
+            if (!wasHidden) {
+                if (creatorType === 'HYTSTUDIO') {
+                    // HytStudio : toujours auto-approuvé
+                    newStatus = 'APPROVED';
+                } else if (creatorType === 'AFFILIATED' && parseFloat(price) <= 20) {
+                    // Affilié : auto-approuvé si prix <= 20€
+                    newStatus = 'APPROVED';
+                }
+            }
+
             // Mettre à jour le modèle
             const { rows } = await client.query(
                 `UPDATE models
-                 SET title = $1,
-                     description = $2,
+                 SET title = $1, 
+                     description = $2, 
                      price = $3,
                      game_id = $4,
                      category_id = $5,
-                     status = 'PENDING',
+                     status = $6,
                      is_hidden = FALSE,
                      hidden_reason = NULL,
-                     modification_reason = $6,
-                     previous_hidden_reason = $7,
-                     youtube_url = $8,
-                     previous_values = $9,
+                     modification_reason = $7,
+                     previous_hidden_reason = $8,
+                     youtube_url = $9,
+                     previous_values = $10,
                      updated_at = NOW()
-                 WHERE id = $10 AND deleted_at IS NULL
-                     RETURNING *`,
-                [title, description, price, gameId, categoryId || null, modificationReason, previousReason, youtubeUrl || null, JSON.stringify(previousValues), id]
+                 WHERE id = $11 AND deleted_at IS NULL
+                 RETURNING *`,
+                [title, description, price, gameId, categoryId || null, newStatus, modificationReason, previousReason, youtubeUrl || null, JSON.stringify(previousValues), id]
             );
 
             if (!rows[0]) {

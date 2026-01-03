@@ -25,6 +25,7 @@ import Cancel from './pages/Cancel'
 import NotFound from './pages/NotFound'
 import MyProducts from './pages/MyProducts'
 import EditProduct from './pages/EditProduct'
+import BecomeCreator from './pages/BecomeCreator'
 
 // Route protégée (connecté requis)
 function ProtectedRoute({ children }) {
@@ -71,6 +72,7 @@ export default function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/models" element={<Models />} />
                     <Route path="/models/:id" element={<ModelDetail />} />
+                    <Route path="/become-creator" element={<BecomeCreator />} />
 
                     {/* Auth (invités seulement) */}
                     <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />

@@ -135,6 +135,18 @@ export default function Navbar() {
                                                     </Link>
                                                 )}
 
+                                                {/* Devenir créateur - Seulement pour les utilisateurs non-créateurs */}
+                                                {!isCreator() && !isStaff() && (
+                                                    <Link
+                                                        to="/become-creator"
+                                                        onClick={() => setUserMenuOpen(false)}
+                                                        className="flex items-center gap-3 px-4 py-2 text-sm text-hyt-accent hover:bg-hyt-accent/10 transition-colors"
+                                                    >
+                                                        <Upload className="w-4 h-4" />
+                                                        Devenir créateur
+                                                    </Link>
+                                                )}
+
                                                 <Link
                                                     to="/purchases"
                                                     onClick={() => setUserMenuOpen(false)}
@@ -258,6 +270,17 @@ export default function Navbar() {
                                         className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
                                         Dashboard
+                                    </Link>
+                                )}
+
+                                {/* Devenir créateur Mobile - Seulement pour les non-créateurs */}
+                                {!isCreator() && !isStaff() && (
+                                    <Link
+                                        to="/become-creator"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block px-4 py-3 text-hyt-accent hover:bg-hyt-accent/10 rounded-lg"
+                                    >
+                                        Devenir créateur
                                     </Link>
                                 )}
 

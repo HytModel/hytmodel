@@ -52,6 +52,7 @@ app.use("/api/tags", require("./routes/tags.routes"));
 app.use("/api/games", require("./routes/games.routes"));
 app.use("/api/categories", require("./routes/categories.routes"));
 app.use("/api/versions", require("./routes/gameVersions.routes"));
+app.use("/api/creator-request", require("./routes/creator-request.routes"));
 
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));

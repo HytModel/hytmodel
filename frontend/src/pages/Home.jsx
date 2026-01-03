@@ -100,7 +100,7 @@ export default function Home() {
                             Explorer les produits
                             <ArrowRight className="w-5 h-5" />
                         </Link>
-                        <Link to="/register" className="btn-secondary text-lg px-8 py-4">
+                        <Link to="/become-creator" className="btn-secondary text-lg px-8 py-4">
                             Devenir créateur
                         </Link>
                     </div>

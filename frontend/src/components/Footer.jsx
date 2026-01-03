@@ -9,7 +9,7 @@ export default function Footer() {
         platform: [
             { to: '/models', label: 'Produits' },
             { to: '/games', label: 'Jeux' },
-            { to: '/register', label: 'Devenir créateur' },
+            { to: '/become-creator', label: 'Devenir créateur' },
         ],
         support: [
             { to: '/faq', label: 'FAQ' },
