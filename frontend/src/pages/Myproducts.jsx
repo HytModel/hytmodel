@@ -3,18 +3,282 @@ import { Link } from 'react-router-dom'
 import {
     Package, Plus, Edit, Trash2, Eye, EyeOff,
     Clock, CheckCircle, XCircle, Loader2, ArrowLeft,
-    TrendingUp, DollarSign, AlertTriangle
+    TrendingUp, DollarSign, AlertTriangle, MessageSquare,
+    ChevronDown, ChevronUp, Send, Flag, X
 } from 'lucide-react'
-import { modelsAPI } from '../services/api'
+import { modelsAPI, feedbackAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
+
+// Labels pour les raisons de signalement
+const REASON_LABELS = {
+    BUG: 'Bug technique',
+    ERROR: 'Fichiers manquants',
+    MISLEADING: 'Description trompeuse',
+    COPYRIGHT: 'Violation de droits',
+    INAPPROPRIATE: 'Contenu inapproprié',
+    OTHER: 'Autre'
+}
+
+const STATUS_LABELS = {
+    PENDING: 'En attente de vérification',
+    REVIEWED: 'En cours d\'examen',
+    RESOLVED: 'Résolu',
+    DISMISSED: 'Rejeté (non fondé)'
+}
+
+const STATUS_COLORS = {
+    PENDING: 'bg-yellow-500/20 text-yellow-500',
+    REVIEWED: 'bg-blue-500/20 text-blue-500',
+    RESOLVED: 'bg-orange-500/20 text-orange-500',
+    DISMISSED: 'bg-green-500/20 text-green-500'
+}
+
+// Modal pour répondre à un signalement
+function ReportResponseModal({ report, onClose, onSubmit }) {
+    const [response, setResponse] = useState('')
+    const [sending, setSending] = useState(false)
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        if (!response.trim()) {
+            toast.error('Veuillez entrer une réponse')
+            return
+        }
+
+        setSending(true)
+        try {
+            await onSubmit(report.id, response)
+            toast.success('Réponse envoyée')
+            onClose()
+        } catch (error) {
+            toast.error('Erreur lors de l\'envoi')
+        } finally {
+            setSending(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-lg">
+                <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-hyt-accent" />
+                        Répondre au signalement
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-4">
+                    {/* Info du signalement */}
+                    <div className="bg-hyt-dark rounded-lg p-3 mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[report.status]}`}>
+                                {REASON_LABELS[report.reason]}
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                                {new Date(report.created_at).toLocaleDateString('fr-FR')}
+                            </span>
+                        </div>
+                        <p className="text-gray-300 text-sm">{report.description || 'Aucune description'}</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-400 mb-2">
+                                Votre réponse / argumentation
+                            </label>
+                            <textarea
+                                value={response}
+                                onChange={(e) => setResponse(e.target.value)}
+                                placeholder="Expliquez pourquoi ce signalement n'est pas fondé, ou les actions que vous avez prises pour corriger le problème..."
+                                rows={5}
+                                className="input-field w-full resize-none"
+                                required
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Cette réponse sera visible par l'équipe de modération.
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="btn-ghost flex-1"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={sending}
+                                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                            >
+                                {sending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Send className="w-4 h-4" />
+                                )}
+                                Envoyer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// Composant pour afficher les signalements d'un produit
+function ProductReports({ productId, productTitle }) {
+    const [reports, setReports] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [expanded, setExpanded] = useState(false)
+    const [responseModal, setResponseModal] = useState(null)
+
+    useEffect(() => {
+        fetchReports()
+    }, [productId])
+
+    const fetchReports = async () => {
+        try {
+            const { data } = await feedbackAPI.getReportsByModel(productId)
+            setReports(data.reports || [])
+        } catch (error) {
+            console.error('Failed to fetch reports:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleSubmitResponse = async (reportId, response) => {
+        await feedbackAPI.respondToReport(reportId, response)
+        fetchReports()
+    }
+
+    if (loading) {
+        return (
+            <div className="mt-3 p-3 bg-hyt-dark rounded-lg">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            </div>
+        )
+    }
+
+    if (reports.length === 0) {
+        return null
+    }
+
+    const pendingReports = reports.filter(r => r.status === 'PENDING' || r.status === 'REVIEWED')
+    const hasActiveReports = pendingReports.length > 0
+
+    return (
+        <div className={`mt-3 border rounded-lg ${hasActiveReports ? 'border-red-500/30 bg-red-500/5' : 'border-hyt-border bg-hyt-dark/50'}`}>
+            {/* Header cliquable */}
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center justify-between p-3"
+            >
+                <div className="flex items-center gap-2">
+                    <Flag className={`w-4 h-4 ${hasActiveReports ? 'text-red-500' : 'text-gray-500'}`} />
+                    <span className={`text-sm font-medium ${hasActiveReports ? 'text-red-400' : 'text-gray-400'}`}>
+                        {reports.length} signalement{reports.length > 1 ? 's' : ''}
+                        {hasActiveReports && ` (${pendingReports.length} en cours)`}
+                    </span>
+                </div>
+                {expanded ? (
+                    <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+            </button>
+
+            {/* Liste des signalements */}
+            {expanded && (
+                <div className="border-t border-hyt-border">
+                    {reports.map((report) => (
+                        <div
+                            key={report.id}
+                            className="p-3 border-b border-hyt-border/50 last:border-b-0"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                    {/* Header du signalement */}
+                                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[report.status]}`}>
+                                            {STATUS_LABELS[report.status]}
+                                        </span>
+                                        <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded-full text-xs">
+                                            {REASON_LABELS[report.reason]}
+                                        </span>
+                                        <span className="text-gray-500 text-xs">
+                                            {new Date(report.created_at).toLocaleDateString('fr-FR')}
+                                        </span>
+                                    </div>
+
+                                    {/* Description du signalement */}
+                                    {report.description && (
+                                        <p className="text-gray-300 text-sm mb-2">
+                                            {report.description}
+                                        </p>
+                                    )}
+
+                                    {/* Note du staff si présente */}
+                                    {report.staff_note && (
+                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 mb-2">
+                                            <p className="text-xs text-blue-400 font-medium mb-1">Note du staff :</p>
+                                            <p className="text-sm text-blue-300">{report.staff_note}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Réponse du vendeur si présente */}
+                                    {report.seller_response && (
+                                        <div className="bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg p-2 mb-2">
+                                            <p className="text-xs text-hyt-accent font-medium mb-1">Votre réponse :</p>
+                                            <p className="text-sm text-gray-300">{report.seller_response}</p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Envoyée le {new Date(report.seller_response_at).toLocaleDateString('fr-FR')}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Bouton répondre */}
+                                {(report.status === 'PENDING' || report.status === 'REVIEWED') && !report.seller_response && (
+                                    <button
+                                        onClick={() => setResponseModal(report)}
+                                        className="flex-shrink-0 px-3 py-1.5 bg-hyt-accent/20 text-hyt-accent rounded-lg text-sm hover:bg-hyt-accent/30 transition-colors flex items-center gap-1"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Répondre
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Modal de réponse */}
+            {responseModal && (
+                <ReportResponseModal
+                    report={responseModal}
+                    onClose={() => setResponseModal(null)}
+                    onSubmit={handleSubmitResponse}
+                />
+            )}
+        </div>
+    )
+}
 
 export default function MyProducts() {
     const { user } = useAuth()
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(null)
+    const [showReportsFor, setShowReportsFor] = useState({}) // Track which products show reports
 
     useEffect(() => {
         fetchMyProducts()
@@ -228,6 +492,12 @@ export default function MyProducts() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="text-white font-medium truncate">{product.title}</h3>
                                             {getStatusBadge(product)}
+                                            {product.reports_count > 0 && (
+                                                <span className="flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-500 rounded-full text-xs font-medium">
+                                                    <Flag className="w-3 h-3" />
+                                                    {product.reports_count}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-gray-400 text-sm truncate">
                                             {product.game_name && `${product.game_name}`}
@@ -290,6 +560,9 @@ export default function MyProducts() {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Section Signalements */}
+                                        <ProductReports productId={product.id} productTitle={product.title} />
                                     </div>
 
                                     {/* Actions */}

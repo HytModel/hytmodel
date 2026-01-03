@@ -344,10 +344,10 @@ router.put("/reports/:id", requireAuth, requireRole("STAFF", "ADMIN"), async (re
 
         // Mettre à jour le signalement
         const { rows } = await pool.query(
-            `UPDATE product_reports 
+            `UPDATE product_reports
              SET status = $1, staff_note = $2, reviewed_by = $3, reviewed_at = NOW()
              WHERE id = $4
-             RETURNING *`,
+                 RETURNING *`,
             [status, staffNote || null, req.user.id, id]
         );
 
@@ -404,6 +404,72 @@ router.get("/reports/me", requireAuth, async (req, res, next) => {
             [req.user.id]
         );
         res.json({ reports: rows });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Vendeur répond à un signalement sur son produit
+router.post("/reports/:id/respond", requireAuth, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { response } = req.body;
+
+        if (!response?.trim()) {
+            return res.status(400).json({ error: "La réponse est requise" });
+        }
+
+        // Vérifier que le signalement concerne un produit du vendeur
+        const { rows: reportRows } = await pool.query(
+            `SELECT r.*, m.creator_id, m.title as model_title
+             FROM product_reports r
+             JOIN models m ON m.id = r.model_id
+             WHERE r.id = $1`,
+            [id]
+        );
+
+        if (!reportRows[0]) {
+            return res.status(404).json({ error: "Signalement non trouvé" });
+        }
+
+        const report = reportRows[0];
+
+        // Vérifier que l'utilisateur est le créateur du produit
+        if (report.creator_id !== req.user.id) {
+            return res.status(403).json({ error: "Vous n'êtes pas autorisé à répondre à ce signalement" });
+        }
+
+        // Vérifier qu'il n'y a pas déjà une réponse
+        if (report.seller_response) {
+            return res.status(400).json({ error: "Vous avez déjà répondu à ce signalement" });
+        }
+
+        // Enregistrer la réponse
+        const { rows } = await pool.query(
+            `UPDATE product_reports 
+             SET seller_response = $1, seller_response_at = NOW()
+             WHERE id = $2
+             RETURNING *`,
+            [response.trim(), id]
+        );
+
+        // Notifier le staff qu'une réponse a été ajoutée
+        await pool.query(
+            `INSERT INTO staff_notifications (user_id, type, message, data)
+             VALUES ($1, $2, $3, $4)`,
+            [
+                report.creator_id,
+                'SELLER_RESPONSE',
+                `Le vendeur a répondu au signalement sur "${report.model_title}"`,
+                JSON.stringify({
+                    report_id: id,
+                    model_id: report.model_id,
+                    response: response.trim()
+                })
+            ]
+        );
+
+        res.json({ success: true, report: rows[0] });
     } catch (error) {
         next(error);
     }

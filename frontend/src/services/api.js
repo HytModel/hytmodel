@@ -38,7 +38,7 @@ export const authAPI = {
     me: () => api.get('/auth/me')
 }
 
-// Notifications API
+// ============ NOTIFICATIONS ============
 export const notificationsAPI = {
     getAll: () => api.get('/notifications'),
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
@@ -72,6 +72,7 @@ export const modelsAPI = {
     getStats: (id) => api.get(`/models/${id}/stats`),
 
     // Actions staff
+    trackView: (modelId, sessionId) => api.post(`/models/${modelId}/view`, { sessionId }),
     approve: (id) => api.post(`/models/${id}/approve`),
     reject: (id) => api.post(`/models/${id}/reject`),
     hide: (id, reason) => api.post(`/models/${id}/hide`, { reason }),
@@ -162,11 +163,45 @@ export const feedbackAPI = {
     reportProduct: (data) => api.post('/feedback/reports', data),
     getMyReports: () => api.get('/feedback/reports/me'),
     getProductReports: (modelId) => api.get(`/feedback/reports/model/${modelId}`),
+
+    // Vendeur - voir et répondre aux signalements
+    getReportsByModel: (modelId) => api.get(`/feedback/reports/model/${modelId}`),
+    respondToReport: (reportId, response) => api.post(`/feedback/reports/${reportId}/respond`, { response }),
+}
+// Propositions vendeurs API
+export const proposalsAPI = {
+    // Vendeur - Mes propositions
+    getMy: () => api.get('/proposals/my'),
+
+    // Vendeur - Créer une proposition
+    create: (data) => api.post('/proposals', data),
+    // data = { proposalType: 'CATEGORY'|'TAG'|'VERSION', gameId?: string, name: string, description?: string }
+
+    // Vendeur - Supprimer ma proposition (si en attente)
+    delete: (id) => api.delete(`/proposals/${id}`),
+
+    // Admin - Toutes les propositions
+    getAll: (params = {}) => {
+        const query = new URLSearchParams();
+        if (params.status) query.append('status', params.status);
+        if (params.type) query.append('type', params.type);
+        return api.get(`/proposals?${query.toString()}`);
+    },
+
+    // Admin - Nombre en attente
+    getPendingCount: () => api.get('/proposals/pending/count'),
+
+    // Admin - Approuver
+    approve: (id) => api.post(`/proposals/${id}/approve`),
+
+    // Admin - Refuser
+    reject: (id, reason) => api.post(`/proposals/${id}/reject`, { reason }),
 }
 
 // ============ ADMIN ============
 export const adminAPI = {
     // Users
+
     getUsers: (params) => api.get('/admin/users', { params }),
     getUser: (id) => api.get(`/admin/users/${id}`),
     setRole: (userId, role) => api.post('/admin/set-role', { userId, role }),
@@ -183,6 +218,7 @@ export const adminAPI = {
     approveCreatorRequest: (id, creatorType) => api.post(`/admin/creator-requests/${id}/approve`, { creatorType }),
     rejectCreatorRequest: (id, reason) => api.post(`/admin/creator-requests/${id}/reject`, { reason }),
 
+
     // Vendeurs
     getSellers: () => api.get('/admin/sellers'),
     getSellersStats: () => api.get('/admin/sellers/stats'),
@@ -195,15 +231,28 @@ export const adminAPI = {
     deleteNotification: (id) => api.delete(`/admin/notifications/${id}`),
 
     // Propositions (admin)
-    getProposals: (status) => api.get('/feedback/proposals', { params: { status } }),
-    approveProposal: (id) => api.post(`/feedback/proposals/${id}/approve`),
-    rejectProposal: (id, reason) => api.post(`/feedback/proposals/${id}/reject`, { reason }),
+    getProposals: (status) => api.get(`/proposals${status ? `?status=${status}` : ''}`),
+    approveProposal: (id) => api.post(`/proposals/${id}/approve`),
+    rejectProposal: (id, reason) => api.post(`/proposals/${id}/reject`, { reason }),
+
 
     // Signalements (admin)
     getReports: (status) => api.get('/feedback/reports', { params: { status } }),
     updateReport: (id, data) => api.put(`/feedback/reports/${id}`, data),
 
+    // Analytics avec filtre optionnel par jeu
+    getAnalytics: (period = '30', gameId = '') => {
+        const params = new URLSearchParams({ period });
+        if (gameId) params.append('gameId', gameId);
+        return api.get(`/admin/analytics?${params.toString()}`);
+    },
+
+    // Analytics détaillées pour un jeu spécifique
+    getGameAnalytics: (gameId, period = '30') =>
+        api.get(`/admin/game-analytics/${gameId}?period=${period}`),
+
     // Stats & Dashboard
+    getSiteStats: () => api.get('/admin/site-stats'),
     getStats: () => api.get('/admin/stats'),
     getDashboardStats: () => api.get('/admin/dashboard/stats'),
     getRevenueChart: (days = 30) => api.get(`/admin/dashboard/chart?days=${days}`),
@@ -234,5 +283,7 @@ export const modelImagesAPI = {
 export const stripeAPI = {
     createConnectAccount: () => api.post('/stripe/connect/create')
 }
+
+
 
 export default api

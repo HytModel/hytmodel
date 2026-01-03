@@ -26,13 +26,20 @@ import {
     AlertTriangle,
     X,
     Settings,
-    MessageSquare
+    MessageSquare,
+    Flag,
+    Download,
+    Globe,
+    Timer,
+    Activity,
+    PieChart
 } from 'lucide-react'
 import { adminAPI, modelsAPI } from '../services/api'
 import toast from 'react-hot-toast'
-import AdminSellers from './AdminSellers'
-import AdminSettings from './AdminSettings'
-import AdminFeedback from './AdminFeedback'
+import AdminSellers from './AdminSellers.jsx'
+import AdminSettings from './Adminsettings.jsx'
+import AdminFeedback from './Adminfeedback.jsx'
+import AdminAnalytics from './Adminanalytics.jsx'
 
 // Fonction pour obtenir l'URL complète de l'image
 const getImageUrl = (url) => {
@@ -63,13 +70,32 @@ function StatCard({ title, value, icon: Icon, color, trend }) {
     )
 }
 
-// Dashboard Overview
+// Mini Stats Card (plus compact)
+function MiniStatCard({ title, value, icon: Icon, color }) {
+    return (
+        <div className="bg-hyt-dark border border-hyt-border rounded-lg p-3 flex items-center gap-2 min-w-0">
+            <div className={`p-2 rounded-lg flex-shrink-0 ${color}`}>
+                <Icon className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-gray-400 text-xs truncate">{title}</p>
+                <p className="text-base font-bold text-white">{value}</p>
+            </div>
+        </div>
+    )
+}
+
+// Dashboard Overview - MODIFIÉ avec nouvelles stats
 function AdminOverview() {
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [reportsCount, setReportsCount] = useState({ pending: 0, reviewed: 0, total: 0 })
+    const [siteStats, setSiteStats] = useState({ visits: 0, downloads: 0, avgTime: '0:00' })
 
     useEffect(() => {
         loadStats()
+        loadReportsCount()
+        loadSiteStats()
     }, [])
 
     const loadStats = async () => {
@@ -80,6 +106,38 @@ function AdminOverview() {
             console.error('Failed to load stats:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadReportsCount = async () => {
+        try {
+            const [pendingRes, reviewedRes, allRes] = await Promise.all([
+                adminAPI.getReports('PENDING').catch(() => ({ data: { reports: [] } })),
+                adminAPI.getReports('REVIEWED').catch(() => ({ data: { reports: [] } })),
+                adminAPI.getReports().catch(() => ({ data: { reports: [] } }))
+            ])
+            setReportsCount({
+                pending: pendingRes.data.reports?.length || 0,
+                reviewed: reviewedRes.data.reports?.length || 0,
+                total: allRes.data.reports?.length || 0
+            })
+        } catch (error) {
+            console.error('Failed to load reports count:', error)
+        }
+    }
+
+    const loadSiteStats = async () => {
+        try {
+            const { data } = await adminAPI.getSiteStats().catch(() => ({ data: null }))
+            if (data) {
+                setSiteStats({
+                    visits: data.totalVisits || 0,
+                    downloads: data.totalDownloads || 0,
+                    avgTime: data.avgTimeOnSite || '0:00'
+                })
+            }
+        } catch (error) {
+            console.error('Failed to load site stats:', error)
         }
     }
 
@@ -95,6 +153,7 @@ function AdminOverview() {
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">Vue d'ensemble</h2>
 
+            {/* Stats principales - Revenus */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     title="Revenus totaux"
@@ -122,6 +181,73 @@ function AdminOverview() {
                 />
             </div>
 
+            {/* Stats secondaires - Site & Signalements */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <MiniStatCard
+                    title="Visites"
+                    value={siteStats.visits.toLocaleString()}
+                    icon={Globe}
+                    color="bg-blue-500/20 text-blue-500"
+                />
+                <MiniStatCard
+                    title="Téléchargements"
+                    value={siteStats.downloads.toLocaleString()}
+                    icon={Download}
+                    color="bg-green-500/20 text-green-500"
+                />
+                <MiniStatCard
+                    title="Temps moyen"
+                    value={siteStats.avgTime}
+                    icon={Timer}
+                    color="bg-purple-500/20 text-purple-500"
+                />
+                <MiniStatCard
+                    title="En attente"
+                    value={reportsCount.pending}
+                    icon={Flag}
+                    color="bg-red-500/20 text-red-500"
+                />
+                <MiniStatCard
+                    title="En cours"
+                    value={reportsCount.reviewed}
+                    icon={Activity}
+                    color="bg-yellow-500/20 text-yellow-500"
+                />
+                <MiniStatCard
+                    title="Total signalés"
+                    value={reportsCount.total}
+                    icon={AlertTriangle}
+                    color="bg-gray-500/20 text-gray-400"
+                />
+            </div>
+
+            {/* Alertes Signalements */}
+            {reportsCount.pending > 0 && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-500/20 rounded-lg">
+                                <Flag className="w-5 h-5 text-red-500" />
+                            </div>
+                            <div>
+                                <p className="text-red-400 font-medium">
+                                    {reportsCount.pending} signalement{reportsCount.pending > 1 ? 's' : ''} en attente
+                                </p>
+                                <p className="text-red-400/70 text-sm">
+                                    Des produits ont été signalés et nécessitent votre attention
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            to="/admin/feedback"
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                        >
+                            Voir les signalements
+                        </Link>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Quick Actions */}
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
@@ -141,13 +267,66 @@ function AdminOverview() {
                             <Users className="w-5 h-5 text-hyt-accent" />
                             <span className="text-white">Utilisateurs</span>
                         </Link>
+                        <Link
+                            to="/admin/feedback"
+                            className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors relative"
+                        >
+                            <MessageSquare className="w-5 h-5 text-blue-500" />
+                            <span className="text-white">Feedback</span>
+                            {reportsCount.pending > 0 && (
+                                <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                    {reportsCount.pending}
+                                </span>
+                            )}
+                        </Link>
+                        <Link
+                            to="/admin/sellers"
+                            className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
+                        >
+                            <BarChart3 className="w-5 h-5 text-green-500" />
+                            <span className="text-white">Vendeurs</span>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Recent Activity */}
+                {/* Signalements récents */}
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Activité récente</h3>
-                    <p className="text-gray-400">Aucune activité récente</p>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-white">Signalements</h3>
+                        <Link to="/admin/feedback" className="text-sm text-hyt-accent hover:underline">
+                            Voir tout →
+                        </Link>
+                    </div>
+                    {reportsCount.total === 0 ? (
+                        <div className="text-center py-8">
+                            <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
+                            <p className="text-gray-400">Aucun signalement</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                    <span className="text-gray-300">En attente</span>
+                                </div>
+                                <span className="text-white font-bold">{reportsCount.pending}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                    <span className="text-gray-300">En cours d'examen</span>
+                                </div>
+                                <span className="text-white font-bold">{reportsCount.reviewed}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                                    <span className="text-gray-300">Total traités</span>
+                                </div>
+                                <span className="text-white font-bold">{reportsCount.total - reportsCount.pending - reportsCount.reviewed}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -1249,6 +1428,7 @@ export default function Admin() {
             badge: pendingCount > 0 ? pendingCount : null,
             badgeColor: 'bg-yellow-500 text-black'
         },
+        { path: '/admin/analytics', icon: PieChart, label: 'Analytics' },
         { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
         { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
         { path: '/admin/models', icon: Package, label: 'Produits' },
@@ -1329,6 +1509,7 @@ export default function Admin() {
                         <Routes>
                             <Route index element={<AdminOverview />} />
                             <Route path="pending" element={<PendingModels onCountChange={handlePendingCountChange} />} />
+                            <Route path="analytics" element={<AdminAnalytics />} />
                             <Route path="users" element={<UsersManagement />} />
                             <Route path="sellers" element={<AdminSellers />} />
                             <Route path="feedback" element={<AdminFeedback />} />
