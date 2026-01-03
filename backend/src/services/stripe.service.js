@@ -7,7 +7,7 @@ class StripeService {
 
     // Créer une session de paiement
     async createCheckoutSession(data) {
-        const { userId, items, successUrl, cancelUrl } = data;
+        const { userId, cartId, items, successUrl, cancelUrl } = data;
 
         // Préparer les line_items pour Stripe
         const line_items = items.map(item => ({
@@ -34,6 +34,7 @@ class StripeService {
             cancel_url: cancelUrl,
             metadata: {
                 user_id: userId,
+                cart_id: cartId, // AJOUTÉ: cart_id pour le webhook
                 items: JSON.stringify(metadataItems)
             }
         });

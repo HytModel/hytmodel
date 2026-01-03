@@ -23,12 +23,15 @@ class CheckoutController {
                 return res.status(400).json({ error: "Cart is empty" });
             }
 
-            // Créer la session Stripe
+            console.log("🛒 Cart ID:", cartId, "Items:", items.length);
+
+            // Créer la session Stripe avec cart_id
             const session = await stripeService.createCheckoutSession({
                 userId,
+                cartId, // AJOUTÉ: passer le cartId
                 items,
-                successUrl: `${process.env.FRONTEND_URL}/success`,
-                cancelUrl: `${process.env.FRONTEND_URL}/cancel`
+                successUrl: `${process.env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+                cancelUrl: `${process.env.FRONTEND_URL}/cart`
             });
 
             res.json({ url: session.url });

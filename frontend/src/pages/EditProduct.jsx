@@ -50,9 +50,11 @@ export default function EditProduct() {
     useEffect(() => {
         if (gameId) {
             fetchCategoriesAndVersions()
+            fetchTags() // Charger les tags quand le jeu change
         } else {
             setCategories([])
             setVersions([])
+            setAllTags([])
         }
     }, [gameId])
 
@@ -100,12 +102,8 @@ export default function EditProduct() {
 
     const fetchOptions = async () => {
         try {
-            const [gamesRes, tagsRes] = await Promise.all([
-                gamesAPI.getAll(),
-                tagsAPI.getAll()
-            ])
+            const gamesRes = await gamesAPI.getAll()
             setGames(gamesRes.data.games || gamesRes.data || [])
-            setAllTags(tagsRes.data.tags || tagsRes.data || [])
         } catch (error) {
             console.error('Failed to fetch options:', error)
         }
@@ -121,6 +119,20 @@ export default function EditProduct() {
             setVersions(versionsRes.data.versions || versionsRes.data || [])
         } catch (error) {
             console.error('Failed to fetch categories/versions:', error)
+        }
+    }
+
+    const fetchTags = async () => {
+        try {
+            const { data } = await tagsAPI.getAll()
+            const allTags = data.tags || data || []
+            // Filtrer: tags du jeu sélectionné + tags globaux (sans game_id)
+            const filteredTags = allTags.filter(tag =>
+                !tag.game_id || tag.game_id === gameId
+            )
+            setAllTags(filteredTags)
+        } catch (error) {
+            console.error('Failed to fetch tags:', error)
         }
     }
 
@@ -603,8 +615,8 @@ export default function EditProduct() {
                         )}
                     </div>
 
-                    {/* Tags */}
-                    {allTags.length > 0 && (
+                    {/* Tags - afficher seulement si un jeu est sélectionné */}
+                    {gameId && allTags.length > 0 && (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
                                 <Tag className="w-5 h-5" />

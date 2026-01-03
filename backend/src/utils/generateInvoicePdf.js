@@ -29,7 +29,8 @@ const TOTAL_BOX_W = 245;
 module.exports = async function generateInvoicePdf({
                                                        invoiceNumber,
                                                        user,
-                                                       items = [],   // items.price = CENTIMES (integer)
+                                                       items = [],   // items.price = EUROS (pas centimes)
+                                                       totalAmount,  // totalAmount = CENTIMES depuis Stripe
                                                        createdAt
                                                    }) {
     const safeDate = createdAt ? new Date(createdAt) : new Date();
@@ -50,25 +51,62 @@ module.exports = async function generateInvoicePdf({
     doc.pipe(fs.createWriteStream(filePath));
 
     // ─────────────────────────
-    // 🧮 TOTAL TTC (CENTIMES)
+    // 🧮 TOTAL TTC (depuis Stripe en centimes ou calculé depuis items en euros)
     // ─────────────────────────
-    let totalCents = 0;
-    items.forEach(item => {
-        const priceCents = Number(item.price);
-        if (Number.isFinite(priceCents)) {
-            totalCents += priceCents;
-        }
-    });
+    let totalEuro = 0;
+
+    if (totalAmount) {
+        // totalAmount vient de Stripe en centimes
+        totalEuro = totalAmount / 100;
+    } else {
+        // Sinon calculer depuis les items (prix en euros)
+        items.forEach(item => {
+            const price = Number(item.price);
+            if (Number.isFinite(price)) {
+                totalEuro += price;
+            }
+        });
+    }
 
     // ─────────────────────────
     // 🖼️ HEADER FIXE — LOGO
     // ─────────────────────────
     let logoBottomY = 40;
-    const logoPath = path.join(process.cwd(), "assets", "logo.png");
 
-    if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, PAGE_LEFT, 40, { width: LOGO_WIDTH });
-        logoBottomY = 40 + LOGO_HEIGHT;
+    // Chercher le logo dans plusieurs emplacements possibles
+    const possibleLogoPaths = [
+        path.join(process.cwd(), "assets", "logo.png"),
+        path.join(process.cwd(), "public", "logo.png"),
+        path.join(process.cwd(), "uploads", "logo.png"),
+        path.join(process.cwd(), "..", "frontend", "public", "logo.png"),
+        path.join(process.cwd(), "src", "assets", "logo.png")
+    ];
+
+    let logoPath = null;
+    for (const p of possibleLogoPaths) {
+        if (fs.existsSync(p)) {
+            logoPath = p;
+            break;
+        }
+    }
+
+    if (logoPath) {
+        try {
+            doc.image(logoPath, PAGE_LEFT, 40, { width: LOGO_WIDTH });
+            logoBottomY = 40 + LOGO_HEIGHT;
+            console.log("✅ Logo loaded from:", logoPath);
+        } catch (err) {
+            console.warn("⚠️ Failed to load logo:", err.message);
+        }
+    } else {
+        // Afficher le nom du site en texte si pas de logo
+        doc
+            .fillColor(BRAND_COLOR)
+            .fontSize(24)
+            .font('Helvetica-Bold')
+            .text("HytModel", PAGE_LEFT, 45);
+        logoBottomY = 75;
+        console.warn("⚠️ Logo not found, using text fallback");
     }
 
     // ─────────────────────────
@@ -77,10 +115,12 @@ module.exports = async function generateInvoicePdf({
     doc
         .fillColor(DARK_COLOR)
         .fontSize(22)
+        .font('Helvetica-Bold')
         .text("FACTURE", 350, 45, { align: "right" });
 
     doc
         .fontSize(10)
+        .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(invoiceNumber, { align: "right" })
         .text(safeDate.toLocaleDateString("fr-FR"), { align: "right" });
@@ -111,8 +151,10 @@ module.exports = async function generateInvoicePdf({
         .moveDown(0.3)
         .fontSize(12)
         .fillColor(DARK_COLOR)
+        .font('Helvetica-Bold')
         .text(displayName, clientX)
         .fontSize(10)
+        .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(displayEmail, clientX);
 
@@ -130,6 +172,7 @@ module.exports = async function generateInvoicePdf({
     doc
         .fillColor(BRAND_COLOR)
         .fontSize(12)
+        .font('Helvetica-Bold')
         .text("Désignation", COL_ITEM_X, headerY)
         .text("Prix", COL_PRICE_X, headerY, {
             width: COL_PRICE_W,
@@ -139,16 +182,21 @@ module.exports = async function generateInvoicePdf({
     doc.moveDown(1);
 
     items.forEach(item => {
-        const priceCents = Number(item.price) || 0;
-        const priceEuro  = priceCents / 100;
+        // item.price est en EUROS (pas en centimes)
+        const priceEuro = Number(item.price) || 0;
+
+        const rowY = doc.y;
 
         doc
             .fillColor(DARK_COLOR)
             .fontSize(11)
-            .text(item.title || "Item", COL_ITEM_X, doc.y, {
+            .font('Helvetica')
+            .text(item.title || "Item", COL_ITEM_X, rowY, {
                 width: COL_PRICE_X - COL_ITEM_X - 10
-            })
-            .text(`${priceEuro.toFixed(2)} €`, COL_PRICE_X, doc.y, {
+            });
+
+        doc
+            .text(`${priceEuro.toFixed(2)} €`, COL_PRICE_X, rowY, {
                 width: COL_PRICE_W,
                 align: "right"
             });
@@ -162,7 +210,6 @@ module.exports = async function generateInvoicePdf({
     doc.moveDown(1.5);
 
     const totalY = doc.y;
-    const totalEuro = totalCents / 100;
 
     doc
         .rect(TOTAL_BOX_X, totalY - 8, TOTAL_BOX_W, 32)
@@ -171,6 +218,7 @@ module.exports = async function generateInvoicePdf({
     doc
         .fillColor(BRAND_COLOR)
         .fontSize(12)
+        .font('Helvetica-Bold')
         .text("TOTAL TTC", TOTAL_BOX_X + 10, totalY);
 
     doc
@@ -191,9 +239,10 @@ module.exports = async function generateInvoicePdf({
     doc
         .moveDown(3)
         .fontSize(9)
+        .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(
-            "HytModel • Marketplace de modèles 3D\nhttps://hytmodel.fr",
+            "HytModel • Marketplace de produits 3D\nhttps://hytmodel.fr",
             PAGE_LEFT,
             doc.y,
             {

@@ -6,7 +6,7 @@ class CheckoutService {
         const { rows } = await pool.query(
             `SELECT m.id, m.title, m.price
              FROM cart_items ci
-             JOIN models m ON m.id = ci.model_id
+                      JOIN models m ON m.id = ci.model_id
              WHERE ci.cart_id = $1
                AND m.status = 'APPROVED'
                AND m.deleted_at IS NULL
@@ -62,16 +62,24 @@ class CheckoutService {
     // Récupérer les achats d'un utilisateur
     async getUserPurchases(userId) {
         const { rows } = await pool.query(
-            `SELECT p.id, p.model_id, p.created_at,
-                    m.title, m.price, m.file_path
+            `SELECT
+                 p.id,
+                 p.model_id,
+                 p.created_at as purchased_at,
+                 m.title,
+                 m.price,
+                 m.file_path,
+                 mi.image_url as thumbnail_url
              FROM purchases p
                       JOIN models m ON m.id = p.model_id
+                      LEFT JOIN model_images mi ON mi.model_id = m.id AND mi.is_primary = true
              WHERE p.user_id = $1
              ORDER BY p.created_at DESC`,
             [userId]
         );
         return rows;
     }
+
     // Vérifier si le paiement a déjà été traité
     async isPaymentProcessed(stripeSessionId) {
         const { rowCount } = await pool.query(
@@ -86,7 +94,7 @@ class CheckoutService {
         const { rows } = await pool.query(
             `SELECT m.id AS model_id, m.title, m.price, m.creator_id
              FROM cart_items ci
-             JOIN models m ON m.id = ci.model_id
+                      JOIN models m ON m.id = ci.model_id
              WHERE ci.cart_id = $1`,
             [cartId]
         );
@@ -98,7 +106,7 @@ class CheckoutService {
         const { rows } = await pool.query(
             `INSERT INTO payments (stripe_session_id, user_id, amount)
              VALUES ($1, $2, $3)
-             RETURNING id`,
+                 RETURNING id`,
             [stripeSessionId, userId, amount]
         );
         return rows[0].id;
@@ -109,7 +117,7 @@ class CheckoutService {
         const { rows } = await pool.query(
             `INSERT INTO invoices (user_id, payment_id, invoice_number, total_amount)
              VALUES ($1, $2, $3, $4)
-             RETURNING id`,
+                 RETURNING id`,
             [userId, paymentId, invoiceNumber, totalAmount]
         );
         return rows[0].id;
@@ -147,7 +155,7 @@ class CheckoutService {
             `SELECT id FROM carts
              WHERE user_id = $1 AND checked_out = FALSE
              ORDER BY created_at DESC
-             LIMIT 1`,
+                 LIMIT 1`,
             [userId]
         );
         return rows[0] || null;

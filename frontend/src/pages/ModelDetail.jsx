@@ -3,12 +3,13 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
     ShoppingCart, Download, Star, Eye, Calendar, User,
     Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2,
-    ChevronLeft, ChevronRight, Youtube, X, ZoomIn
+    ChevronLeft, ChevronRight, Youtube, X, ZoomIn, AlertTriangle, Flag
 } from 'lucide-react'
 import { modelsAPI, modelImagesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import Loading, { LoadingButton } from '../components/Loading'
+import ReportProductModal from '../components/ReportProductModal'
 import toast from 'react-hot-toast'
 
 function ImageModal({ image, onClose, onPrev, onNext, hasPrev, hasNext }) {
@@ -72,6 +73,8 @@ export default function ModelDetail() {
     const [hoverRating, setHoverRating] = useState(0)
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
     const [showImageModal, setShowImageModal] = useState(false)
+    const [showReportModal, setShowReportModal] = useState(false)
+    const [hasPurchased, setHasPurchased] = useState(false)
 
     const inCart = model ? isInCart(model.id) : false
 
@@ -84,6 +87,16 @@ export default function ModelDetail() {
         try {
             const { data } = await modelsAPI.getById(id)
             setModel(data.model)
+
+            // Vérifier si l'utilisateur a acheté ce produit
+            if (isAuthenticated) {
+                try {
+                    const purchaseRes = await modelsAPI.checkPurchase(id)
+                    setHasPurchased(purchaseRes.data.hasPurchased || false)
+                } catch (err) {
+                    setHasPurchased(false)
+                }
+            }
         } catch (error) {
             console.error('Failed to fetch model:', error)
             toast.error('Produit non trouvé')
@@ -157,6 +170,14 @@ export default function ModelDetail() {
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href)
         toast.success('Lien copié !')
+    }
+
+    const handleReport = () => {
+        if (!isAuthenticated) {
+            navigate('/login', { state: { from: `/models/${id}` } })
+            return
+        }
+        setShowReportModal(true)
     }
 
     const getYoutubeVideoId = (url) => {
@@ -412,8 +433,39 @@ export default function ModelDetail() {
                                     <Link to={`/dashboard/models/${model.id}/edit`} className="btn-secondary w-full text-center block">
                                         Modifier mon produit
                                     </Link>
+                                ) : hasPurchased ? (
+                                    <>
+                                        {/* Utilisateur a acheté - Afficher téléchargement */}
+                                        <LoadingButton
+                                            onClick={handleDownload}
+                                            loading={downloading}
+                                            className="btn-primary w-full flex items-center justify-center gap-2"
+                                        >
+                                            <Download className="w-5 h-5" />
+                                            Télécharger
+                                        </LoadingButton>
+
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleShare}
+                                                className="btn-ghost flex-1 flex items-center justify-center gap-2"
+                                            >
+                                                <Share2 className="w-5 h-5" />
+                                                Partager
+                                            </button>
+
+                                            <button
+                                                onClick={handleReport}
+                                                className="btn-ghost flex-1 flex items-center justify-center gap-2 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                                            >
+                                                <Flag className="w-5 h-5" />
+                                                Signaler
+                                            </button>
+                                        </div>
+                                    </>
                                 ) : (
                                     <>
+                                        {/* Utilisateur n'a pas acheté - Afficher panier */}
                                         <button
                                             onClick={handleAddToCart}
                                             disabled={inCart}
@@ -436,29 +488,30 @@ export default function ModelDetail() {
                                             )}
                                         </button>
 
-                                        <LoadingButton
-                                            onClick={handleDownload}
-                                            loading={downloading}
-                                            className="btn-secondary w-full flex items-center justify-center gap-2"
-                                        >
-                                            <Download className="w-5 h-5" />
-                                            Télécharger
-                                        </LoadingButton>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleShare}
+                                                className="btn-ghost flex-1 flex items-center justify-center gap-2"
+                                            >
+                                                <Share2 className="w-5 h-5" />
+                                                Partager
+                                            </button>
+
+                                            <button
+                                                onClick={handleReport}
+                                                className="btn-ghost flex-1 flex items-center justify-center gap-2 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                                            >
+                                                <Flag className="w-5 h-5" />
+                                                Signaler
+                                            </button>
+                                        </div>
                                     </>
                                 )}
-
-                                <button
-                                    onClick={handleShare}
-                                    className="btn-ghost w-full flex items-center justify-center gap-2"
-                                >
-                                    <Share2 className="w-5 h-5" />
-                                    Partager
-                                </button>
                             </div>
                         </div>
 
-                        {/* Rating */}
-                        {isAuthenticated && !isOwner && (
+                        {/* Rating - uniquement si acheté */}
+                        {isAuthenticated && !isOwner && hasPurchased && (
                             <div className="card mt-4">
                                 <h3 className="font-semibold text-white mb-3">Noter ce produit</h3>
                                 <div className="flex items-center gap-1">
@@ -497,6 +550,15 @@ export default function ModelDetail() {
                     hasNext={allImages.length > 1}
                 />
             )}
+
+            {/* Report Modal */}
+            <ReportProductModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                modelId={model?.id}
+                modelTitle={model?.title}
+                hasPurchased={hasPurchased}
+            />
         </div>
     )
 }

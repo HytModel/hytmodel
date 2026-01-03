@@ -3,7 +3,7 @@ import {
     Tag, FolderOpen, Gamepad2, Plus, Pencil, Trash2, X,
     Loader2, Upload, Image, Check, AlertTriangle, Search, Layers
 } from 'lucide-react'
-import { tagsAPI, categoriesAPI, gamesAPI, versionsAPI } from '../services/api'
+import { tagsAPI, categoriesAPI, gamesAPI, versionsAPI } from '../services/api.js'
 import toast from 'react-hot-toast'
 
 // ============ MODAL GÉNÉRIQUE ============

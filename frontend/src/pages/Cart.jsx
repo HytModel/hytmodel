@@ -57,7 +57,7 @@ export default function Cart() {
                     </div>
                     <div>
                         <h1 className="font-display text-3xl font-bold text-white">Mon panier</h1>
-                        <p className="text-gray-500">{items.length} article{items.length !== 1 ? 's' : ''}</p>
+                        <p className="text-gray-500">{items.length} produit{items.length !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
 
@@ -69,10 +69,10 @@ export default function Cart() {
                         </div>
                         <h2 className="text-2xl font-semibold text-white mb-2">Votre panier est vide</h2>
                         <p className="text-gray-500 mb-8">
-                            Découvrez notre collection de modèles 3D premium
+                            Découvrez notre collection de produits premium
                         </p>
                         <Link to="/models" className="btn-primary">
-                            Explorer les modèles
+                            Explorer les produits
                             <ArrowRight className="inline-block ml-2 w-5 h-5" />
                         </Link>
                     </div>
@@ -117,9 +117,9 @@ export default function Cart() {
 
                                     {/* Price & Remove */}
                                     <div className="flex flex-col items-end justify-between">
-                    <span className="font-display font-bold text-lg text-white">
-                      {Number(item.price).toFixed(2)}€
-                    </span>
+                                        <span className="font-display font-bold text-lg text-white">
+                                            {Number(item.price).toFixed(2)}€
+                                        </span>
                                         <button
                                             onClick={() => handleRemove(item.id)}
                                             className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"

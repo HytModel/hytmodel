@@ -10,7 +10,7 @@ const app = express();
 
 // Sécurité
 app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }  // Permet le chargement des images cross-origin
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -23,7 +23,12 @@ app.use(morgan("dev"));
 // Servir les fichiers statiques (uploads d'images)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Webhook Stripe (AVANT express.json)
+// Webhook Stripe (AVANT express.json) - Supporte les deux URLs
+app.use(
+    "/api/webhook/stripe",
+    bodyParser.raw({ type: "application/json" }),
+    require("./routes/webhook.routes")
+);
 app.use(
     "/api/webhooks",
     bodyParser.raw({ type: "application/json" }),
@@ -53,7 +58,8 @@ app.use("/api/games", require("./routes/games.routes"));
 app.use("/api/categories", require("./routes/categories.routes"));
 app.use("/api/versions", require("./routes/gameVersions.routes"));
 app.use("/api/creator-request", require("./routes/creator-request.routes"));
-
+app.use("/api/feedback", require("./routes/feedback.routes"));
+app.use('/api/notifications', require('./routes/notifications.routes'));
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 

@@ -19,8 +19,8 @@ import Cart from './pages/Cart'
 import Upload from './pages/Upload'
 import Purchases from './pages/Purchases'
 import Invoices from './pages/Invoices'
-import Admin from './pages/Admin'
-import Success from './pages/Success'
+import Admin from './pages/Admin.jsx'
+import CheckoutSuccess from './pages/CheckoutSuccess'
 import Cancel from './pages/Cancel'
 import NotFound from './pages/NotFound'
 import MyProducts from './pages/MyProducts'
@@ -82,11 +82,17 @@ export default function App() {
                     <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                     <Route path="/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
+                    <Route path="/dashboard/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-                    <Route path="/stripe/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
-                    <Route path="/stripe/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
-                    <Route path="/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
+
+                    {/* Checkout Success - toutes les variantes */}
+                    <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+                    <Route path="/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+                    <Route path="/stripe/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+
+                    {/* Cancel */}
                     <Route path="/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
+                    <Route path="/stripe/cancel" element={<ProtectedRoute><Cancel /></ProtectedRoute>} />
 
                     {/* Créateurs */}
                     <Route path="/upload" element={<CreatorRoute><Upload /></CreatorRoute>} />

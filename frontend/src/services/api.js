@@ -38,6 +38,14 @@ export const authAPI = {
     me: () => api.get('/auth/me')
 }
 
+// Notifications API
+export const notificationsAPI = {
+    getAll: () => api.get('/notifications'),
+    markAsRead: (id) => api.put(`/notifications/${id}/read`),
+    markAllAsRead: () => api.put('/notifications/read-all'),
+    delete: (id) => api.delete(`/notifications/${id}`),
+}
+
 // ============ MODELS ============
 export const modelsAPI = {
     // Liste et recherche
@@ -59,6 +67,7 @@ export const modelsAPI = {
 
     // Actions utilisateur
     download: (id) => api.get(`/models/${id}/download`, { responseType: 'blob' }),
+    checkPurchase: (id) => api.get(`/models/${id}/check-purchase`),
     rate: (id, rating) => api.post(`/models/${id}/rate`, { rating }),
     getStats: (id) => api.get(`/models/${id}/stats`),
 
@@ -79,7 +88,7 @@ export const cartAPI = {
 
 // ============ CHECKOUT ============
 export const checkoutAPI = {
-    create: () => api.post('/checkout/checkout'),
+    create: () => api.post('/checkout'),
     getPurchases: () => api.get('/checkout/purchases')
 }
 
@@ -143,6 +152,18 @@ export const sellerAPI = {
     getTopModels: (days = 30) => api.get(`/seller/dashboard/top-models?days=${days}`)
 }
 
+// ============ PROPOSITIONS & SIGNALEMENTS ============
+export const feedbackAPI = {
+    // Propositions (vendeurs)
+    createProposal: (data) => api.post('/feedback/proposals', data),
+    getMyProposals: () => api.get('/feedback/proposals/me'),
+
+    // Signalements
+    reportProduct: (data) => api.post('/feedback/reports', data),
+    getMyReports: () => api.get('/feedback/reports/me'),
+    getProductReports: (modelId) => api.get(`/feedback/reports/model/${modelId}`),
+}
+
 // ============ ADMIN ============
 export const adminAPI = {
     // Users
@@ -172,6 +193,15 @@ export const adminAPI = {
     getNotifications: () => api.get('/admin/notifications'),
     markNotificationRead: (id) => api.put(`/admin/notifications/${id}/read`),
     deleteNotification: (id) => api.delete(`/admin/notifications/${id}`),
+
+    // Propositions (admin)
+    getProposals: (status) => api.get('/feedback/proposals', { params: { status } }),
+    approveProposal: (id) => api.post(`/feedback/proposals/${id}/approve`),
+    rejectProposal: (id, reason) => api.post(`/feedback/proposals/${id}/reject`, { reason }),
+
+    // Signalements (admin)
+    getReports: (status) => api.get('/feedback/reports', { params: { status } }),
+    updateReport: (id, data) => api.put(`/feedback/reports/${id}`, data),
 
     // Stats & Dashboard
     getStats: () => api.get('/admin/stats'),

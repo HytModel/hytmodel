@@ -25,12 +25,14 @@ import {
     Layers,
     AlertTriangle,
     X,
-    Settings
+    Settings,
+    MessageSquare
 } from 'lucide-react'
 import { adminAPI, modelsAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import AdminSellers from './AdminSellers'
 import AdminSettings from './AdminSettings'
+import AdminFeedback from './AdminFeedback'
 
 // Fonction pour obtenir l'URL complète de l'image
 const getImageUrl = (url) => {
@@ -1203,9 +1205,12 @@ function AdminModels() {
 export default function Admin() {
     const location = useLocation()
     const [pendingCount, setPendingCount] = useState(0)
+    const [proposalsCount, setProposalsCount] = useState(0)
+    const [reportsCount, setReportsCount] = useState(0)
 
     useEffect(() => {
         loadPendingCount()
+        loadFeedbackCounts()
     }, [])
 
     const loadPendingCount = async () => {
@@ -1215,6 +1220,19 @@ export default function Admin() {
             setPendingCount(models.length)
         } catch (error) {
             console.error('Failed to load pending count:', error)
+        }
+    }
+
+    const loadFeedbackCounts = async () => {
+        try {
+            const [proposalsRes, reportsRes] = await Promise.all([
+                adminAPI.getProposals('PENDING').catch(() => ({ data: { proposals: [] } })),
+                adminAPI.getReports('PENDING').catch(() => ({ data: { reports: [] } }))
+            ])
+            setProposalsCount(proposalsRes.data.proposals?.length || 0)
+            setReportsCount(reportsRes.data.reports?.length || 0)
+        } catch (error) {
+            console.error('Failed to load feedback counts:', error)
         }
     }
 
@@ -1228,11 +1246,21 @@ export default function Admin() {
             path: '/admin/pending',
             icon: Clock,
             label: 'En attente',
-            badge: pendingCount > 0 ? pendingCount : null
+            badge: pendingCount > 0 ? pendingCount : null,
+            badgeColor: 'bg-yellow-500 text-black'
         },
         { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
         { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
         { path: '/admin/models', icon: Package, label: 'Produits' },
+        {
+            path: '/admin/feedback',
+            icon: MessageSquare,
+            label: 'Feedback',
+            badges: [
+                proposalsCount > 0 ? { count: proposalsCount, color: 'bg-blue-500 text-white' } : null,
+                reportsCount > 0 ? { count: reportsCount, color: 'bg-red-500 text-white' } : null,
+            ].filter(Boolean)
+        },
         { path: '/admin/settings', icon: Settings, label: 'Paramètres' },
     ]
 
@@ -1269,9 +1297,21 @@ export default function Admin() {
                                                 <span>{item.label}</span>
                                             </div>
                                             {item.badge && (
-                                                <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.badgeColor || 'bg-yellow-500 text-black'}`}>
                                                     {item.badge}
                                                 </span>
+                                            )}
+                                            {item.badges && item.badges.length > 0 && (
+                                                <div className="flex items-center gap-1">
+                                                    {item.badges.map((b, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className={`text-xs font-bold px-2 py-0.5 rounded-full ${b.color}`}
+                                                        >
+                                                            {b.count}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             )}
                                         </Link>
                                     )
@@ -1291,6 +1331,7 @@ export default function Admin() {
                             <Route path="pending" element={<PendingModels onCountChange={handlePendingCountChange} />} />
                             <Route path="users" element={<UsersManagement />} />
                             <Route path="sellers" element={<AdminSellers />} />
+                            <Route path="feedback" element={<AdminFeedback />} />
                             <Route path="settings" element={<AdminSettings />} />
                             <Route path="models" element={<AdminModels />} />
                         </Routes>

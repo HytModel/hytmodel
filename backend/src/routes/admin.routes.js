@@ -151,6 +151,18 @@ router.post('/creator-requests/:id/reject', requireAuth, requireRole('STAFF', 'A
 
 // ============ VENDEURS ============
 
+// Fonction utilitaire pour calculer la commission selon le type
+function getCommissionRate(creatorType) {
+    switch (creatorType) {
+        case 'HYTSTUDIO':
+            return 1.0; // 100% pour le site
+        case 'AFFILIATED':
+            return 0.10; // 10%
+        default:
+            return 0.15; // 15%
+    }
+}
+
 // Liste des vendeurs avec stats
 router.get('/sellers', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, res, next) => {
     try {
@@ -158,8 +170,7 @@ router.get('/sellers', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, r
             SELECT u.id, u.username, u.email, u.created_at, u.creator_type,
                    COUNT(DISTINCT m.id) AS products_count,
                    COUNT(DISTINCT p.id) AS sales_count,
-                   COALESCE(SUM(m.price), 0) AS total_revenue,
-                   COALESCE(SUM(m.price * 0.10), 0) AS total_commission
+                   COALESCE(SUM(m.price), 0) AS total_revenue
             FROM users u
                      LEFT JOIN models m ON m.creator_id = u.id AND m.deleted_at IS NULL
                      LEFT JOIN purchases p ON p.model_id = m.id
@@ -167,7 +178,22 @@ router.get('/sellers', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, r
             GROUP BY u.id
             ORDER BY total_revenue DESC
         `);
-        res.json({ sellers: rows });
+
+        // Calculer les commissions correctement pour chaque vendeur
+        const sellersWithCommissions = rows.map(seller => {
+            const revenue = Number(seller.total_revenue) || 0;
+            const commissionRate = getCommissionRate(seller.creator_type);
+            const commission = revenue * commissionRate;
+
+            return {
+                ...seller,
+                total_revenue: revenue,
+                total_commission: commission,
+                commission_rate: commissionRate * 100
+            };
+        });
+
+        res.json({ sellers: sellersWithCommissions });
     } catch (error) {
         next(error);
     }
@@ -191,17 +217,47 @@ router.put('/sellers/:id/type', requireAuth, requireRole('STAFF', 'ADMIN'), asyn
     }
 });
 
-// Stats globales vendeurs
+// Stats globales vendeurs - CORRIGÉ avec calcul dynamique des commissions
 router.get('/sellers/stats', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, res, next) => {
     try {
-        const { rows } = await pool.query(`
-            SELECT
-                    (SELECT COUNT(*) FROM users WHERE role = 'CREATOR') AS "totalSellers",
-                    (SELECT COALESCE(SUM(m.price), 0) FROM purchases p JOIN models m ON m.id = p.model_id) AS "totalRevenue",
-                    (SELECT COALESCE(SUM(m.price * 0.10), 0) FROM purchases p JOIN models m ON m.id = p.model_id) AS "totalCommissions",
-                    (SELECT COUNT(*) FROM purchases) AS "totalSales"
+        // Compter les vendeurs
+        const sellersResult = await pool.query(
+            `SELECT COUNT(*) as count FROM users WHERE role = 'CREATOR'`
+        );
+        const totalSellers = Number(sellersResult.rows[0].count);
+
+        // Récupérer toutes les ventes avec le type de créateur
+        const salesResult = await pool.query(`
+            SELECT m.price, u.creator_type
+            FROM purchases p
+            JOIN models m ON m.id = p.model_id
+            JOIN users u ON u.id = m.creator_id
         `);
-        res.json({ stats: rows[0] });
+
+        let totalRevenue = 0;
+        let totalCommissions = 0;
+
+        salesResult.rows.forEach(row => {
+            const price = Number(row.price) || 0;
+            totalRevenue += price;
+
+            // Calculer la commission selon le type
+            const commissionRate = getCommissionRate(row.creator_type);
+            totalCommissions += price * commissionRate;
+        });
+
+        // Compter les ventes
+        const salesCountResult = await pool.query(`SELECT COUNT(*) as count FROM purchases`);
+        const totalSales = Number(salesCountResult.rows[0].count);
+
+        res.json({
+            stats: {
+                totalSellers,
+                totalRevenue: totalRevenue.toFixed(2),
+                totalCommissions: totalCommissions.toFixed(2),
+                totalSales
+            }
+        });
     } catch (error) {
         next(error);
     }
@@ -215,7 +271,7 @@ router.get('/notifications', requireAuth, requireRole('STAFF', 'ADMIN'), async (
         const { rows } = await pool.query(`
             SELECT n.*, u.username, u.email
             FROM staff_notifications n
-            JOIN users u ON u.id = n.user_id
+                     JOIN users u ON u.id = n.user_id
             WHERE n.is_read = FALSE
             ORDER BY n.created_at DESC
         `);
@@ -256,9 +312,9 @@ router.get('/sellers/eligible-affiliate', requireAuth, requireRole('STAFF', 'ADM
                    COUNT(p.id) AS total_sales,
                    COALESCE(SUM(m.price), 0) AS total_revenue
             FROM users u
-            JOIN models m ON m.creator_id = u.id
-            JOIN purchases p ON p.model_id = m.id
-            WHERE u.role = 'CREATOR' 
+                     JOIN models m ON m.creator_id = u.id
+                     JOIN purchases p ON p.model_id = m.id
+            WHERE u.role = 'CREATOR'
               AND (u.creator_type = 'NON_AFFILIATED' OR u.creator_type IS NULL)
             GROUP BY u.id
             HAVING COUNT(p.id) >= 1000

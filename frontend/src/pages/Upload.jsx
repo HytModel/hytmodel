@@ -48,17 +48,19 @@ export default function Upload() {
             return
         }
         fetchGames()
-        fetchTags()
     }, [])
 
     useEffect(() => {
         if (gameId) {
             fetchCategories()
             fetchVersions()
+            fetchTags() // Charger les tags quand le jeu change
         } else {
             setCategories([])
             setVersions([])
+            setTags([])
             setCategoryId('')
+            setSelectedTags([]) // Reset les tags sélectionnés
         }
     }, [gameId])
 
@@ -83,7 +85,12 @@ export default function Upload() {
     const fetchTags = async () => {
         try {
             const { data } = await tagsAPI.getAll()
-            setTags(data.tags || data || [])
+            const allTags = data.tags || data || []
+            // Filtrer: tags du jeu sélectionné + tags globaux (sans game_id)
+            const filteredTags = allTags.filter(tag =>
+                !tag.game_id || tag.game_id === gameId
+            )
+            setTags(filteredTags)
         } catch (error) {
             console.error('Failed to fetch tags:', error)
         }
@@ -610,8 +617,8 @@ export default function Upload() {
                         )}
                     </div>
 
-                    {/* Tags */}
-                    {tags.length > 0 && (
+                    {/* Tags - afficher seulement si un jeu est sélectionné */}
+                    {gameId && tags.length > 0 && (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                                 <Tag className="w-5 h-5" />

@@ -5,7 +5,7 @@ import {
     Search, Calendar, X, ExternalLink, Globe, Star, Percent,
     Instagram, Twitter, Youtube, Bell, Award
 } from 'lucide-react'
-import { adminAPI } from '../services/api'
+import { adminAPI } from '../services/api.js'
 import toast from 'react-hot-toast'
 
 // Modal pour voir les détails complets d'une demande

@@ -1,19 +1,122 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import {
     Menu, X, ShoppingCart, User, LogOut, Settings,
     LayoutDashboard, Package, ChevronDown,
-    Upload, FileText, MessageCircle, ExternalLink
+    Upload, FileText, MessageCircle, ExternalLink,
+    Bell, Check, CheckCheck, Trash2, AlertTriangle,
+    CheckCircle, Info, XCircle
 } from 'lucide-react'
+import { notificationsAPI } from '../services/api'
+
+// Icônes selon le type de notification
+const NOTIFICATION_ICONS = {
+    REPORT_RESOLVED: AlertTriangle,
+    REPORT_DISMISSED: CheckCircle,
+    REPORT_REVIEWED: Info,
+    PRODUCT_APPROVED: CheckCircle,
+    PRODUCT_REJECTED: XCircle,
+    SALE: Package,
+    default: Bell
+}
+
+const NOTIFICATION_COLORS = {
+    REPORT_RESOLVED: 'text-orange-500 bg-orange-500/20',
+    REPORT_DISMISSED: 'text-green-500 bg-green-500/20',
+    REPORT_REVIEWED: 'text-blue-500 bg-blue-500/20',
+    PRODUCT_APPROVED: 'text-green-500 bg-green-500/20',
+    PRODUCT_REJECTED: 'text-red-500 bg-red-500/20',
+    SALE: 'text-hyt-accent bg-hyt-accent/20',
+    default: 'text-gray-400 bg-gray-500/20'
+}
 
 export default function Navbar() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
+    const [notifMenuOpen, setNotifMenuOpen] = useState(false)
+    const [notifications, setNotifications] = useState([])
+    const [unreadCount, setUnreadCount] = useState(0)
     const { user, isAuthenticated, logout, isCreator, isStaff, isAdmin } = useAuth()
     const { itemCount } = useCart()
     const navigate = useNavigate()
+    const notifRef = useRef(null)
+
+    // Charger les notifications
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchNotifications()
+            // Rafraîchir toutes les 30 secondes
+            const interval = setInterval(fetchNotifications, 30000)
+            return () => clearInterval(interval)
+        }
+    }, [isAuthenticated])
+
+    // Fermer le menu si on clique ailleurs
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setNotifMenuOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const fetchNotifications = async () => {
+        try {
+            const { data } = await notificationsAPI.getAll()
+            setNotifications(data.notifications || [])
+            setUnreadCount(data.unreadCount || 0)
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error)
+        }
+    }
+
+    const handleMarkAsRead = async (id) => {
+        try {
+            await notificationsAPI.markAsRead(id)
+            setNotifications(prev =>
+                prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+            )
+            setUnreadCount(prev => Math.max(0, prev - 1))
+        } catch (error) {
+            console.error('Failed to mark as read:', error)
+        }
+    }
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await notificationsAPI.markAllAsRead()
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+            setUnreadCount(0)
+        } catch (error) {
+            console.error('Failed to mark all as read:', error)
+        }
+    }
+
+    const handleDeleteNotification = async (id) => {
+        try {
+            await notificationsAPI.delete(id)
+            setNotifications(prev => prev.filter(n => n.id !== id))
+        } catch (error) {
+            console.error('Failed to delete notification:', error)
+        }
+    }
+
+    const formatTimeAgo = (date) => {
+        const now = new Date()
+        const diff = now - new Date(date)
+        const minutes = Math.floor(diff / 60000)
+        const hours = Math.floor(diff / 3600000)
+        const days = Math.floor(diff / 86400000)
+
+        if (minutes < 1) return "À l'instant"
+        if (minutes < 60) return `Il y a ${minutes}m`
+        if (hours < 24) return `Il y a ${hours}h`
+        return `Il y a ${days}j`
+    }
 
     const handleLogout = () => {
         logout()
@@ -86,6 +189,115 @@ export default function Navbar() {
                                     </Link>
                                 )}
 
+                                {/* Notifications */}
+                                <div className="relative" ref={notifRef}>
+                                    <button
+                                        onClick={() => {
+                                            setNotifMenuOpen(!notifMenuOpen)
+                                            setUserMenuOpen(false)
+                                        }}
+                                        className="relative p-2 text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <Bell className="w-5 h-5" />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold bg-red-500 text-white rounded-full">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {/* Notifications Dropdown */}
+                                    {notifMenuOpen && (
+                                        <div className="absolute right-0 mt-2 w-80 bg-hyt-card border border-hyt-border rounded-xl shadow-xl animate-fade-in overflow-hidden">
+                                            {/* Header */}
+                                            <div className="flex items-center justify-between px-4 py-3 border-b border-hyt-border">
+                                                <h3 className="font-semibold text-white">Notifications</h3>
+                                                {unreadCount > 0 && (
+                                                    <button
+                                                        onClick={handleMarkAllAsRead}
+                                                        className="text-xs text-hyt-accent hover:underline flex items-center gap-1"
+                                                    >
+                                                        <CheckCheck className="w-3 h-3" />
+                                                        Tout marquer lu
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Notifications List */}
+                                            <div className="max-h-96 overflow-y-auto">
+                                                {notifications.length === 0 ? (
+                                                    <div className="px-4 py-8 text-center">
+                                                        <Bell className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                                                        <p className="text-gray-500 text-sm">Aucune notification</p>
+                                                    </div>
+                                                ) : (
+                                                    notifications.slice(0, 10).map((notif) => {
+                                                        const Icon = NOTIFICATION_ICONS[notif.type] || NOTIFICATION_ICONS.default
+                                                        const colorClass = NOTIFICATION_COLORS[notif.type] || NOTIFICATION_COLORS.default
+
+                                                        return (
+                                                            <div
+                                                                key={notif.id}
+                                                                className={`px-4 py-3 border-b border-hyt-border/50 hover:bg-hyt-dark/50 transition-colors ${
+                                                                    !notif.is_read ? 'bg-hyt-accent/5' : ''
+                                                                }`}
+                                                            >
+                                                                <div className="flex gap-3">
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClass}`}>
+                                                                        <Icon className="w-4 h-4" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-medium text-white">
+                                                                            {notif.title}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                                                                            {notif.message}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-500 mt-1">
+                                                                            {formatTimeAgo(notif.created_at)}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        {!notif.is_read && (
+                                                                            <button
+                                                                                onClick={() => handleMarkAsRead(notif.id)}
+                                                                                className="p-1 text-gray-500 hover:text-hyt-accent transition-colors"
+                                                                                title="Marquer comme lu"
+                                                                            >
+                                                                                <Check className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={() => handleDeleteNotification(notif.id)}
+                                                                            className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })
+                                                )}
+                                            </div>
+
+                                            {/* Footer */}
+                                            {notifications.length > 10 && (
+                                                <div className="px-4 py-2 border-t border-hyt-border text-center">
+                                                    <Link
+                                                        to="/notifications"
+                                                        onClick={() => setNotifMenuOpen(false)}
+                                                        className="text-sm text-hyt-accent hover:underline"
+                                                    >
+                                                        Voir toutes les notifications
+                                                    </Link>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Cart */}
                                 <Link to="/cart" className="relative p-2 text-gray-400 hover:text-white transition-colors">
                                     <ShoppingCart className="w-5 h-5" />
@@ -99,7 +311,10 @@ export default function Navbar() {
                                 {/* User Menu */}
                                 <div className="relative">
                                     <button
-                                        onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                        onClick={() => {
+                                            setUserMenuOpen(!userMenuOpen)
+                                            setNotifMenuOpen(false)
+                                        }}
                                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-hyt-card transition-colors"
                                     >
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
@@ -249,6 +464,23 @@ export default function Navbar() {
 
                         {isAuthenticated ? (
                             <>
+                                {/* Notifications Mobile */}
+                                <Link
+                                    to="/notifications"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center justify-between px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Bell className="w-4 h-4" />
+                                        Notifications
+                                    </span>
+                                    {unreadCount > 0 && (
+                                        <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                                            {unreadCount}
+                                        </span>
+                                    )}
+                                </Link>
+
                                 <Link
                                     to="/cart"
                                     onClick={() => setMobileMenuOpen(false)}

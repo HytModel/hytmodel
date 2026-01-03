@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
     Download,
-    Package,
+    ShoppingBag,
     Calendar,
     Search,
     ExternalLink,
@@ -76,11 +76,11 @@ export default function Purchases() {
                         Mes Achats
                     </h1>
                     <p className="text-gray-400">
-                        Retrouvez tous vos modèles achetés et téléchargez-les à tout moment
+                        Retrouvez tous vos produits achetés et téléchargez-les à tout moment
                     </p>
                 </motion.div>
 
-                {/* Stats - Sans le total dépensé */}
+                {/* Stats */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -90,11 +90,11 @@ export default function Purchases() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-hyt-accent/20 rounded-lg">
-                                <Package className="w-6 h-6 text-hyt-accent" />
+                                <ShoppingBag className="w-6 h-6 text-hyt-accent" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-white">{purchases.length}</p>
-                                <p className="text-sm text-gray-400">Modèles achetés</p>
+                                <p className="text-sm text-gray-400">Produits achetés</p>
                             </div>
                         </div>
                     </div>
@@ -153,19 +153,19 @@ export default function Purchases() {
                         animate={{ opacity: 1 }}
                         className="text-center py-16"
                     >
-                        <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                        <ShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-white mb-2">
                             {searchQuery ? 'Aucun résultat' : 'Aucun achat'}
                         </h3>
                         <p className="text-gray-400 mb-6">
                             {searchQuery
                                 ? 'Essayez avec d\'autres termes de recherche'
-                                : 'Vous n\'avez pas encore acheté de modèles'
+                                : 'Vous n\'avez pas encore acheté de produits'
                             }
                         </p>
                         {!searchQuery && (
                             <Link to="/models" className="btn-primary">
-                                Découvrir les modèles
+                                Découvrir les produits
                             </Link>
                         )}
                     </motion.div>
@@ -189,7 +189,9 @@ export default function Purchases() {
                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
                                         {purchase.thumbnail_url ? (
                                             <img
-                                                src={purchase.thumbnail_url}
+                                                src={purchase.thumbnail_url.startsWith('http')
+                                                    ? purchase.thumbnail_url
+                                                    : `http://localhost:3001${purchase.thumbnail_url}`}
                                                 alt={purchase.title}
                                                 className="w-full h-full object-cover"
                                             />
@@ -213,7 +215,7 @@ export default function Purchases() {
                                             to={`/models/${purchase.model_id}`}
                                             className="text-sm text-hyt-accent hover:underline flex items-center gap-1 mt-1"
                                         >
-                                            Voir le modèle
+                                            Voir le produit
                                             <ExternalLink className="w-3 h-3" />
                                         </Link>
                                     </div>

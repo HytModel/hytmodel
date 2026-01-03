@@ -141,4 +141,21 @@ router.get('/my-products', requireAuth, async (req, res, next) => {
         next(error);
     }
 });
+router.get("/:id/check-purchase", requireAuth, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Vérifier si l'utilisateur a acheté ce modèle
+        const { rows } = await pool.query(
+            `SELECT id FROM purchases
+             WHERE model_id = $1 AND user_id = $2
+                 LIMIT 1`,
+            [id, req.user.id]
+        );
+
+        res.json({ hasPurchased: rows.length > 0 });
+    } catch (error) {
+        next(error);
+    }
+});
 module.exports = router;
