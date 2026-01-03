@@ -1,64 +1,107 @@
 const router = require("express").Router();
-const tagsController = require("../controllers/tags.controller");
+const pool = require("../db/pool");
 const { requireAuth } = require("../middlewares/requireAuth");
 const { requireRole } = require("../middlewares/requireRole");
 
-// Lister tous les tags (public)
-router.get("/", tagsController.getAllTags);
+// Récupérer tous les tags
+router.get("/", async (req, res, next) => {
+    try {
+        const { rows } = await pool.query(`
+            SELECT t.*, g.name AS game_name 
+            FROM tags t
+            LEFT JOIN games g ON g.id = t.game_id
+            ORDER BY g.name, t.name ASC
+        `);
+        res.json({ tags: rows });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// Lister les tags d'un jeu (public)
-router.get("/game/:gameId", tagsController.getTagsByGame);
+// Récupérer les tags d'un jeu
+router.get("/game/:gameId", async (req, res, next) => {
+    try {
+        const { gameId } = req.params;
+        const { rows } = await pool.query(
+            "SELECT * FROM tags WHERE game_id = $1 ORDER BY name ASC",
+            [gameId]
+        );
+        res.json({ tags: rows });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// Lister les tags globaux (public)
-router.get("/global", tagsController.getGlobalTags);
+// Créer un tag (admin/staff)
+router.post("/", requireAuth, requireRole("STAFF", "ADMIN"), async (req, res, next) => {
+    try {
+        const { name, gameId } = req.body;
 
-// Récupérer un tag par ID (public)
-router.get("/:id", tagsController.getTagById);
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Le nom est requis" });
+        }
 
-// Stats d'un tag (public)
-router.get("/:id/stats", tagsController.getTagStats);
+        if (!gameId) {
+            return res.status(400).json({ error: "Le jeu est requis" });
+        }
 
-// Créer un tag (STAFF/ADMIN)
-router.post(
-    "/",
-    requireAuth,
-    requireRole("STAFF", "ADMIN"),
-    tagsController.createTag
-);
+        const { rows } = await pool.query(
+            "INSERT INTO tags (name, game_id) VALUES ($1, $2) RETURNING *",
+            [name.trim(), gameId]
+        );
 
-// Mettre à jour un tag (STAFF/ADMIN)
-router.put(
-    "/:id",
-    requireAuth,
-    requireRole("STAFF", "ADMIN"),
-    tagsController.updateTag
-);
+        res.status(201).json({ tag: rows[0] });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({ error: "Ce tag existe déjà pour ce jeu" });
+        }
+        next(error);
+    }
+});
 
-// Supprimer un tag (STAFF/ADMIN)
-router.delete(
-    "/:id",
-    requireAuth,
-    requireRole("STAFF", "ADMIN"),
-    tagsController.deleteTag
-);
+// Modifier un tag (admin/staff)
+router.put("/:id", requireAuth, requireRole("STAFF", "ADMIN"), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { name, gameId } = req.body;
 
-// Récupérer les tags d'un modèle
-router.get("/models/:modelId", tagsController.getModelTags);
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Le nom est requis" });
+        }
 
-// Ajouter un tag à un modèle (STAFF/ADMIN)
-router.post(
-    "/models/:modelId/:tagId",
-    requireAuth,
-    requireRole("STAFF", "ADMIN"),
-    tagsController.addTagToModel
-);
+        const { rows } = await pool.query(
+            "UPDATE tags SET name = $1, game_id = $2 WHERE id = $3 RETURNING *",
+            [name.trim(), gameId, id]
+        );
 
-// Retirer un tag d'un modèle (STAFF/ADMIN)
-router.delete(
-    "/models/:modelId/:tagId",
-    requireAuth,
-    requireRole("STAFF", "ADMIN"),
-    tagsController.removeTagFromModel
-);
+        if (!rows[0]) {
+            return res.status(404).json({ error: "Tag non trouvé" });
+        }
+
+        res.json({ tag: rows[0] });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({ error: "Ce tag existe déjà pour ce jeu" });
+        }
+        next(error);
+    }
+});
+
+// Supprimer un tag (admin/staff)
+router.delete("/:id", requireAuth, requireRole("STAFF", "ADMIN"), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Supprimer les associations model_tags d'abord
+        await pool.query("DELETE FROM model_tags WHERE tag_id = $1", [id]);
+
+        // Supprimer le tag
+        await pool.query("DELETE FROM tags WHERE id = $1", [id]);
+
+        res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+});
 
 module.exports = router;

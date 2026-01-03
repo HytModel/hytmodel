@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI } from '../services/api'
+import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers } from 'lucide-react'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI } from '../services/api'
 import ModelCard from '../components/ModelCard'
 import Loading from '../components/Loading'
 
@@ -12,6 +12,7 @@ export default function Models() {
     const [games, setGames] = useState([])
     const [categories, setCategories] = useState([])
     const [tags, setTags] = useState([])
+    const [versions, setVersions] = useState([])
     const [loading, setLoading] = useState(true)
     const [showFilters, setShowFilters] = useState(false)
     const [viewMode, setViewMode] = useState('grid')
@@ -21,30 +22,65 @@ export default function Models() {
     const [selectedGame, setSelectedGame] = useState(searchParams.get('game') || '')
     const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
     const [selectedTags, setSelectedTags] = useState([])
+    const [selectedVersions, setSelectedVersions] = useState([])
     const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
     const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '')
     const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest')
 
+    // Chargement initial des jeux et catégories
     useEffect(() => {
-        fetchFiltersData()
+        fetchInitialData()
     }, [])
 
+    // Charger les versions quand le jeu change
+    useEffect(() => {
+        if (selectedGame) {
+            fetchVersionsByGame(selectedGame)
+        } else {
+            setVersions([])
+            setSelectedVersions([])
+        }
+    }, [selectedGame])
+
+    // Charger les tags (peuvent être filtrés par catégorie si besoin)
+    useEffect(() => {
+        fetchTags()
+    }, [selectedCategory])
+
+    // Rechercher les modèles quand les filtres changent
     useEffect(() => {
         fetchModels()
-    }, [searchQuery, selectedGame, selectedCategory, selectedTags, minPrice, maxPrice, sortBy])
+    }, [searchQuery, selectedGame, selectedCategory, selectedTags, selectedVersions, minPrice, maxPrice, sortBy])
 
-    const fetchFiltersData = async () => {
+    const fetchInitialData = async () => {
         try {
-            const [gamesRes, categoriesRes, tagsRes] = await Promise.all([
+            const [gamesRes, categoriesRes] = await Promise.all([
                 gamesAPI.getAll(),
-                categoriesAPI.getAll(),
-                tagsAPI.getAll()
+                categoriesAPI.getAll()
             ])
             setGames(gamesRes.data.games || gamesRes.data || [])
             setCategories(categoriesRes.data.categories || categoriesRes.data || [])
-            setTags(tagsRes.data.tags || tagsRes.data || [])
         } catch (error) {
-            console.error('Failed to fetch filters data:', error)
+            console.error('Failed to fetch initial data:', error)
+        }
+    }
+
+    const fetchVersionsByGame = async (gameId) => {
+        try {
+            const { data } = await versionsAPI.getByGame(gameId)
+            setVersions(data.versions || data || [])
+        } catch (error) {
+            console.error('Failed to fetch versions:', error)
+            setVersions([])
+        }
+    }
+
+    const fetchTags = async () => {
+        try {
+            const { data } = await tagsAPI.getAll()
+            setTags(data.tags || data || [])
+        } catch (error) {
+            console.error('Failed to fetch tags:', error)
         }
     }
 
@@ -56,6 +92,7 @@ export default function Models() {
             if (selectedGame) params.gameId = selectedGame
             if (selectedCategory) params.categoryId = selectedCategory
             if (selectedTags.length > 0) params.tagIds = selectedTags.join(',')
+            if (selectedVersions.length > 0) params.versionIds = selectedVersions.join(',')
             if (minPrice) params.minPrice = minPrice
             if (maxPrice) params.maxPrice = maxPrice
 
@@ -94,13 +131,25 @@ export default function Models() {
         setSelectedGame('')
         setSelectedCategory('')
         setSelectedTags([])
+        setSelectedVersions([])
         setMinPrice('')
         setMaxPrice('')
         setSortBy('newest')
         setSearchParams({})
     }
 
-    const hasActiveFilters = searchQuery || selectedGame || selectedCategory || selectedTags.length > 0 || minPrice || maxPrice
+    // Quand on change de jeu, reset les versions sélectionnées
+    const handleGameChange = (gameId) => {
+        setSelectedGame(gameId)
+        setSelectedVersions([]) // Reset versions quand on change de jeu
+    }
+
+    // Quand on change de catégorie
+    const handleCategoryChange = (categoryId) => {
+        setSelectedCategory(categoryId)
+    }
+
+    const hasActiveFilters = searchQuery || selectedGame || selectedCategory || selectedTags.length > 0 || selectedVersions.length > 0 || minPrice || maxPrice
 
     const toggleTag = (tagId) => {
         setSelectedTags(prev =>
@@ -108,6 +157,24 @@ export default function Models() {
                 ? prev.filter(id => id !== tagId)
                 : [...prev, tagId]
         )
+    }
+
+    const toggleVersion = (versionId) => {
+        setSelectedVersions(prev =>
+            prev.includes(versionId)
+                ? prev.filter(id => id !== versionId)
+                : [...prev, versionId]
+        )
+    }
+
+    const getActiveFiltersCount = () => {
+        let count = 0
+        if (selectedGame) count++
+        if (selectedCategory) count++
+        if (selectedTags.length > 0) count += selectedTags.length
+        if (selectedVersions.length > 0) count += selectedVersions.length
+        if (minPrice || maxPrice) count++
+        return count
     }
 
     return (
@@ -138,10 +205,15 @@ export default function Models() {
                         {/* Filter Toggle */}
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`btn-ghost flex items-center gap-2 ${showFilters ? 'bg-hyt-accent/10 text-hyt-accent' : ''}`}
+                            className={`btn-ghost flex items-center gap-2 relative ${showFilters ? 'bg-hyt-accent/10 text-hyt-accent' : ''}`}
                         >
                             <SlidersHorizontal className="w-5 h-5" />
                             <span className="hidden sm:inline">Filtres</span>
+                            {getActiveFiltersCount() > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-hyt-accent text-black text-xs font-bold rounded-full flex items-center justify-center">
+                                    {getActiveFiltersCount()}
+                                </span>
+                            )}
                         </button>
 
                         {/* View Mode */}
@@ -165,8 +237,11 @@ export default function Models() {
                 {/* Filters Panel */}
                 {showFilters && (
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 mb-8 animate-fade-in">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold text-white">Filtres</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Filter className="w-5 h-5" />
+                                Filtres avancés
+                            </h3>
                             {hasActiveFilters && (
                                 <button onClick={clearFilters} className="text-sm text-hyt-accent hover:underline">
                                     Effacer tout
@@ -180,7 +255,7 @@ export default function Models() {
                                 <label className="block text-sm text-gray-400 mb-2">Jeu</label>
                                 <select
                                     value={selectedGame}
-                                    onChange={(e) => setSelectedGame(e.target.value)}
+                                    onChange={(e) => handleGameChange(e.target.value)}
                                     className="input-field w-full"
                                 >
                                     <option value="">Tous les jeux</option>
@@ -195,7 +270,7 @@ export default function Models() {
                                 <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
                                 <select
                                     value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    onChange={(e) => handleCategoryChange(e.target.value)}
                                     className="input-field w-full"
                                 >
                                     <option value="">Toutes les catégories</option>
@@ -210,9 +285,10 @@ export default function Models() {
                                 <label className="block text-sm text-gray-400 mb-2">Prix min (€)</label>
                                 <input
                                     type="number"
-                                    placeholder="0"
+                                    placeholder="5"
+                                    min="0"
                                     value={minPrice}
-                                    onChange={(e) => setMinPrice(e.target.value)}
+                                    onChange={(e) => setMinPrice(Math.max(0, e.target.value))}
                                     className="input-field w-full"
                                 />
                             </div>
@@ -222,37 +298,92 @@ export default function Models() {
                                 <input
                                     type="number"
                                     placeholder="1000"
+                                    min="0"
                                     value={maxPrice}
-                                    onChange={(e) => setMaxPrice(e.target.value)}
+                                    onChange={(e) => setMaxPrice(Math.max(0, e.target.value))}
                                     className="input-field w-full"
                                 />
                             </div>
                         </div>
 
+                        {/* Versions - Affichées seulement si un jeu est sélectionné */}
+                        {selectedGame && versions.length > 0 && (
+                            <div className="mt-6 pt-6 border-t border-hyt-border">
+                                <label className="block text-sm text-gray-400 mb-3 flex items-center gap-2">
+                                    <Layers className="w-4 h-4" />
+                                    Versions du jeu
+                                    <span className="text-xs text-gray-500">
+                                        ({versions.length} disponible{versions.length > 1 ? 's' : ''})
+                                    </span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {versions.map(version => (
+                                        <button
+                                            key={version.id}
+                                            onClick={() => toggleVersion(version.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                                selectedVersions.includes(version.id)
+                                                    ? 'bg-hyt-accent text-black'
+                                                    : 'bg-hyt-dark text-gray-400 hover:text-white hover:bg-hyt-border'
+                                            }`}
+                                        >
+                                            {version.version}
+                                        </button>
+                                    ))}
+                                </div>
+                                {selectedVersions.length > 0 && (
+                                    <p className="text-xs text-hyt-accent mt-2">
+                                        {selectedVersions.length} version{selectedVersions.length > 1 ? 's' : ''} sélectionnée{selectedVersions.length > 1 ? 's' : ''}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Message si aucun jeu sélectionné pour les versions */}
+                        {!selectedGame && (
+                            <div className="mt-6 pt-6 border-t border-hyt-border">
+                                <div className="flex items-center gap-2 text-gray-500 text-sm">
+                                    <Layers className="w-4 h-4" />
+                                    <span>Sélectionnez un jeu pour filtrer par version</span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Tags */}
                         {tags.length > 0 && (
-                            <div className="mt-4">
-                                <label className="block text-sm text-gray-400 mb-2">Tags</label>
+                            <div className="mt-6 pt-6 border-t border-hyt-border">
+                                <label className="block text-sm text-gray-400 mb-3 flex items-center gap-2">
+                                    <Tag className="w-4 h-4" />
+                                    Tags
+                                    <span className="text-xs text-gray-500">
+                                        ({tags.length} disponible{tags.length > 1 ? 's' : ''})
+                                    </span>
+                                </label>
                                 <div className="flex flex-wrap gap-2">
                                     {tags.map(tag => (
                                         <button
                                             key={tag.id}
                                             onClick={() => toggleTag(tag.id)}
-                                            className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                                                 selectedTags.includes(tag.id)
-                                                    ? 'bg-hyt-accent text-white'
-                                                    : 'bg-hyt-dark text-gray-400 hover:text-white'
+                                                    ? 'bg-hyt-purple text-white'
+                                                    : 'bg-hyt-dark text-gray-400 hover:text-white hover:bg-hyt-border'
                                             }`}
                                         >
                                             {tag.name}
                                         </button>
                                     ))}
                                 </div>
+                                {selectedTags.length > 0 && (
+                                    <p className="text-xs text-hyt-purple mt-2">
+                                        {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} sélectionné{selectedTags.length > 1 ? 's' : ''}
+                                    </p>
+                                )}
                             </div>
                         )}
 
                         {/* Sort */}
-                        <div className="mt-4">
+                        <div className="mt-6 pt-6 border-t border-hyt-border">
                             <label className="block text-sm text-gray-400 mb-2">Trier par</label>
                             <select
                                 value={sortBy}
@@ -269,10 +400,11 @@ export default function Models() {
                     </div>
                 )}
 
-                {/* Active Filters */}
+                {/* Active Filters - Quick view */}
                 {hasActiveFilters && !showFilters && (
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <span className="text-sm text-gray-400">Filtres actifs:</span>
+
                         {searchQuery && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
                                 "{searchQuery}"
@@ -281,15 +413,55 @@ export default function Models() {
                                 </button>
                             </span>
                         )}
+
                         {selectedGame && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
-                                {games.find(g => g.id === selectedGame)?.name}
-                                <button onClick={() => setSelectedGame('')} className="ml-1 text-gray-400 hover:text-white">
+                                🎮 {games.find(g => g.id === selectedGame)?.name}
+                                <button onClick={() => handleGameChange('')} className="ml-1 text-gray-400 hover:text-white">
                                     <X className="w-4 h-4" />
                                 </button>
                             </span>
                         )}
-                        <button onClick={clearFilters} className="text-sm text-hyt-accent hover:underline">
+
+                        {selectedCategory && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
+                                📁 {categories.find(c => c.id === selectedCategory)?.name}
+                                <button onClick={() => setSelectedCategory('')} className="ml-1 text-gray-400 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </span>
+                        )}
+
+                        {selectedVersions.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-accent/20 text-hyt-accent rounded-full text-sm">
+                                <Layers className="w-3 h-3" />
+                                {selectedVersions.length} version{selectedVersions.length > 1 ? 's' : ''}
+                                <button onClick={() => setSelectedVersions([])} className="ml-1 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </span>
+                        )}
+
+                        {selectedTags.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-purple/20 text-hyt-purple rounded-full text-sm">
+                                <Tag className="w-3 h-3" />
+                                {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''}
+                                <button onClick={() => setSelectedTags([])} className="ml-1 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </span>
+                        )}
+
+                        {(minPrice || maxPrice) && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
+                                💰 {minPrice || '5'}€ - {maxPrice || '∞'}€
+                                <button onClick={() => { setMinPrice(''); setMaxPrice('') }} className="ml-1 text-gray-400 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </span>
+                        )}
+
+                        <button onClick={clearFilters} className="text-sm text-hyt-accent hover:underline ml-2">
                             Effacer tout
                         </button>
                     </div>

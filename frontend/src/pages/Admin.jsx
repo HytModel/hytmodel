@@ -24,11 +24,13 @@ import {
     Tag,
     Layers,
     AlertTriangle,
-    X
+    X,
+    Settings
 } from 'lucide-react'
 import { adminAPI, modelsAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import AdminSellers from './AdminSellers'
+import AdminSettings from './AdminSettings'
 
 // Fonction pour obtenir l'URL complète de l'image
 const getImageUrl = (url) => {
@@ -1231,6 +1233,7 @@ export default function Admin() {
         { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
         { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
         { path: '/admin/models', icon: Package, label: 'Produits' },
+        { path: '/admin/settings', icon: Settings, label: 'Paramètres' },
     ]
 
     return (
@@ -1288,6 +1291,7 @@ export default function Admin() {
                             <Route path="pending" element={<PendingModels onCountChange={handlePendingCountChange} />} />
                             <Route path="users" element={<UsersManagement />} />
                             <Route path="sellers" element={<AdminSellers />} />
+                            <Route path="settings" element={<AdminSettings />} />
                             <Route path="models" element={<AdminModels />} />
                         </Routes>
                     </motion.main>

@@ -96,8 +96,12 @@ export const gamesAPI = {
     getAll: () => api.get('/games'),
     getById: (id) => api.get(`/games/${id}`),
     getBySlug: (slug) => api.get(`/games/slug/${slug}`),
-    create: (data) => api.post('/games', data),
-    update: (id, data) => api.put(`/games/${id}`, data),
+    create: (formData) => api.post('/games', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    update: (id, formData) => api.put(`/games/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
     delete: (id) => api.delete(`/games/${id}`)
 }
 
@@ -117,6 +121,7 @@ export const tagsAPI = {
     getByGame: (gameId) => api.get(`/tags/game/${gameId}`),
     getGlobal: () => api.get('/tags/global'),
     create: (data) => api.post('/tags', data),
+    update: (id, data) => api.put(`/tags/${id}`, data),
     delete: (id) => api.delete(`/tags/${id}`)
 }
 
@@ -126,6 +131,7 @@ export const versionsAPI = {
     getByGame: (gameId) => api.get(`/versions/game/${gameId}`),
     getByCategory: (categoryId) => api.get(`/versions/category/${categoryId}`),
     create: (data) => api.post('/versions', data),
+    update: (id, data) => api.put(`/versions/${id}`, data),
     delete: (id) => api.delete(`/versions/${id}`)
 }
 
