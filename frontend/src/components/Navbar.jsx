@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext'
 import {
     Menu, X, ShoppingCart, User, LogOut, Settings,
     LayoutDashboard, Package, ChevronDown,
-    Upload, FileText
+    Upload, FileText, MessageCircle, ExternalLink
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -22,8 +22,8 @@ export default function Navbar() {
     }
 
     const navLinks = [
-        { to: '/models', label: 'Produits' },
-        { to: '/games', label: 'Jeux' },
+        { to: '/models', label: 'Produits', external: false },
+        { to: 'https://discord.gg/3VJQZ6sjRR', label: 'Discord', external: true },
     ]
 
     return (
@@ -42,19 +42,32 @@ export default function Navbar() {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-1">
                         {navLinks.map(link => (
-                            <NavLink
-                                key={link.to}
-                                to={link.to}
-                                className={({ isActive }) =>
-                                    `px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                                        isActive
-                                            ? 'text-hyt-accent bg-hyt-accent/10'
-                                            : 'text-gray-400 hover:text-white hover:bg-hyt-card'
-                                    }`
-                                }
-                            >
-                                {link.label}
-                            </NavLink>
+                            link.external ? (
+                                <a
+                                    key={link.to}
+                                    href={link.to}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-hyt-card"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    {link.label}
+                                </a>
+                            ) : (
+                                <NavLink
+                                    key={link.to}
+                                    to={link.to}
+                                    className={({ isActive }) =>
+                                        `px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                            isActive
+                                                ? 'text-hyt-accent bg-hyt-accent/10'
+                                                : 'text-gray-400 hover:text-white hover:bg-hyt-card'
+                                        }`
+                                    }
+                                >
+                                    {link.label}
+                                </NavLink>
+                            )
                         ))}
                     </div>
 
@@ -192,20 +205,34 @@ export default function Navbar() {
                 <div className="md:hidden bg-hyt-card border-t border-hyt-border animate-fade-in">
                     <div className="px-4 py-4 space-y-2">
                         {navLinks.map(link => (
-                            <NavLink
-                                key={link.to}
-                                to={link.to}
-                                onClick={() => setMobileMenuOpen(false)}
-                                className={({ isActive }) =>
-                                    `block px-4 py-3 rounded-lg font-medium transition-all ${
-                                        isActive
-                                            ? 'text-hyt-accent bg-hyt-accent/10'
-                                            : 'text-gray-400 hover:text-white hover:bg-hyt-border/50'
-                                    }`
-                                }
-                            >
-                                {link.label}
-                            </NavLink>
+                            link.external ? (
+                                <a
+                                    key={link.to}
+                                    href={link.to}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all text-gray-400 hover:text-white hover:bg-hyt-border/50"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    {link.label}
+                                </a>
+                            ) : (
+                                <NavLink
+                                    key={link.to}
+                                    to={link.to}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `block px-4 py-3 rounded-lg font-medium transition-all ${
+                                            isActive
+                                                ? 'text-hyt-accent bg-hyt-accent/10'
+                                                : 'text-gray-400 hover:text-white hover:bg-hyt-border/50'
+                                        }`
+                                    }
+                                >
+                                    {link.label}
+                                </NavLink>
+                            )
                         ))}
 
                         {isAuthenticated ? (

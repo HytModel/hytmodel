@@ -24,14 +24,14 @@ class ModelsService {
         try {
             await client.query('BEGIN');
 
-            const { title, description, price, creatorId, filePath, gameId, categoryId, tagIds, versionIds } = data;
+            const { title, description, price, creatorId, filePath, gameId, categoryId, tagIds, versionIds, youtubeUrl } = data;
 
             // Créer le modèle
             const { rows } = await client.query(
-                `INSERT INTO models (title, description, price, creator_id, file_path, game_id, category_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO models (title, description, price, creator_id, file_path, game_id, category_id, youtube_url)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                      RETURNING *`,
-                [title, description || "", price, creatorId, filePath, gameId, categoryId]
+                [title, description || "", price, creatorId, filePath, gameId, categoryId, youtubeUrl || null]
             );
 
             const model = rows[0];
@@ -136,11 +136,13 @@ class ModelsService {
         try {
             await client.query('BEGIN');
 
-            const { title, description, price, gameId, categoryId, tagIds, versionIds } = data;
+            const { title, description, price, gameId, categoryId, tagIds, versionIds, youtubeUrl } = data;
 
-            // Récupérer le modèle actuel pour vérifier s'il était masqué
+            // Récupérer le modèle actuel pour vérifier s'il était masqué ET sauvegarder les anciennes valeurs
             const { rows: currentModel } = await client.query(
-                "SELECT is_hidden, hidden_reason, status FROM models WHERE id = $1",
+                `SELECT id, title, description, price, game_id, category_id, youtube_url, 
+                        is_hidden, hidden_reason, status 
+                 FROM models WHERE id = $1`,
                 [id]
             );
 
@@ -148,8 +150,35 @@ class ModelsService {
                 throw new Error("Model not found");
             }
 
-            const wasHidden = currentModel[0].is_hidden;
-            const previousReason = currentModel[0].hidden_reason;
+            const oldModel = currentModel[0];
+            const wasHidden = oldModel.is_hidden;
+            const previousReason = oldModel.hidden_reason;
+
+            // Récupérer les anciens tags
+            const { rows: oldTags } = await client.query(
+                `SELECT tag_id FROM model_tags WHERE model_id = $1`,
+                [id]
+            );
+            const oldTagIds = oldTags.map(t => t.tag_id);
+
+            // Récupérer les anciennes versions
+            const { rows: oldVersions } = await client.query(
+                `SELECT version_id FROM model_versions WHERE model_id = $1`,
+                [id]
+            );
+            const oldVersionIds = oldVersions.map(v => v.version_id);
+
+            // Sauvegarder les anciennes valeurs pour comparaison par le staff
+            const previousValues = {
+                title: oldModel.title,
+                description: oldModel.description,
+                price: parseFloat(oldModel.price),
+                game_id: oldModel.game_id,
+                category_id: oldModel.category_id,
+                youtube_url: oldModel.youtube_url,
+                tag_ids: oldTagIds,
+                version_ids: oldVersionIds
+            };
 
             // Déterminer la raison de modification
             let modificationReason = 'CREATOR_UPDATE'; // Modification normale par le créateur
@@ -158,13 +187,10 @@ class ModelsService {
             }
 
             // Mettre à jour le modèle
-            // - Remettre status à PENDING
-            // - Enlever le masquage (is_hidden = FALSE)
-            // - Enregistrer la raison de modification
             const { rows } = await client.query(
                 `UPDATE models
-                 SET title = $1, 
-                     description = $2, 
+                 SET title = $1,
+                     description = $2,
                      price = $3,
                      game_id = $4,
                      category_id = $5,
@@ -173,10 +199,12 @@ class ModelsService {
                      hidden_reason = NULL,
                      modification_reason = $6,
                      previous_hidden_reason = $7,
+                     youtube_url = $8,
+                     previous_values = $9,
                      updated_at = NOW()
-                 WHERE id = $8 AND deleted_at IS NULL
-                 RETURNING *`,
-                [title, description, price, gameId, categoryId || null, modificationReason, previousReason, id]
+                 WHERE id = $10 AND deleted_at IS NULL
+                     RETURNING *`,
+                [title, description, price, gameId, categoryId || null, modificationReason, previousReason, youtubeUrl || null, JSON.stringify(previousValues), id]
             );
 
             if (!rows[0]) {
@@ -194,7 +222,7 @@ class ModelsService {
                         await client.query(
                             `INSERT INTO model_tags (model_id, tag_id)
                              VALUES ($1, $2)
-                             ON CONFLICT DO NOTHING`,
+                                 ON CONFLICT DO NOTHING`,
                             [id, tagId]
                         );
                     }
@@ -212,7 +240,7 @@ class ModelsService {
                         await client.query(
                             `INSERT INTO model_versions (model_id, version_id)
                              VALUES ($1, $2)
-                             ON CONFLICT DO NOTHING`,
+                                 ON CONFLICT DO NOTHING`,
                             [id, versionId]
                         );
                     }
@@ -273,8 +301,8 @@ class ModelsService {
     // Approuver un modèle
     async approveModel(id) {
         const { rowCount } = await pool.query(
-            `UPDATE models 
-             SET status = 'APPROVED', 
+            `UPDATE models
+             SET status = 'APPROVED',
                  modification_reason = NULL,
                  previous_hidden_reason = NULL
              WHERE id = $1`,

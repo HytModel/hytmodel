@@ -1,13 +1,13 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, Github, Twitter, Heart } from 'lucide-react'
+import { Mail, Github, Twitter, Heart, MessageCircle } from 'lucide-react'
 
 export default function Footer() {
     const currentYear = new Date().getFullYear()
 
     const footerLinks = {
         platform: [
-            { to: '/models', label: 'Modèles' },
+            { to: '/models', label: 'Produits' },
             { to: '/games', label: 'Jeux' },
             { to: '/register', label: 'Devenir créateur' },
         ],
@@ -37,7 +37,7 @@ export default function Footer() {
                             />
                         </Link>
                         <p className="text-gray-400 text-sm mb-4">
-                            La marketplace de modèles 3D premium pour vos projets gaming.
+                            La marketplace gaming de référence pour vos modèles 3D, textures, plugins et plus encore.
                         </p>
                         <div className="flex items-center gap-3">
                             <a
@@ -49,12 +49,12 @@ export default function Footer() {
                                 <Twitter className="w-5 h-5" />
                             </a>
                             <a
-                                href="https://github.com"
+                                href="https://discord.gg/3VJQZ6sjRR"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 text-gray-400 hover:text-hyt-accent transition-colors"
                             >
-                                <Github className="w-5 h-5" />
+                                <MessageCircle className="w-5 h-5" />
                             </a>
                             <a
                                 href="mailto:contact@hytmodel.com"

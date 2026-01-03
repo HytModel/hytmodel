@@ -74,24 +74,45 @@ class AdminService {
         return stats.rows[0];
     }
 
-    // Modèles en attente d'approbation (avec raison de modification)
+    // Modèles en attente d'approbation (avec raison de modification et anciennes valeurs)
     async getPendingModels() {
-        const {rows} = await pool.query(
-            `SELECT m.id,
-                    m.title,
-                    m.price,
-                    m.created_at,
-                    m.modification_reason,
-                    m.previous_hidden_reason,
-                    u.username AS creator_username
+        const { rows } = await pool.query(
+            `SELECT m.id, m.title, m.description, m.price, m.created_at, m.thumbnail_url,
+                    m.game_id, m.category_id, m.youtube_url,
+                    m.modification_reason, m.previous_hidden_reason, m.previous_values,
+                    u.username AS creator_username,
+                    g.name AS game_name,
+                    c.name AS category_name
              FROM models m
                       JOIN users u ON u.id = m.creator_id
-             WHERE m.status = 'PENDING'
-               AND m.deleted_at IS NULL
+                      LEFT JOIN games g ON g.id = m.game_id
+                      LEFT JOIN categories c ON c.id = m.category_id
+             WHERE m.status = 'PENDING' AND m.deleted_at IS NULL
              ORDER BY m.created_at ASC`
         );
+
+        // Récupérer les tags et versions pour chaque modèle
+        for (const model of rows) {
+            const { rows: tags } = await pool.query(
+                `SELECT t.id, t.name FROM tags t
+                                              JOIN model_tags mt ON mt.tag_id = t.id
+                 WHERE mt.model_id = $1`,
+                [model.id]
+            );
+            model.tags = tags;
+
+            const { rows: versions } = await pool.query(
+                `SELECT v.id, v.version FROM game_versions v
+                                                 JOIN model_versions mv ON mv.version_id = v.id
+                 WHERE mv.model_id = $1`,
+                [model.id]
+            );
+            model.versions = versions;
+        }
+
         return rows;
     }
+
     // Supprimer un utilisateur définitivement
     async deleteUser(userId) {
         await pool.query("DELETE FROM users WHERE id = $1", [userId]);

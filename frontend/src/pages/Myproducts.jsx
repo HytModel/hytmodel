@@ -50,6 +50,13 @@ export default function MyProducts() {
         }
     }
 
+    // Fonction pour obtenir l'URL complète de l'image
+    const getImageUrl = (url) => {
+        if (!url) return null
+        if (url.startsWith('http')) return url
+        return `http://localhost:3001${url}`
+    }
+
     const getStatusBadge = (product) => {
         if (product.is_hidden) {
             return (
@@ -205,7 +212,7 @@ export default function MyProducts() {
                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
                                         {product.thumbnail_url ? (
                                             <img
-                                                src={product.thumbnail_url}
+                                                src={getImageUrl(product.thumbnail_url)}
                                                 alt={product.title}
                                                 className="w-full h-full object-cover"
                                             />

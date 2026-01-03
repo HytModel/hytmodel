@@ -2,13 +2,61 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
     ShoppingCart, Download, Star, Eye, Calendar, User,
-    Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2
+    Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2,
+    ChevronLeft, ChevronRight, Youtube, X, ZoomIn
 } from 'lucide-react'
-import { modelsAPI, tagsAPI } from '../services/api'
+import { modelsAPI, modelImagesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import Loading, { LoadingButton } from '../components/Loading'
 import toast from 'react-hot-toast'
+
+function ImageModal({ image, onClose, onPrev, onNext, hasPrev, hasNext }) {
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose()
+            if (e.key === 'ArrowLeft' && hasPrev) onPrev()
+            if (e.key === 'ArrowRight' && hasNext) onNext()
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [onClose, onPrev, onNext, hasPrev, hasNext])
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+            <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+            >
+                <X className="w-6 h-6" />
+            </button>
+
+            {hasPrev && (
+                <button
+                    onClick={onPrev}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                >
+                    <ChevronLeft className="w-8 h-8" />
+                </button>
+            )}
+
+            {hasNext && (
+                <button
+                    onClick={onNext}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                >
+                    <ChevronRight className="w-8 h-8" />
+                </button>
+            )}
+
+            <img
+                src={image}
+                alt="Full size"
+                className="max-w-full max-h-full object-contain"
+            />
+        </div>
+    )
+}
 
 export default function ModelDetail() {
     const { id } = useParams()
@@ -17,15 +65,19 @@ export default function ModelDetail() {
     const { addToCart, isInCart } = useCart()
 
     const [model, setModel] = useState(null)
+    const [images, setImages] = useState([])
     const [loading, setLoading] = useState(true)
     const [downloading, setDownloading] = useState(false)
     const [userRating, setUserRating] = useState(0)
     const [hoverRating, setHoverRating] = useState(0)
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+    const [showImageModal, setShowImageModal] = useState(false)
 
     const inCart = model ? isInCart(model.id) : false
 
     useEffect(() => {
         fetchModel()
+        fetchImages()
     }, [id])
 
     const fetchModel = async () => {
@@ -38,6 +90,15 @@ export default function ModelDetail() {
             navigate('/models')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const fetchImages = async () => {
+        try {
+            const { data } = await modelImagesAPI.getByModel(id)
+            setImages(data.images || [])
+        } catch (error) {
+            console.error('Failed to fetch images:', error)
         }
     }
 
@@ -98,6 +159,26 @@ export default function ModelDetail() {
         toast.success('Lien copié !')
     }
 
+    const getYoutubeVideoId = (url) => {
+        if (!url) return null
+        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+        const match = url.match(regex)
+        return match ? match[1] : null
+    }
+
+    const getImageUrl = (img) => {
+        if (img.image_url?.startsWith('http')) return img.image_url
+        return `http://localhost:3001${img.image_url}`
+    }
+
+    const allImages = images.length > 0
+        ? images
+        : model?.thumbnail_url
+            ? [{ image_url: model.thumbnail_url, is_primary: true }]
+            : []
+
+    const currentImage = allImages[selectedImageIndex]
+
     if (loading) {
         return <Loading fullScreen />
     }
@@ -107,11 +188,11 @@ export default function ModelDetail() {
     }
 
     const isOwner = user?.id === model.creator_id
+    const youtubeVideoId = getYoutubeVideoId(model.youtube_url)
 
     return (
         <div className="min-h-screen pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Back Button */}
                 <Link
                     to="/models"
                     className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
@@ -121,24 +202,98 @@ export default function ModelDetail() {
                 </Link>
 
                 <div className="grid lg:grid-cols-2 gap-8">
-                    {/* Left - Image */}
+                    {/* Left - Images */}
                     <div>
-                        <div className="aspect-square bg-hyt-card rounded-2xl overflow-hidden border border-hyt-border">
-                            {model.thumbnail_url ? (
-                                <img
-                                    src={model.thumbnail_url}
-                                    alt={model.title}
-                                    className="w-full h-full object-cover"
-                                />
+                        {/* Image principale */}
+                        <div
+                            onClick={() => allImages.length > 0 && setShowImageModal(true)}
+                            className="aspect-square bg-hyt-card rounded-2xl overflow-hidden border border-hyt-border relative cursor-zoom-in group"
+                        >
+                            {currentImage ? (
+                                <>
+                                    <img
+                                        src={getImageUrl(currentImage)}
+                                        alt={model.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                        <ZoomIn className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                </>
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent/10 to-hyt-purple/10">
                                     <span className="text-8xl font-bold text-hyt-accent/30">3D</span>
                                 </div>
                             )}
+
+                            {/* Navigation arrows */}
+                            {allImages.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)
+                                        }}
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                    >
+                                        <ChevronLeft className="w-6 h-6" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)
+                                        }}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                    >
+                                        <ChevronRight className="w-6 h-6" />
+                                    </button>
+                                </>
+                            )}
                         </div>
 
+                        {/* Thumbnails */}
+                        {allImages.length > 1 && (
+                            <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+                                {allImages.map((img, index) => (
+                                    <button
+                                        key={img.id || index}
+                                        onClick={() => setSelectedImageIndex(index)}
+                                        className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                                            selectedImageIndex === index
+                                                ? 'border-hyt-accent'
+                                                : 'border-transparent hover:border-hyt-accent/50'
+                                        }`}
+                                    >
+                                        <img
+                                            src={getImageUrl(img)}
+                                            alt={`Thumbnail ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* YouTube Video */}
+                        {youtubeVideoId && (
+                            <div className="mt-6">
+                                <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+                                    <Youtube className="w-5 h-5 text-red-500" />
+                                    Vidéo de présentation
+                                </h3>
+                                <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                                    <iframe
+                                        src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                                        className="w-full h-full"
+                                        allowFullScreen
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div className="grid grid-cols-3 gap-4 mt-6">
                             <div className="card text-center">
                                 <div className="flex items-center justify-center gap-1 text-yellow-500 mb-1">
                                     <Star className="w-5 h-5 fill-current" />
@@ -208,7 +363,7 @@ export default function ModelDetail() {
                         {model.description && (
                             <div className="mb-6">
                                 <h3 className="font-semibold text-white mb-2">Description</h3>
-                                <p className="text-gray-400 leading-relaxed">{model.description}</p>
+                                <p className="text-gray-400 leading-relaxed whitespace-pre-wrap">{model.description}</p>
                             </div>
                         )}
 
@@ -330,6 +485,18 @@ export default function ModelDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Image Modal */}
+            {showImageModal && currentImage && (
+                <ImageModal
+                    image={getImageUrl(currentImage)}
+                    onClose={() => setShowImageModal(false)}
+                    onPrev={() => setSelectedImageIndex(prev => prev === 0 ? allImages.length - 1 : prev - 1)}
+                    onNext={() => setSelectedImageIndex(prev => prev === allImages.length - 1 ? 0 : prev + 1)}
+                    hasPrev={allImages.length > 1}
+                    hasNext={allImages.length > 1}
+                />
+            )}
         </div>
     )
 }

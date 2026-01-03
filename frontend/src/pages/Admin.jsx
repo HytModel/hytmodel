@@ -30,6 +30,13 @@ import { adminAPI, modelsAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import AdminSellers from './AdminSellers'
 
+// Fonction pour obtenir l'URL complète de l'image
+const getImageUrl = (url) => {
+    if (!url) return null
+    if (url.startsWith('http')) return url
+    return `http://localhost:3001${url}`
+}
+
 // Composant Stats Card
 function StatCard({ title, value, icon: Icon, color, trend }) {
     return (
@@ -143,11 +150,168 @@ function AdminOverview() {
     )
 }
 
+// Composant pour afficher une valeur modifiée avec surbrillance
+function ModifiedValue({ label, oldValue, newValue, type = 'text' }) {
+    if (!oldValue && !newValue) return null
+
+    const hasChanged = oldValue !== newValue && oldValue !== undefined && oldValue !== null
+
+    if (type === 'price') {
+        const oldPrice = parseFloat(oldValue || 0).toFixed(2)
+        const newPrice = parseFloat(newValue || 0).toFixed(2)
+        const changed = oldPrice !== newPrice && oldValue !== undefined
+
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-gray-500 text-xs">{label}:</span>
+                {changed ? (
+                    <>
+                        <span className="line-through text-red-400 text-xs">{oldPrice}€</span>
+                        <span className="text-green-400 font-medium bg-green-500/20 px-1 rounded">{newPrice}€</span>
+                    </>
+                ) : (
+                    <span className="text-white text-sm">{newPrice}€</span>
+                )}
+            </div>
+        )
+    }
+
+    if (!hasChanged) {
+        return (
+            <div className="text-sm">
+                <span className="text-gray-500 text-xs">{label}:</span>
+                <span className="text-white ml-1">{newValue || '-'}</span>
+            </div>
+        )
+    }
+
+    return (
+        <div className="text-sm">
+            <span className="text-gray-500 text-xs">{label}:</span>
+            <div className="mt-1 space-y-1">
+                <div className="flex items-start gap-1">
+                    <span className="text-red-400 text-xs">Avant:</span>
+                    <span className="line-through text-red-400/70 text-xs">{oldValue || '(vide)'}</span>
+                </div>
+                <div className="flex items-start gap-1">
+                    <span className="text-green-400 text-xs">Après:</span>
+                    <span className="bg-green-500/20 text-green-400 px-1 rounded text-xs">{newValue || '(vide)'}</span>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// Modal de détail des modifications
+function ModificationDetailModal({ model, onClose }) {
+    const prev = model.previous_values || {}
+
+    // Fonction pour comparer les arrays (tags, versions)
+    const arraysChanged = (oldArr, newArr) => {
+        if (!oldArr || !newArr) return oldArr !== newArr
+        if (oldArr.length !== newArr.length) return true
+        const oldIds = oldArr.map(id => String(id)).sort()
+        const newIds = newArr.map(item => String(item.id || item)).sort()
+        return JSON.stringify(oldIds) !== JSON.stringify(newIds)
+    }
+
+    const changes = []
+
+    if (prev.title !== undefined && prev.title !== model.title) {
+        changes.push({ label: 'Titre', old: prev.title, new: model.title })
+    }
+    if (prev.description !== undefined && prev.description !== model.description) {
+        changes.push({ label: 'Description', old: prev.description, new: model.description, isLong: true })
+    }
+    if (prev.price !== undefined && parseFloat(prev.price) !== parseFloat(model.price)) {
+        changes.push({ label: 'Prix', old: `${parseFloat(prev.price).toFixed(2)}€`, new: `${parseFloat(model.price).toFixed(2)}€` })
+    }
+    if (prev.youtube_url !== model.youtube_url) {
+        changes.push({ label: 'YouTube', old: prev.youtube_url || '(aucune)', new: model.youtube_url || '(aucune)' })
+    }
+    if (prev.game_id !== model.game_id) {
+        changes.push({ label: 'Jeu', old: 'Changé', new: model.game_name || 'N/A' })
+    }
+    if (prev.category_id !== model.category_id) {
+        changes.push({ label: 'Catégorie', old: 'Changée', new: model.category_name || 'N/A' })
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Eye className="w-5 h-5 text-blue-500" />
+                        Détail des modifications
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="mb-4">
+                    <h4 className="text-lg font-medium text-white mb-2">{model.title}</h4>
+                    <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
+                </div>
+
+                {changes.length === 0 ? (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
+                        <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                        <p className="text-green-400">Nouveau produit - Pas de modifications</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                            <p className="text-blue-400 text-sm font-medium">
+                                {changes.length} modification{changes.length > 1 ? 's' : ''} détectée{changes.length > 1 ? 's' : ''}
+                            </p>
+                        </div>
+
+                        {changes.map((change, index) => (
+                            <div key={index} className="bg-hyt-dark rounded-lg p-4">
+                                <p className="text-gray-400 text-xs font-medium mb-2">{change.label}</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-red-400 text-xs mb-1">Avant</p>
+                                        <p className={`text-red-300 ${change.isLong ? 'text-xs' : 'text-sm'} bg-red-500/10 p-2 rounded line-through`}>
+                                            {change.old || '(vide)'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-green-400 text-xs mb-1">Après</p>
+                                        <p className={`text-green-300 ${change.isLong ? 'text-xs' : 'text-sm'} bg-green-500/10 p-2 rounded`}>
+                                            {change.new || '(vide)'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {model.previous_hidden_reason && (
+                    <div className="mt-4 bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                        <p className="text-orange-400 text-sm font-medium mb-1">Raison du masquage précédent :</p>
+                        <p className="text-orange-300 text-sm">{model.previous_hidden_reason}</p>
+                    </div>
+                )}
+
+                <div className="mt-6 flex justify-end">
+                    <button onClick={onClose} className="btn-ghost">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 // Pending Models
 function PendingModels({ onCountChange }) {
     const [models, setModels] = useState([])
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(null)
+    const [selectedModel, setSelectedModel] = useState(null)
 
     useEffect(() => {
         loadPendingModels()
@@ -195,6 +359,25 @@ function PendingModels({ onCountChange }) {
         }
     }
 
+    // Fonction pour vérifier si un modèle a des modifications
+    const hasModifications = (model) => {
+        return model.modification_reason === 'CREATOR_UPDATE' || model.modification_reason === 'HIDDEN_CORRECTION'
+    }
+
+    // Compte les modifications
+    const countChanges = (model) => {
+        if (!model.previous_values) return 0
+        const prev = model.previous_values
+        let count = 0
+        if (prev.title !== undefined && prev.title !== model.title) count++
+        if (prev.description !== undefined && prev.description !== model.description) count++
+        if (prev.price !== undefined && parseFloat(prev.price) !== parseFloat(model.price)) count++
+        if (prev.youtube_url !== model.youtube_url) count++
+        if (prev.game_id !== model.game_id) count++
+        if (prev.category_id !== model.category_id) count++
+        return count
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -215,91 +398,180 @@ function PendingModels({ onCountChange }) {
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {models.map((model) => (
-                        <div
-                            key={model.id}
-                            className="bg-hyt-card border border-hyt-border rounded-xl p-4 flex items-center gap-4"
-                        >
-                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
-                                {model.thumbnail_url ? (
-                                    <img
-                                        src={model.thumbnail_url}
-                                        alt={model.title}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-500">
-                                        <Package className="w-8 h-8" />
-                                    </div>
-                                )}
-                            </div>
+                    {models.map((model) => {
+                        const changeCount = countChanges(model)
+                        const isModified = hasModifications(model)
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-white font-medium truncate">{model.title}</h3>
-                                    {/* Badge selon le type */}
-                                    {model.modification_reason === 'HIDDEN_CORRECTION' ? (
-                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
-                                            <AlertTriangle className="w-3 h-3" />
-                                            Corrigé
-                                        </span>
-                                    ) : model.modification_reason === 'CREATOR_UPDATE' ? (
-                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded-full text-xs font-medium">
-                                            <Clock className="w-3 h-3" />
-                                            Modifié
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
-                                            <CheckCircle className="w-3 h-3" />
-                                            Nouveau
-                                        </span>
-                                    )}
+                        return (
+                            <div
+                                key={model.id}
+                                className={`bg-hyt-card border rounded-xl p-4 ${
+                                    model.modification_reason === 'HIDDEN_CORRECTION'
+                                        ? 'border-orange-500/50 bg-orange-500/5'
+                                        : model.modification_reason === 'CREATOR_UPDATE'
+                                            ? 'border-blue-500/50 bg-blue-500/5'
+                                            : 'border-hyt-border'
+                                }`}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
+                                        {model.thumbnail_url ? (
+                                            <img
+                                                src={getImageUrl(model.thumbnail_url)}
+                                                alt={model.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                                <Package className="w-8 h-8" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                            <h3 className="text-white font-medium truncate">{model.title}</h3>
+                                            {/* Badge selon le type */}
+                                            {model.modification_reason === 'HIDDEN_CORRECTION' ? (
+                                                <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
+                                                    <AlertTriangle className="w-3 h-3" />
+                                                    Corrigé
+                                                </span>
+                                            ) : model.modification_reason === 'CREATOR_UPDATE' ? (
+                                                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded-full text-xs font-medium">
+                                                    <Clock className="w-3 h-3" />
+                                                    Modifié
+                                                </span>
+                                            ) : (
+                                                <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
+                                                    <CheckCircle className="w-3 h-3" />
+                                                    Nouveau
+                                                </span>
+                                            )}
+                                            {/* Badge nombre de modifications */}
+                                            {isModified && changeCount > 0 && (
+                                                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium">
+                                                    {changeCount} modif{changeCount > 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
+
+                                        {/* Affichage rapide des infos */}
+                                        <div className="flex flex-wrap gap-4 mt-2">
+                                            <span className="text-hyt-accent font-medium">
+                                                {parseFloat(model.price).toFixed(2)} €
+                                            </span>
+                                            {model.game_name && (
+                                                <span className="text-gray-400 text-sm">{model.game_name}</span>
+                                            )}
+                                            {model.category_name && (
+                                                <span className="text-gray-500 text-sm">{model.category_name}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Aperçu des modifications pour les produits modifiés */}
+                                        {isModified && model.previous_values && (
+                                            <div className="mt-3 p-3 bg-hyt-dark/50 rounded-lg border border-hyt-border">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <p className="text-xs text-gray-400 font-medium">Aperçu des modifications :</p>
+                                                    <button
+                                                        onClick={() => setSelectedModel(model)}
+                                                        className="text-xs text-hyt-accent hover:underline"
+                                                    >
+                                                        Voir tout →
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2 text-xs">
+                                                    {model.previous_values.title !== model.title && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-500">Titre:</span>
+                                                            <span className="line-through text-red-400">{model.previous_values.title}</span>
+                                                            <span className="text-green-400">→</span>
+                                                            <span className="bg-green-500/20 text-green-400 px-1 rounded">{model.title}</span>
+                                                        </div>
+                                                    )}
+                                                    {model.previous_values.price !== undefined && parseFloat(model.previous_values.price) !== parseFloat(model.price) && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-500">Prix:</span>
+                                                            <span className="line-through text-red-400">{parseFloat(model.previous_values.price).toFixed(2)}€</span>
+                                                            <span className="text-green-400">→</span>
+                                                            <span className="bg-green-500/20 text-green-400 px-1 rounded">{parseFloat(model.price).toFixed(2)}€</span>
+                                                        </div>
+                                                    )}
+                                                    {model.previous_values.description !== model.description && (
+                                                        <div className="text-yellow-400">
+                                                            📝 Description modifiée
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Afficher l'ancienne raison de masquage si corrigé */}
+                                        {model.modification_reason === 'HIDDEN_CORRECTION' && model.previous_hidden_reason && (
+                                            <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                                                <p className="text-xs text-orange-400">
+                                                    <strong>Ancienne raison du masquage :</strong> {model.previous_hidden_reason}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                        <div className="flex items-center gap-2">
+                                            {isModified && (
+                                                <button
+                                                    onClick={() => setSelectedModel(model)}
+                                                    className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                    title="Voir les modifications"
+                                                >
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                            <Link
+                                                to={`/models/${model.id}`}
+                                                className="p-2 text-gray-400 hover:text-white transition-colors"
+                                                title="Voir le produit"
+                                            >
+                                                <Package className="w-5 h-5" />
+                                            </Link>
+                                        </div>
+                                        <button
+                                            onClick={() => handleApprove(model.id)}
+                                            disabled={processing === model.id}
+                                            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 w-full justify-center"
+                                        >
+                                            {processing === model.id ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <CheckCircle className="w-4 h-4" />
+                                            )}
+                                            Approuver
+                                        </button>
+                                        <button
+                                            onClick={() => handleReject(model.id)}
+                                            disabled={processing === model.id}
+                                            className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 w-full justify-center"
+                                        >
+                                            <XCircle className="w-4 h-4" />
+                                            Rejeter
+                                        </button>
+                                    </div>
                                 </div>
-                                <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
-                                <p className="text-hyt-accent font-medium">
-                                    {parseFloat(model.price).toFixed(2)} €
-                                </p>
-                                {/* Afficher l'ancienne raison de masquage si corrigé */}
-                                {model.modification_reason === 'HIDDEN_CORRECTION' && model.previous_hidden_reason && (
-                                    <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                        <p className="text-xs text-orange-400">
-                                            <strong>Ancienne raison du masquage :</strong> {model.previous_hidden_reason}
-                                        </p>
-                                    </div>
-                                )}
                             </div>
-
-                            <div className="flex items-center gap-2">
-                                <Link
-                                    to={`/models/${model.id}`}
-                                    className="p-2 text-gray-400 hover:text-white transition-colors"
-                                >
-                                    <Eye className="w-5 h-5" />
-                                </Link>
-                                <button
-                                    onClick={() => handleApprove(model.id)}
-                                    disabled={processing === model.id}
-                                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
-                                >
-                                    {processing === model.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <CheckCircle className="w-4 h-4" />
-                                    )}
-                                    Approuver
-                                </button>
-                                <button
-                                    onClick={() => handleReject(model.id)}
-                                    disabled={processing === model.id}
-                                    className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
-                                >
-                                    <XCircle className="w-4 h-4" />
-                                    Rejeter
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
+            )}
+
+            {/* Modal de détail des modifications */}
+            {selectedModel && (
+                <ModificationDetailModal
+                    model={selectedModel}
+                    onClose={() => setSelectedModel(null)}
+                />
             )}
         </div>
     )
@@ -800,7 +1072,7 @@ function AdminModels() {
                                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
                                     {model.thumbnail_url ? (
                                         <img
-                                            src={model.thumbnail_url}
+                                            src={getImageUrl(model.thumbnail_url)}
                                             alt={model.title}
                                             className="w-full h-full object-cover"
                                         />

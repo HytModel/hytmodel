@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Save, Loader2, Package, FileText,
-    DollarSign, Gamepad2, Tag, Image, Trash2
+    DollarSign, Gamepad2, Tag, Image, Trash2,
+    Plus, Youtube, Star, X, AlertCircle, AlertTriangle
 } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI } from '../services/api'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import Loading, { LoadingButton } from '../components/Loading'
+import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
 
 export default function EditProduct() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const imageInputRef = useRef(null)
 
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -26,6 +28,13 @@ export default function EditProduct() {
     const [categoryId, setCategoryId] = useState('')
     const [selectedTags, setSelectedTags] = useState([])
     const [selectedVersions, setSelectedVersions] = useState([])
+    const [youtubeUrl, setYoutubeUrl] = useState('')
+
+    // Images
+    const [existingImages, setExistingImages] = useState([]) // Images déjà uploadées
+    const [newImages, setNewImages] = useState([]) // Nouvelles images à uploader
+    const [imagesToDelete, setImagesToDelete] = useState([]) // IDs des images à supprimer
+    const [uploadingImages, setUploadingImages] = useState(false)
 
     // Options
     const [games, setGames] = useState([])
@@ -67,12 +76,25 @@ export default function EditProduct() {
             setCategoryId(model.category_id || '')
             setSelectedTags(model.tags?.map(t => t.id) || [])
             setSelectedVersions(model.versions?.map(v => v.id) || [])
+            setYoutubeUrl(model.youtube_url || '')
+
+            // Charger les images existantes
+            await fetchExistingImages()
         } catch (error) {
             console.error('Failed to fetch product:', error)
             toast.error('Produit non trouvé')
             navigate('/dashboard/models')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const fetchExistingImages = async () => {
+        try {
+            const { data } = await modelImagesAPI.getByModel(id)
+            setExistingImages(data.images || [])
+        } catch (error) {
+            console.error('Failed to fetch images:', error)
         }
     }
 
@@ -102,22 +124,97 @@ export default function EditProduct() {
         }
     }
 
-    const toggleTag = (tagId) => {
-        setSelectedTags(prev =>
-            prev.includes(tagId)
-                ? prev.filter(id => id !== tagId)
-                : [...prev, tagId]
-        )
+    // Image handling avec validation de taille
+    const handleImageSelect = (e) => {
+        const files = Array.from(e.target.files)
+        const totalImages = existingImages.length - imagesToDelete.length + newImages.length + files.length
+
+        if (totalImages > 10) {
+            toast.error('Maximum 10 images autorisées')
+            return
+        }
+
+        const processFiles = async () => {
+            const validImages = []
+
+            for (const file of files) {
+                // Vérifier le poids (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.error(`${file.name} est trop lourd (max 5MB)`)
+                    continue
+                }
+
+                // Vérifier les dimensions
+                const isValid = await new Promise((resolve) => {
+                    const img = new window.Image()
+                    img.onload = () => {
+                        URL.revokeObjectURL(img.src)
+                        if (img.width < 400 || img.height < 400) {
+                            toast.error(`${file.name} est trop petit (minimum 400x400 pixels)`)
+                            resolve(false)
+                        } else {
+                            resolve(true)
+                        }
+                    }
+                    img.onerror = () => {
+                        toast.error(`${file.name} n'est pas une image valide`)
+                        resolve(false)
+                    }
+                    img.src = URL.createObjectURL(file)
+                })
+
+                if (isValid) {
+                    validImages.push({
+                        file,
+                        preview: URL.createObjectURL(file),
+                        isPrimary: existingImages.length === 0 && newImages.length === 0 && validImages.length === 0
+                    })
+                }
+            }
+
+            if (validImages.length > 0) {
+                setNewImages(prev => [...prev, ...validImages])
+            }
+        }
+
+        processFiles()
     }
 
-    const toggleVersion = (versionId) => {
-        setSelectedVersions(prev =>
-            prev.includes(versionId)
-                ? prev.filter(id => id !== versionId)
-                : [...prev, versionId]
-        )
+    const removeExistingImage = (imageId) => {
+        setImagesToDelete(prev => [...prev, imageId])
     }
 
+    const restoreExistingImage = (imageId) => {
+        setImagesToDelete(prev => prev.filter(id => id !== imageId))
+    }
+
+    const removeNewImage = (index) => {
+        setNewImages(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const setPrimaryExistingImage = async (imageId) => {
+        try {
+            await modelImagesAPI.setPrimary(imageId)
+            await fetchExistingImages()
+            toast.success('Image principale mise à jour')
+        } catch (error) {
+            toast.error('Erreur lors de la mise à jour')
+        }
+    }
+
+    // YouTube URL validation
+    const getYoutubeVideoId = (url) => {
+        if (!url) return null
+        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+        const match = url.match(regex)
+        return match ? match[1] : null
+    }
+
+    const isValidYoutubeUrl = (url) => {
+        return !url || getYoutubeVideoId(url) !== null
+    }
+
+    // Submit
     const handleSubmit = async (e) => {
         e.preventDefault()
 
@@ -126,8 +223,8 @@ export default function EditProduct() {
             return
         }
 
-        if (!price || parseFloat(price) < 0) {
-            toast.error('Veuillez entrer un prix valide')
+        if (!price || parseFloat(price) < 5) {
+            toast.error('Le prix minimum est de 5€')
             return
         }
 
@@ -136,9 +233,15 @@ export default function EditProduct() {
             return
         }
 
+        if (youtubeUrl && !isValidYoutubeUrl(youtubeUrl)) {
+            toast.error('URL YouTube invalide')
+            return
+        }
+
         setSaving(true)
 
         try {
+            // 1. Mettre à jour le produit
             await modelsAPI.update(id, {
                 title: title.trim(),
                 description: description.trim(),
@@ -146,8 +249,28 @@ export default function EditProduct() {
                 gameId,
                 categoryId: categoryId || null,
                 tagIds: selectedTags,
-                versionIds: selectedVersions
+                versionIds: selectedVersions,
+                youtubeUrl: youtubeUrl || null
             })
+
+            // 2. Supprimer les images marquées pour suppression
+            for (const imageId of imagesToDelete) {
+                try {
+                    await modelImagesAPI.delete(imageId)
+                } catch (error) {
+                    console.error('Failed to delete image:', error)
+                }
+            }
+
+            // 3. Upload des nouvelles images
+            if (newImages.length > 0) {
+                setUploadingImages(true)
+                const imageFormData = new FormData()
+                newImages.forEach(img => {
+                    imageFormData.append('images', img.file)
+                })
+                await modelImagesAPI.upload(id, imageFormData)
+            }
 
             toast.success('Produit mis à jour ! Il sera visible après validation.')
             navigate('/dashboard/models')
@@ -156,6 +279,7 @@ export default function EditProduct() {
             toast.error(error.response?.data?.error || 'Erreur lors de la mise à jour')
         } finally {
             setSaving(false)
+            setUploadingImages(false)
         }
     }
 
@@ -167,9 +291,11 @@ export default function EditProduct() {
         return null
     }
 
+    const totalImagesCount = existingImages.length - imagesToDelete.length + newImages.length
+
     return (
         <div className="min-h-screen pt-20">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
@@ -187,25 +313,137 @@ export default function EditProduct() {
                     </p>
                 </div>
 
-                {/* Thumbnail Preview */}
-                {product.thumbnail_url && (
-                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 mb-6">
-                        <label className="block text-sm font-medium text-white mb-4">
-                            <Image className="w-5 h-5 inline mr-2" />
-                            Image actuelle
-                        </label>
-                        <div className="w-40 h-40 rounded-lg overflow-hidden bg-hyt-dark">
-                            <img
-                                src={product.thumbnail_url}
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                    </div>
-                )}
-
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Basic Info */}
+                    {/* Images de galerie */}
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <Image className="w-5 h-5" />
+                            Images du produit
+                            <span className="text-sm text-gray-400 font-normal">
+                                ({totalImagesCount}/10)
+                            </span>
+                        </h3>
+
+                        <p className="text-gray-400 text-sm mb-2">
+                            Cliquez sur une image pour la définir comme image principale.
+                        </p>
+                        <div className="bg-hyt-dark/50 border border-hyt-border rounded-lg p-3 mb-4">
+                            <p className="text-xs text-gray-500">
+                                <span className="text-hyt-accent font-medium">📐 Recommandations :</span> Format carré ou 4:3,
+                                dimensions idéales <span className="text-white">1200x1200 px</span> ou <span className="text-white">1200x900 px</span>.
+                                Minimum 400x400 px, maximum 5 MB par image.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                            {/* Images existantes */}
+                            {existingImages.map((img) => {
+                                const isDeleted = imagesToDelete.includes(img.id)
+                                return (
+                                    <div
+                                        key={img.id}
+                                        onClick={() => !isDeleted && setPrimaryExistingImage(img.id)}
+                                        className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer group ${
+                                            isDeleted
+                                                ? 'opacity-50 grayscale'
+                                                : img.is_primary
+                                                    ? 'ring-2 ring-hyt-accent'
+                                                    : 'hover:ring-2 hover:ring-hyt-accent/50'
+                                        }`}
+                                    >
+                                        <img
+                                            src={`http://localhost:3001${img.image_url}`}
+                                            alt="Product image"
+                                            className="w-full h-full object-cover"
+                                        />
+
+                                        {/* Badge principale */}
+                                        {img.is_primary && !isDeleted && (
+                                            <div className="absolute top-2 left-2 px-2 py-1 bg-hyt-accent text-black text-xs font-bold rounded">
+                                                <Star className="w-3 h-3 inline mr-1" />
+                                                Principale
+                                            </div>
+                                        )}
+
+                                        {/* Badge supprimé */}
+                                        {isDeleted && (
+                                            <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); restoreExistingImage(img.id) }}
+                                                    className="px-3 py-1 bg-white text-black text-xs font-bold rounded"
+                                                >
+                                                    Restaurer
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Bouton supprimer */}
+                                        {!isDeleted && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); removeExistingImage(img.id) }}
+                                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+
+                            {/* Nouvelles images */}
+                            {newImages.map((img, index) => (
+                                <div
+                                    key={`new-${index}`}
+                                    className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group ring-2 ring-green-500"
+                                >
+                                    <img
+                                        src={img.preview}
+                                        alt={`New image ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+
+                                    {/* Badge nouvelle */}
+                                    <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">
+                                        Nouvelle
+                                    </div>
+
+                                    {/* Bouton supprimer */}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeNewImage(index)}
+                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            {/* Bouton ajouter */}
+                            {totalImagesCount < 10 && (
+                                <button
+                                    type="button"
+                                    onClick={() => imageInputRef.current?.click()}
+                                    className="aspect-square rounded-lg border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex flex-col items-center justify-center gap-2 transition-colors"
+                                >
+                                    <Plus className="w-8 h-8 text-gray-500" />
+                                    <span className="text-xs text-gray-500">Ajouter</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <input
+                            ref={imageInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleImageSelect}
+                            className="hidden"
+                        />
+                    </div>
+
+                    {/* Informations */}
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <FileText className="w-5 h-5" />
@@ -238,14 +476,14 @@ export default function EditProduct() {
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
                                 <DollarSign className="w-4 h-4 inline mr-1" />
-                                Prix (€) *
+                                Prix (€) * <span className="text-xs text-gray-500">(minimum 5€)</span>
                             </label>
                             <input
                                 type="number"
                                 value={price}
                                 onChange={(e) => setPrice(e.target.value)}
-                                placeholder="0.00"
-                                min="0"
+                                placeholder="5.00"
+                                min="5"
                                 step="0.01"
                                 className="input-field w-full"
                                 required
@@ -253,43 +491,86 @@ export default function EditProduct() {
                         </div>
                     </div>
 
-                    {/* Game & Category */}
+                    {/* Vidéo YouTube */}
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <Youtube className="w-5 h-5 text-red-500" />
+                            Vidéo YouTube
+                            <span className="text-sm text-gray-400 font-normal">(optionnel)</span>
+                        </h3>
+
+                        <input
+                            type="url"
+                            value={youtubeUrl}
+                            onChange={(e) => setYoutubeUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            className={`input-field w-full ${
+                                youtubeUrl && !isValidYoutubeUrl(youtubeUrl)
+                                    ? 'border-red-500 focus:ring-red-500'
+                                    : ''
+                            }`}
+                        />
+
+                        {youtubeUrl && !isValidYoutubeUrl(youtubeUrl) && (
+                            <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                                <AlertCircle className="w-4 h-4" />
+                                URL YouTube invalide
+                            </p>
+                        )}
+
+                        {youtubeUrl && isValidYoutubeUrl(youtubeUrl) && getYoutubeVideoId(youtubeUrl) && (
+                            <div className="mt-4">
+                                <p className="text-sm text-gray-400 mb-2">Aperçu :</p>
+                                <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                                    <iframe
+                                        src={`https://www.youtube.com/embed/${getYoutubeVideoId(youtubeUrl)}`}
+                                        className="w-full h-full"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Jeu & Catégorie */}
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Gamepad2 className="w-5 h-5" />
                             Jeu & Catégorie
                         </h3>
 
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
-                            <select
-                                value={gameId}
-                                onChange={(e) => setGameId(e.target.value)}
-                                className="input-field w-full"
-                                required
-                            >
-                                <option value="">Sélectionner un jeu</option>
-                                {games.map(game => (
-                                    <option key={game.id} value={game.id}>{game.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {categories.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
+                                <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
                                 <select
-                                    value={categoryId}
-                                    onChange={(e) => setCategoryId(e.target.value)}
+                                    value={gameId}
+                                    onChange={(e) => setGameId(e.target.value)}
                                     className="input-field w-full"
+                                    required
                                 >
-                                    <option value="">Sélectionner une catégorie</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    <option value="">Sélectionner un jeu</option>
+                                    {games.map(game => (
+                                        <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
                                 </select>
                             </div>
-                        )}
+
+                            {categories.length > 0 && (
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
+                                    <select
+                                        value={categoryId}
+                                        onChange={(e) => setCategoryId(e.target.value)}
+                                        className="input-field w-full"
+                                    >
+                                        <option value="">Sélectionner une catégorie</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
 
                         {versions.length > 0 && (
                             <div>
@@ -301,14 +582,20 @@ export default function EditProduct() {
                                         <button
                                             key={version.id}
                                             type="button"
-                                            onClick={() => toggleVersion(version.id)}
+                                            onClick={() => {
+                                                setSelectedVersions(prev =>
+                                                    prev.includes(version.id)
+                                                        ? prev.filter(id => id !== version.id)
+                                                        : [...prev, version.id]
+                                                )
+                                            }}
                                             className={`px-3 py-1 rounded-full text-sm transition-colors ${
                                                 selectedVersions.includes(version.id)
                                                     ? 'bg-hyt-accent text-white'
                                                     : 'bg-hyt-dark text-gray-400 hover:text-white'
                                             }`}
                                         >
-                                            {version.name}
+                                            {version.name || version.version}
                                         </button>
                                     ))}
                                 </div>
@@ -329,7 +616,13 @@ export default function EditProduct() {
                                     <button
                                         key={tag.id}
                                         type="button"
-                                        onClick={() => toggleTag(tag.id)}
+                                        onClick={() => {
+                                            setSelectedTags(prev =>
+                                                prev.includes(tag.id)
+                                                    ? prev.filter(id => id !== tag.id)
+                                                    : [...prev, tag.id]
+                                            )
+                                        }}
                                         className={`px-3 py-1 rounded-full text-sm transition-colors ${
                                             selectedTags.includes(tag.id)
                                                 ? 'bg-hyt-accent text-white'
@@ -343,12 +636,10 @@ export default function EditProduct() {
                         </div>
                     )}
 
-                    {/* Warning */}
+                    {/* Warning revalidation */}
                     <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
                         <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                                <Loader2 className="w-5 h-5 text-orange-500" />
-                            </div>
+                            <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                             <div>
                                 <h4 className="font-medium text-orange-500">Revalidation requise</h4>
                                 <p className="text-sm text-orange-400/80 mt-1">
@@ -369,14 +660,23 @@ export default function EditProduct() {
                             Annuler
                         </button>
 
-                        <LoadingButton
+                        <button
                             type="submit"
-                            loading={saving}
-                            className="btn-primary"
+                            disabled={saving}
+                            className="btn-primary flex items-center gap-2"
                         >
-                            <Save className="w-5 h-5 mr-2" />
-                            Enregistrer et soumettre à validation
-                        </LoadingButton>
+                            {saving ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    {uploadingImages ? 'Upload des images...' : 'Enregistrement...'}
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="w-5 h-5" />
+                                    Enregistrer et soumettre
+                                </>
+                            )}
+                        </button>
                     </div>
                 </form>
             </div>

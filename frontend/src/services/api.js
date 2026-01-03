@@ -176,6 +176,17 @@ export const creatorRequestAPI = {
     getMyRequest: () => api.get('/creator-request/me')
 }
 
+// ============ MODEL IMAGES ============
+export const modelImagesAPI = {
+    getByModel: (modelId) => api.get(`/model-images/${modelId}`),
+    upload: (modelId, formData) => api.post(`/model-images/${modelId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    setPrimary: (imageId) => api.put(`/model-images/${imageId}/primary`),
+    delete: (imageId) => api.delete(`/model-images/${imageId}`),
+    reorder: (modelId, imageIds) => api.put(`/model-images/${modelId}/reorder`, { imageIds })
+}
+
 // ============ STRIPE ============
 export const stripeAPI = {
     createConnectAccount: () => api.post('/stripe/connect/create')

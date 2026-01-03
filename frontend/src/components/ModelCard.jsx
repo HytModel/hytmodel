@@ -18,6 +18,15 @@ export default function ModelCard({ model, showActions = true }) {
         }
     }
 
+    // Fonction pour obtenir l'URL complète de l'image
+    const getImageUrl = (url) => {
+        if (!url) return null
+        if (url.startsWith('http')) return url
+        return `http://localhost:3001${url}`
+    }
+
+    const imageUrl = getImageUrl(model.thumbnail_url)
+
     return (
         <Link
             to={`/models/${model.id}`}
@@ -25,9 +34,9 @@ export default function ModelCard({ model, showActions = true }) {
         >
             {/* Image */}
             <div className="relative aspect-[4/3] bg-hyt-darker overflow-hidden rounded-lg mb-4">
-                {model.thumbnail_url ? (
+                {imageUrl ? (
                     <img
-                        src={model.thumbnail_url}
+                        src={imageUrl}
                         alt={model.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -48,8 +57,8 @@ export default function ModelCard({ model, showActions = true }) {
                                 key={index}
                                 className="px-2 py-0.5 text-xs font-medium bg-hyt-dark/80 backdrop-blur-sm text-gray-300 rounded-full"
                             >
-                {tag}
-              </span>
+                                {typeof tag === 'object' ? tag.name : tag}
+                            </span>
                         ))}
                     </div>
                 )}
@@ -83,16 +92,16 @@ export default function ModelCard({ model, showActions = true }) {
                     <div className="flex items-center gap-2 mb-2">
                         {model.game_name && (
                             <span className="text-xs font-medium text-hyt-accent">
-                {model.game_name}
-              </span>
+                                {model.game_name}
+                            </span>
                         )}
                         {model.game_name && model.category_name && (
                             <span className="text-gray-600">•</span>
                         )}
                         {model.category_name && (
                             <span className="text-xs text-gray-500">
-                {model.category_name}
-              </span>
+                                {model.category_name}
+                            </span>
                         )}
                     </div>
                 )}
@@ -114,27 +123,27 @@ export default function ModelCard({ model, showActions = true }) {
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                         {model.rating_avg && (
                             <span className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                                <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                                 {parseFloat(model.rating_avg).toFixed(1)}
-              </span>
+                            </span>
                         )}
                         {model.views !== undefined && (
                             <span className="flex items-center gap-1">
-                <Eye className="w-3.5 h-3.5" />
+                                <Eye className="w-3.5 h-3.5" />
                                 {model.views}
-              </span>
+                            </span>
                         )}
                         {model.downloads !== undefined && (
                             <span className="flex items-center gap-1">
-                <Download className="w-3.5 h-3.5" />
+                                <Download className="w-3.5 h-3.5" />
                                 {model.downloads}
-              </span>
+                            </span>
                         )}
                     </div>
 
                     <span className="font-display font-bold text-lg text-white">
-            {Number(model.price).toFixed(2)}€
-          </span>
+                        {Number(model.price).toFixed(2)}€
+                    </span>
                 </div>
             </div>
         </Link>

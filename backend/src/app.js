@@ -4,18 +4,24 @@ const helmet = require("helmet");
 const cors = require("cors");
 const morgan = require("morgan");
 const { generalLimiter } = require("./middlewares/rateLimiter");
+const path = require('path');
 
 const app = express();
 
 // Sécurité
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }  // Permet le chargement des images cross-origin
+}));
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true
 }));
 
 // Logging
 app.use(morgan("dev"));
+
+// Servir les fichiers statiques (uploads d'images)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Webhook Stripe (AVANT express.json)
 app.use(
@@ -28,9 +34,13 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting général
+app.use("/api", generalLimiter);
+
 // Routes
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/models", require("./routes/models.routes"));
+app.use('/api/model-images', require('./routes/model-images.routes'));
 app.use("/api/cart", require("./routes/cart.routes"));
 app.use("/api/checkout", require("./routes/checkout.routes"));
 app.use("/api/invoices", require("./routes/invoices.routes"));
@@ -43,17 +53,6 @@ app.use("/api/games", require("./routes/games.routes"));
 app.use("/api/categories", require("./routes/categories.routes"));
 app.use("/api/versions", require("./routes/gameVersions.routes"));
 
-// Parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Rate limiting général (NOUVEAU)
-app.use("/api", generalLimiter);
-
-// Routes
-app.use("/api/auth", require("./routes/auth.routes"));
-// ... reste des routes
-
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
@@ -62,8 +61,7 @@ app.use((req, res) => {
     res.status(404).json({ error: "Route not found" });
 });
 
-// NOUVEAU: Middleware d'erreurs (EN DERNIER)
-// Tu vas créer ce fichier en Phase 2
+// Middleware d'erreurs (EN DERNIER)
 app.use((err, req, res, next) => {
     console.error("❌ Error:", err);
 
@@ -90,59 +88,3 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
-/*
-const express = require("express");
-const bodyParser = require("body-parser");
-
-const app = express();
-
-/**
- * 🔥 WEBHOOK STRIPE
- * ⚠️ DOIT ÊTRE AVANT express.json()
- */
-/*
-app.use(
-    "/api/webhooks",
-    bodyParser.raw({ type: "application/json" }),
-    require("./routes/webhook.routes")
-);
-
-/**
- * ✅ PARSERS NORMAUX (APRÈS WEBHOOK)
- */
-/*
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-/**
- * 🔐 ROUTES API
- */
-/*
-app.use("/api/auth", require("./routes/auth.routes"));
-app.use("/api/admin", require("./routes/admin.routes"));
-app.use("/api/models", require("./controllers/models.controller"));
-app.use("/api/tags", require("./routes/tags.routes"));
-app.use("/api/cart", require("./controllers/cart.controller"));
-app.use("/api/checkout", require("./controllers/checkout.controller"));
-app.use("/api/invoices", require("./routes/invoices.routes"));
-app.use("/api/invoices", require("./routes/invoices.routes"));
-app.use("/api/stripe", require("./routes/stripe.routes"));
-app.use("/api", require("./routes/sellerDashboard.routes"));
-app.use("/api", require("./routes/adminDashboard.routes"));
-
-/**
- * 🧪 ROUTES TEST
- */
-/*
-app.get("/", (req, res) => {
-    res.send("HytModel API is running ✅");
-});
-
-app.get("/health", (req, res) => {
-    res.json({ ok: true });
-});
-
-module.exports = app;
-
-
- */

@@ -33,7 +33,7 @@ class ModelsController {
                 return res.status(400).json({ error: "File required" });
             }
 
-            const { title, description, price, gameId, categoryId, tagIds, versionIds } = req.body;
+            const { title, description, price, gameId, categoryId, tagIds, versionIds, youtubeUrl } = req.body;
 
             // Validation
             if (!gameId) {
@@ -42,6 +42,11 @@ class ModelsController {
 
             if (!categoryId) {
                 return res.status(400).json({ error: "Category is required" });
+            }
+
+            // Validation prix minimum 5€
+            if (!price || Number(price) < 5) {
+                return res.status(400).json({ error: "Le prix minimum est de 5€" });
             }
 
             // Parser les tableaux depuis JSON strings
@@ -57,7 +62,8 @@ class ModelsController {
                 gameId,
                 categoryId,
                 tagIds: parsedTagIds,
-                versionIds: parsedVersionIds
+                versionIds: parsedVersionIds,
+                youtubeUrl: youtubeUrl || null
             });
 
             res.status(201).json({ model });
@@ -70,7 +76,12 @@ class ModelsController {
     async updateModel(req, res, next) {
         try {
             const modelId = req.params.id;
-            const { title, description, price, gameId, categoryId, tagIds, versionIds } = req.body;
+            const { title, description, price, gameId, categoryId, tagIds, versionIds, youtubeUrl } = req.body;
+
+            // Validation prix minimum 5€
+            if (!price || Number(price) < 5) {
+                return res.status(400).json({ error: "Le prix minimum est de 5€" });
+            }
 
             const isOwner = await modelsService.isOwner(modelId, req.user.id);
             const isStaff = ["STAFF", "ADMIN"].includes(req.user.role);
@@ -90,7 +101,8 @@ class ModelsController {
                 gameId,
                 categoryId,
                 tagIds: parsedTagIds,
-                versionIds: parsedVersionIds
+                versionIds: parsedVersionIds,
+                youtubeUrl: youtubeUrl || null
             }, req.user.id);
 
             if (!updated) {
