@@ -158,4 +158,52 @@ router.get("/:id/check-purchase", requireAuth, async (req, res, next) => {
         next(error);
     }
 });
+
+// GET /api/models/:id
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params
+
+        // 1. Incrémenter le compteur de vues
+        await pool.query('UPDATE models SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1', [id])
+
+        // 2. Récupérer le modèle avec les infos
+        const { rows } = await pool.query(`
+            SELECT m.*,
+                   u.username as creator_username,
+                   g.name as game_name,
+                   c.name as category_name
+            FROM models m
+                     LEFT JOIN users u ON m.creator_id = u.id
+                     LEFT JOIN games g ON m.game_id = g.id
+                     LEFT JOIN categories c ON m.category_id = c.id
+            WHERE m.id = $1
+        `, [id])
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Produit non trouvé' })
+        }
+
+        res.json({ model: rows[0] })
+    } catch (error) {
+        console.error('Error fetching model:', error)
+        res.status(500).json({ error: 'Erreur serveur' })
+    }
+})
+
+// NOUVEAU : Récupérer un modèle avec détails complets
+router.get("/:id/details", async (req, res, next) => {
+    try {
+        const { id } = req.params
+
+        // Incrémenter les vues
+        await pool.query('UPDATE models SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1', [id])
+
+        // Appeler le controller
+        modelsController.getModelWithDetails(req, res, next)
+    } catch (error) {
+        next(error)
+    }
+});
+
 module.exports = router;

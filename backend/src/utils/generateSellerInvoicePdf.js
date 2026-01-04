@@ -7,6 +7,7 @@ const BRAND_COLOR = "#2563EB";
 const DARK_COLOR  = "#111827";
 const GREY_COLOR  = "#6B7280";
 const LIGHT_BG    = "#F3F4F6";
+const BUNDLE_COLOR = "#8B5CF6"; // Violet pour les bundles
 
 // 📐 LAYOUT
 const PAGE_LEFT  = 50;
@@ -22,7 +23,11 @@ module.exports = async function generateSellerNotePdf({
                                                           commissionAmount,   // centimes
                                                           netAmount,          // centimes
                                                           stripeTransferId,
-                                                          createdAt
+                                                          createdAt,
+                                                          // Infos bundle (optionnel)
+                                                          isBundle = false,
+                                                          bundleTitle = null,
+                                                          itemCount = 0
                                                       }) {
     const date = createdAt ? new Date(createdAt) : new Date();
 
@@ -92,9 +97,36 @@ module.exports = async function generateSellerNotePdf({
     doc.text(`Référence Stripe : ${stripeTransferId || "—"}`);
 
     // ─────────────────────────
+    // 📦 INFO BUNDLE (si applicable)
+    // ─────────────────────────
+    if (isBundle && bundleTitle) {
+        doc.moveDown(1.5);
+
+        // Badge Bundle
+        const badgeY = doc.y;
+        doc
+            .rect(PAGE_LEFT, badgeY, PAGE_RIGHT - PAGE_LEFT, 40)
+            .fill("#F3E8FF"); // Fond violet clair
+
+        doc
+            .fillColor(BUNDLE_COLOR)
+            .fontSize(12)
+            .font('Helvetica-Bold')
+            .text("VENTE DE BUNDLE", PAGE_LEFT + 10, badgeY + 8);
+
+        doc
+            .fontSize(11)
+            .font('Helvetica')
+            .fillColor(DARK_COLOR)
+            .text(`"${bundleTitle}" (${itemCount} produits)`, PAGE_LEFT + 10, badgeY + 24);
+
+        doc.y = badgeY + 50;
+    }
+
+    // ─────────────────────────
     // 📊 TABLEAU RÉCAP
     // ─────────────────────────
-    doc.moveDown(2);
+    doc.moveDown(1.5);
 
     const startY = doc.y;
 
@@ -105,6 +137,7 @@ module.exports = async function generateSellerNotePdf({
     doc
         .fillColor(BRAND_COLOR)
         .fontSize(12)
+        .font('Helvetica-Bold')
         .text("Désignation", PAGE_LEFT, startY)
         .text("Montant", 400, startY, { width: 120, align: "right" });
 
@@ -112,18 +145,24 @@ module.exports = async function generateSellerNotePdf({
 
     const euro = v => `${(v / 100).toFixed(2)} €`;
 
+    // Ligne de vente avec détail bundle si applicable
+    const saleLabel = isBundle
+        ? `Vente Bundle "${bundleTitle}"`
+        : "Ventes réalisées";
+
     const lines = [
-        ["Ventes réalisées", euro(grossAmount)],
-        ["Commission HytModel", `- ${euro(commissionAmount)}`],
+        [saleLabel, euro(grossAmount)],
+        ["Commission HytModel (15%)", `- ${euro(commissionAmount)}`],
     ];
 
     lines.forEach(([label, value]) => {
         doc
             .fillColor(DARK_COLOR)
             .fontSize(11)
-            .text(label, PAGE_LEFT, doc.y)
-            .text(value, 400, doc.y, { width: 120, align: "right" });
-        doc.moveDown(0.6);
+            .font('Helvetica')
+            .text(label, PAGE_LEFT, doc.y, { width: 340 })
+            .text(value, 400, doc.y - 11, { width: 120, align: "right" });
+        doc.moveDown(0.8);
     });
 
     // ─────────────────────────
@@ -140,6 +179,7 @@ module.exports = async function generateSellerNotePdf({
     doc
         .fillColor(BRAND_COLOR)
         .fontSize(12)
+        .font('Helvetica-Bold')
         .text("TOTAL NET PAYÉ", 310, totalY);
 
     doc
@@ -157,9 +197,10 @@ module.exports = async function generateSellerNotePdf({
     doc
         .moveDown(3)
         .fontSize(9)
+        .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(
-            "HytModel agit en tant qu’intermédiaire technique.\nCe document ne constitue pas une facture TVA.",
+            "HytModel agit en tant qu'intermédiaire technique.\nCe document ne constitue pas une facture TVA.",
             PAGE_LEFT,
             doc.y,
             { width: PAGE_RIGHT - PAGE_LEFT, align: "center" }

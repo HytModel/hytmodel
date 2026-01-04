@@ -12,6 +12,10 @@ import Models from './pages/Models'
 import ModelDetail from './pages/ModelDetail'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Profile from './pages/Profile'
+import SellerProfile from './pages/SellerProfile'
+import OAuthCallback from './pages/OAuthCallback'
+import BundleDetail from './pages/BundleDetail'
 
 // Pages protégées
 import Dashboard from './pages/Dashboard'
@@ -73,10 +77,14 @@ export default function App() {
                     <Route path="/models" element={<Models />} />
                     <Route path="/models/:id" element={<ModelDetail />} />
                     <Route path="/become-creator" element={<BecomeCreator />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/seller/:username" element={<SellerProfile />} />
+                    <Route path="/bundles/:id" element={<BundleDetail />} />
 
                     {/* Auth (invités seulement) */}
                     <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
                     <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+                    <Route path="/oauth-callback" element={<OAuthCallback />} />
 
                     {/* Pages protégées (connecté requis) */}
                     <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />

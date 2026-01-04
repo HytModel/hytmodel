@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import {
     Upload as UploadIcon, X, Image, Film, FileArchive,
     DollarSign, Tag, Gamepad2, Loader2, Star, Trash2,
-    Plus, Youtube, Check, AlertCircle
+    Plus, Youtube, Check, AlertCircle, Link2, Search,
+    ExternalLink, Package, Layers
 } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI } from '../services/api'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, dependenciesAPI, modelFileVersionsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -27,8 +28,26 @@ export default function Upload() {
 
     // Files
     const [file, setFile] = useState(null)
-    const [images, setImages] = useState([]) // { file, preview, isPrimary }
+    const [images, setImages] = useState([])
     const [primaryImageIndex, setPrimaryImageIndex] = useState(0)
+
+    // Dépendances
+    const [selectedDependencies, setSelectedDependencies] = useState([])
+    const [availableDeps, setAvailableDeps] = useState([])
+    const [availableProducts, setAvailableProducts] = useState([])
+    const [showDepModal, setShowDepModal] = useState(false)
+    const [depActiveTab, setDepActiveTab] = useState('predefined')
+    const [depSelectedItem, setDepSelectedItem] = useState(null)
+    const [depSearchQuery, setDepSearchQuery] = useState('')
+    const [productSearchQuery, setProductSearchQuery] = useState('')
+    const [productVersions, setProductVersions] = useState([])
+    const [selectedProductVersion, setSelectedProductVersion] = useState(null)
+    const [loadingVersions, setLoadingVersions] = useState(false)
+    const [depVersionInfo, setDepVersionInfo] = useState('')
+    const [depIsRequired, setDepIsRequired] = useState(true)
+    const [depNote, setDepNote] = useState('')
+    const [proposalName, setProposalName] = useState('')
+    const [proposalLogo, setProposalLogo] = useState(null)
 
     // Options
     const [games, setGames] = useState([])
@@ -54,15 +73,30 @@ export default function Upload() {
         if (gameId) {
             fetchCategories()
             fetchVersions()
-            fetchTags() // Charger les tags quand le jeu change
+            fetchTags()
+            fetchAvailableDeps()
+            fetchAvailableProducts()
         } else {
             setCategories([])
             setVersions([])
             setTags([])
+            setAvailableDeps([])
+            setAvailableProducts([])
             setCategoryId('')
-            setSelectedTags([]) // Reset les tags sélectionnés
+            setSelectedTags([])
+            setSelectedDependencies([])
         }
     }, [gameId])
+
+    // Charger les versions quand un produit est sélectionné
+    useEffect(() => {
+        if (depSelectedItem && depActiveTab === 'product') {
+            loadProductVersions(depSelectedItem.id)
+        } else {
+            setProductVersions([])
+            setSelectedProductVersion(null)
+        }
+    }, [depSelectedItem, depActiveTab])
 
     const fetchGames = async () => {
         try {
@@ -86,7 +120,6 @@ export default function Upload() {
         try {
             const { data } = await tagsAPI.getAll()
             const allTags = data.tags || data || []
-            // Filtrer: tags du jeu sélectionné + tags globaux (sans game_id)
             const filteredTags = allTags.filter(tag =>
                 !tag.game_id || tag.game_id === gameId
             )
@@ -103,6 +136,123 @@ export default function Upload() {
         } catch (error) {
             console.error('Failed to fetch versions:', error)
         }
+    }
+
+    const fetchAvailableDeps = async () => {
+        try {
+            const { data } = await dependenciesAPI.getAll(gameId)
+            setAvailableDeps(data.dependencies || [])
+        } catch (error) {
+            console.error('Failed to fetch dependencies:', error)
+        }
+    }
+
+    const fetchAvailableProducts = async () => {
+        try {
+            const { data } = await dependenciesAPI.searchProducts({ gameId })
+            setAvailableProducts(data.products || [])
+        } catch (error) {
+            console.error('Failed to fetch products:', error)
+        }
+    }
+
+    const loadProductVersions = async (productId) => {
+        setLoadingVersions(true)
+        try {
+            const { data } = await modelFileVersionsAPI.getByModel(productId)
+            setProductVersions(data.versions || data || [])
+            setSelectedProductVersion(null)
+        } catch (error) {
+            console.error('Failed to load product versions:', error)
+            setProductVersions([])
+        } finally {
+            setLoadingVersions(false)
+        }
+    }
+
+    // Filtrer les dépendances prédéfinies
+    const filteredAvailableDeps = availableDeps
+        .filter(d => !selectedDependencies.some(sd => sd.type === 'dependency' && sd.id === d.id))
+        .filter(d => !depSearchQuery || d.name.toLowerCase().includes(depSearchQuery.toLowerCase()))
+
+    // Filtrer les produits
+    const filteredAvailableProducts = availableProducts
+        .filter(p => !selectedDependencies.some(sd => sd.type === 'product' && sd.id === p.id))
+        .filter(p => !productSearchQuery || p.title.toLowerCase().includes(productSearchQuery.toLowerCase()))
+
+    const handleAddDependency = async () => {
+        if (depActiveTab === 'predefined' && depSelectedItem) {
+            setSelectedDependencies(prev => [...prev, {
+                type: 'dependency',
+                id: depSelectedItem.id,
+                name: depSelectedItem.name,
+                logo_url: depSelectedItem.logo_url,
+                versionInfo: depVersionInfo,
+                isRequired: depIsRequired,
+                note: depNote
+            }])
+            toast.success('Dépendance ajoutée')
+        } else if (depActiveTab === 'product' && depSelectedItem) {
+            let finalVersionInfo = depVersionInfo
+            if (selectedProductVersion) {
+                const version = productVersions.find(v => v.id === selectedProductVersion)
+                if (version) {
+                    finalVersionInfo = version.version_name || `v${version.version_number}`
+                }
+            } else if (productVersions.length > 0 && !depVersionInfo) {
+                finalVersionInfo = 'Dernière version'
+            }
+
+            setSelectedDependencies(prev => [...prev, {
+                type: 'product',
+                id: depSelectedItem.id,
+                name: depSelectedItem.title,
+                thumbnail_url: depSelectedItem.thumbnail_url,
+                creator: depSelectedItem.creator_username,
+                price: depSelectedItem.price,
+                versionId: selectedProductVersion,
+                versionInfo: finalVersionInfo,
+                isRequired: depIsRequired,
+                note: depNote
+            }])
+            toast.success('Dépendance ajoutée')
+        } else if (depActiveTab === 'propose' && proposalName) {
+            try {
+                const formData = new FormData()
+                formData.append('name', proposalName)
+                formData.append('gameId', gameId)
+                if (proposalLogo) formData.append('logo', proposalLogo)
+                await dependenciesAPI.propose(formData)
+                toast.success('Proposition envoyée ! Elle sera examinée par l\'équipe.')
+            } catch (error) {
+                toast.error(error.response?.data?.error || 'Erreur')
+                return
+            }
+        } else {
+            toast.error('Sélectionnez une dépendance')
+            return
+        }
+
+        closeDepModal()
+    }
+
+    const removeDependency = (index) => {
+        setSelectedDependencies(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const closeDepModal = () => {
+        setShowDepModal(false)
+        setDepSelectedItem(null)
+        setDepSearchQuery('')
+        setProductSearchQuery('')
+        setProductVersions([])
+        setSelectedProductVersion(null)
+        setDepVersionInfo('')
+        setDepIsRequired(true)
+        setDepNote('')
+        setProposalName('')
+        setProposalLogo(null)
+        setDepActiveTab('predefined')
     }
 
     // File handling
@@ -130,20 +280,17 @@ export default function Upload() {
             return
         }
 
-        // Valider chaque image
         const validImages = []
         let hasError = false
 
         const processFiles = async () => {
             for (const file of files) {
-                // Vérifier le poids (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
                     toast.error(`${file.name} est trop lourd (max 5MB)`)
                     hasError = true
                     continue
                 }
 
-                // Vérifier les dimensions
                 const isValid = await new Promise((resolve) => {
                     const img = new window.Image()
                     img.onload = () => {
@@ -182,7 +329,6 @@ export default function Upload() {
     const removeImage = (index) => {
         setImages(prev => {
             const newImages = prev.filter((_, i) => i !== index)
-            // Si on supprime l'image principale, définir la première comme principale
             if (prev[index].isPrimary && newImages.length > 0) {
                 newImages[0].isPrimary = true
                 setPrimaryImageIndex(0)
@@ -199,7 +345,6 @@ export default function Upload() {
         setPrimaryImageIndex(index)
     }
 
-    // YouTube URL validation
     const getYoutubeVideoId = (url) => {
         if (!url) return null
         const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
@@ -211,7 +356,6 @@ export default function Upload() {
         return !url || getYoutubeVideoId(url) !== null
     }
 
-    // Submit
     const handleSubmit = async (e) => {
         e.preventDefault()
 
@@ -248,7 +392,6 @@ export default function Upload() {
         setUploading(true)
 
         try {
-            // 1. Upload du produit
             const formData = new FormData()
             formData.append('file', file)
             formData.append('title', title.trim())
@@ -265,24 +408,33 @@ export default function Upload() {
             const { data } = await modelsAPI.uploadDetailed(formData)
             const modelId = data.model.id
 
-            // 2. Upload des images si présentes
             if (images.length > 0) {
                 const imageFormData = new FormData()
-
-                // Ajouter l'image principale en premier
                 const primaryImage = images.find(img => img.isPrimary)
                 if (primaryImage) {
                     imageFormData.append('images', primaryImage.file)
                 }
-
-                // Ajouter les autres images
                 images.forEach(img => {
                     if (!img.isPrimary) {
                         imageFormData.append('images', img.file)
                     }
                 })
-
                 await modelImagesAPI.upload(modelId, imageFormData)
+            }
+
+            for (const dep of selectedDependencies) {
+                try {
+                    await dependenciesAPI.addToModel(modelId, {
+                        dependencyId: dep.type === 'dependency' ? dep.id : null,
+                        productDependencyId: dep.type === 'product' ? dep.id : null,
+                        productVersionId: dep.versionId || null,
+                        versionInfo: dep.versionInfo || null,
+                        isRequired: dep.isRequired,
+                        note: dep.note || null
+                    })
+                } catch (error) {
+                    console.error('Failed to add dependency:', error)
+                }
             }
 
             toast.success('Produit ajouté avec succès ! Il sera visible après validation.')
@@ -389,7 +541,6 @@ export default function Upload() {
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                            {/* Images existantes */}
                             {images.map((img, index) => (
                                 <div
                                     key={index}
@@ -406,7 +557,6 @@ export default function Upload() {
                                         className="w-full h-full object-cover"
                                     />
 
-                                    {/* Badge principale */}
                                     {img.isPrimary && (
                                         <div className="absolute top-2 left-2 px-2 py-1 bg-hyt-accent text-black text-xs font-bold rounded">
                                             <Star className="w-3 h-3 inline mr-1" />
@@ -414,7 +564,6 @@ export default function Upload() {
                                         </div>
                                     )}
 
-                                    {/* Bouton supprimer */}
                                     <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); removeImage(index) }}
@@ -423,7 +572,6 @@ export default function Upload() {
                                         <X className="w-4 h-4" />
                                     </button>
 
-                                    {/* Overlay si non principale */}
                                     {!img.isPrimary && (
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <span className="text-white text-xs font-medium">
@@ -434,7 +582,6 @@ export default function Upload() {
                                 </div>
                             ))}
 
-                            {/* Bouton ajouter */}
                             {images.length < 10 && (
                                 <button
                                     type="button"
@@ -617,7 +764,7 @@ export default function Upload() {
                         )}
                     </div>
 
-                    {/* Tags - afficher seulement si un jeu est sélectionné */}
+                    {/* Tags */}
                     {gameId && tags.length > 0 && (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -650,6 +797,88 @@ export default function Upload() {
                         </div>
                     )}
 
+                    {/* Dépendances */}
+                    {gameId && (
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <Link2 className="w-5 h-5 text-hyt-accent" />
+                                        Dépendances
+                                    </h3>
+                                    <p className="text-sm text-gray-400">
+                                        Produits ou ressources requis pour que votre produit fonctionne
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDepModal(true)}
+                                    className="btn-primary flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Ajouter
+                                </button>
+                            </div>
+
+                            {selectedDependencies.length === 0 ? (
+                                <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-6 text-center">
+                                    <Link2 className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+                                    <p className="text-gray-400">Aucune dépendance</p>
+                                    <p className="text-gray-500 text-sm mt-1">
+                                        Ajoutez des dépendances si votre produit en nécessite d'autres
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {selectedDependencies.map((dep, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-4 p-3 bg-hyt-dark border border-hyt-border rounded-lg"
+                                        >
+                                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-hyt-card flex-shrink-0 flex items-center justify-center">
+                                                {dep.logo_url ? (
+                                                    <img src={`http://localhost:3001${dep.logo_url}`} alt={dep.name} className="w-full h-full object-contain p-1" />
+                                                ) : dep.thumbnail_url ? (
+                                                    <img src={`http://localhost:3001${dep.thumbnail_url}`} alt={dep.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Package className="w-6 h-6 text-gray-500" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-medium text-white">{dep.name}</span>
+                                                    <span className={`px-2 py-0.5 text-xs rounded ${
+                                                        dep.isRequired ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                                                    }`}>
+                                                        {dep.isRequired ? 'Requis' : 'Recommandé'}
+                                                    </span>
+                                                    {dep.type === 'product' && (
+                                                        <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">
+                                                            Produit du site
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {dep.versionInfo && (
+                                                    <p className="text-sm text-gray-400">Version: {dep.versionInfo}</p>
+                                                )}
+                                                {dep.creator && (
+                                                    <p className="text-xs text-gray-500">par {dep.creator}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDependency(index)}
+                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Submit */}
                     <div className="flex items-center justify-between gap-4">
                         <button
@@ -679,6 +908,431 @@ export default function Upload() {
                         </button>
                     </div>
                 </form>
+
+                {/* Modal Dépendances */}
+                {showDepModal && (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-lg my-8">
+                            <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Link2 className="w-5 h-5 text-hyt-accent" />
+                                    Ajouter une dépendance
+                                </h3>
+                                <button type="button" onClick={closeDepModal} className="text-gray-400 hover:text-white">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="flex border-b border-hyt-border">
+                                <button
+                                    type="button"
+                                    onClick={() => { setDepActiveTab('predefined'); setDepSelectedItem(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                        depActiveTab === 'predefined' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
+                                    }`}
+                                >
+                                    Prédéfinies
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setDepActiveTab('product'); setDepSelectedItem(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                        depActiveTab === 'product' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
+                                    }`}
+                                >
+                                    Produit du site
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setDepActiveTab('propose'); setDepSelectedItem(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                        depActiveTab === 'propose' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
+                                    }`}
+                                >
+                                    Proposer
+                                </button>
+                            </div>
+
+                            <div className="p-4 space-y-4">
+                                {/* Tab: Prédéfinies */}
+                                {depActiveTab === 'predefined' && (
+                                    <div className="space-y-3">
+                                        {filteredAvailableDeps.length === 0 && availableDeps.length === 0 ? (
+                                            <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
+                                                <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                                <p>Aucune dépendance disponible pour ce jeu</p>
+                                                <p className="text-sm mt-1">Proposez-en une dans l'onglet "Proposer"</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Recherche */}
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <input
+                                                        type="text"
+                                                        value={depSearchQuery}
+                                                        onChange={(e) => setDepSearchQuery(e.target.value)}
+                                                        placeholder="Rechercher une dépendance..."
+                                                        className="input-field w-full pl-10"
+                                                    />
+                                                    {depSearchQuery && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDepSearchQuery('')}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Liste des dépendances */}
+                                                <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                    {filteredAvailableDeps.length === 0 ? (
+                                                        <div className="text-center py-4 text-gray-500">
+                                                            <p>Aucune dépendance trouvée pour "{depSearchQuery}"</p>
+                                                        </div>
+                                                    ) : (
+                                                        filteredAvailableDeps.map(dep => (
+                                                            <button
+                                                                key={dep.id}
+                                                                type="button"
+                                                                onClick={() => setDepSelectedItem(dep)}
+                                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                    depSelectedItem?.id === dep.id
+                                                                        ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                        : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                                }`}
+                                                            >
+                                                                <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                                    {dep.logo_url ? (
+                                                                        <img src={`http://localhost:3001${dep.logo_url}`} alt={dep.name} className="w-full h-full object-contain p-1" />
+                                                                    ) : (
+                                                                        <Link2 className="w-5 h-5 text-gray-500" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-medium text-white truncate">{dep.name}</p>
+                                                                    {dep.description && (
+                                                                        <p className="text-xs text-gray-500 truncate">{dep.description}</p>
+                                                                    )}
+                                                                </div>
+                                                                {depSelectedItem?.id === dep.id && (
+                                                                    <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                        <Check className="w-4 h-4 text-black" />
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+
+                                                {/* Dépendance sélectionnée */}
+                                                {depSelectedItem && depActiveTab === 'predefined' && (
+                                                    <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                            {depSelectedItem.logo_url ? (
+                                                                <img src={`http://localhost:3001${depSelectedItem.logo_url}`} alt={depSelectedItem.name} className="w-full h-full object-contain p-1" />
+                                                            ) : (
+                                                                <Link2 className="w-5 h-5 text-gray-500" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-white">{depSelectedItem.name}</p>
+                                                            {depSelectedItem.description && <p className="text-xs text-gray-400">{depSelectedItem.description}</p>}
+                                                        </div>
+                                                        <button type="button" onClick={() => setDepSelectedItem(null)} className="p-1 text-gray-400 hover:text-white">
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Tab: Produit du site */}
+                                {depActiveTab === 'product' && (
+                                    <div className="space-y-3">
+                                        {filteredAvailableProducts.length === 0 && availableProducts.length === 0 ? (
+                                            <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
+                                                <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                                <p>Aucun autre produit disponible pour ce jeu</p>
+                                            </div>
+                                        ) : !depSelectedItem ? (
+                                            <>
+                                                {/* Recherche */}
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <input
+                                                        type="text"
+                                                        value={productSearchQuery}
+                                                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                                                        placeholder="Rechercher un produit..."
+                                                        className="input-field w-full pl-10"
+                                                    />
+                                                    {productSearchQuery && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setProductSearchQuery('')}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Liste des produits */}
+                                                <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                    {filteredAvailableProducts.length === 0 ? (
+                                                        <div className="text-center py-4 text-gray-500">
+                                                            <p>Aucun produit trouvé {productSearchQuery && `pour "${productSearchQuery}"`}</p>
+                                                        </div>
+                                                    ) : (
+                                                        filteredAvailableProducts.map(product => (
+                                                            <button
+                                                                key={product.id}
+                                                                type="button"
+                                                                onClick={() => setDepSelectedItem(product)}
+                                                                className="w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-hyt-border hover:bg-hyt-dark text-left transition-all"
+                                                            >
+                                                                <div className="w-12 h-12 rounded-lg bg-hyt-card overflow-hidden flex-shrink-0">
+                                                                    {product.thumbnail_url ? (
+                                                                        <img src={`http://localhost:3001${product.thumbnail_url}`} alt={product.title} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center">
+                                                                            <Package className="w-5 h-5 text-gray-500" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-medium text-white truncate">{product.title}</p>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        par {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            /* Produit sélectionné - Afficher versions */
+                                            <div className="space-y-4">
+                                                {/* Aperçu produit sélectionné */}
+                                                <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
+                                                    <div className="w-14 h-14 rounded-lg bg-hyt-dark overflow-hidden flex-shrink-0">
+                                                        {depSelectedItem.thumbnail_url ? (
+                                                            <img src={`http://localhost:3001${depSelectedItem.thumbnail_url}`} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <Package className="w-6 h-6 text-gray-500" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-white">{depSelectedItem.title}</p>
+                                                        <p className="text-sm text-gray-400">par {depSelectedItem.creator_username}</p>
+                                                        <p className="text-xs text-hyt-accent">{parseFloat(depSelectedItem.price).toFixed(2)}€</p>
+                                                    </div>
+                                                    <button type="button" onClick={() => { setDepSelectedItem(null); setSelectedProductVersion(null) }} className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg">
+                                                        <X className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+
+                                                {/* Sélection de version */}
+                                                <div>
+                                                    <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
+                                                        <Layers className="w-4 h-4" />
+                                                        Sélectionner une version
+                                                    </label>
+
+                                                    {loadingVersions ? (
+                                                        <div className="flex items-center justify-center gap-2 text-gray-500 py-6 bg-hyt-dark rounded-lg">
+                                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                                            <span>Chargement des versions...</span>
+                                                        </div>
+                                                    ) : productVersions.length === 0 ? (
+                                                        <div className="text-center py-4 bg-hyt-dark rounded-lg">
+                                                            <Layers className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                                                            <p className="text-gray-400">Aucune version disponible</p>
+                                                            <p className="text-xs text-gray-500 mt-1">La dernière version sera utilisée par défaut</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="max-h-48 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                            {/* Option: Dernière version */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedProductVersion(null)}
+                                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                    selectedProductVersion === null
+                                                                        ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                        : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                                }`}
+                                                            >
+                                                                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                                                    <Layers className="w-5 h-5 text-green-400" />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="font-medium text-white">Dernière version</p>
+                                                                    <p className="text-xs text-gray-500">Toujours à jour automatiquement</p>
+                                                                </div>
+                                                                {selectedProductVersion === null && (
+                                                                    <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                        <Check className="w-4 h-4 text-black" />
+                                                                    </div>
+                                                                )}
+                                                            </button>
+
+                                                            {/* Liste des versions */}
+                                                            {productVersions.map((version, index) => (
+                                                                <button
+                                                                    key={version.id}
+                                                                    type="button"
+                                                                    onClick={() => setSelectedProductVersion(version.id)}
+                                                                    className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                        selectedProductVersion === version.id
+                                                                            ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                            : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                                    }`}
+                                                                >
+                                                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                                                        index === 0 ? 'bg-blue-500/20' : 'bg-hyt-card'
+                                                                    }`}>
+                                                                        <span className={`text-sm font-bold ${index === 0 ? 'text-blue-400' : 'text-gray-400'}`}>
+                                                                            v{version.version_number || index + 1}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="font-medium text-white">
+                                                                                {version.version_name || `Version ${version.version_number || index + 1}`}
+                                                                            </p>
+                                                                            {index === 0 && (
+                                                                                <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
+                                                                                    Actuelle
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-500">
+                                                                            {new Date(version.created_at).toLocaleDateString('fr-FR')}
+                                                                        </p>
+                                                                    </div>
+                                                                    {selectedProductVersion === version.id && (
+                                                                        <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                            <Check className="w-4 h-4 text-black" />
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Tab: Proposer */}
+                                {depActiveTab === 'propose' && (
+                                    <>
+                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                            <p className="text-sm text-blue-400">
+                                                Proposez une nouvelle dépendance. Elle sera examinée par notre équipe avant d'être ajoutée.
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Nom de la dépendance *</label>
+                                            <input
+                                                type="text"
+                                                value={proposalName}
+                                                onChange={(e) => setProposalName(e.target.value)}
+                                                placeholder="Ex: Fabric, Forge, OptiFine..."
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => setProposalLogo(e.target.files[0])}
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Options communes */}
+                                {depActiveTab !== 'propose' && depSelectedItem && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Version requise (optionnel)</label>
+                                            <input
+                                                type="text"
+                                                value={depVersionInfo}
+                                                onChange={(e) => setDepVersionInfo(e.target.value)}
+                                                placeholder="Ex: 1.20+, 2.0.0 minimum..."
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+
+                                        <div className="flex gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setDepIsRequired(true)}
+                                                className={`flex-1 p-3 rounded-lg border transition-colors ${
+                                                    depIsRequired ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-hyt-border text-gray-400'
+                                                }`}
+                                            >
+                                                <p className="font-medium">Requis</p>
+                                                <p className="text-xs opacity-70">Obligatoire</p>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDepIsRequired(false)}
+                                                className={`flex-1 p-3 rounded-lg border transition-colors ${
+                                                    !depIsRequired ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-hyt-border text-gray-400'
+                                                }`}
+                                            >
+                                                <p className="font-medium">Recommandé</p>
+                                                <p className="text-xs opacity-70">Optionnel</p>
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Note (optionnel)</label>
+                                            <input
+                                                type="text"
+                                                value={depNote}
+                                                onChange={(e) => setDepNote(e.target.value)}
+                                                placeholder="Information supplémentaire..."
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Boutons */}
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={closeDepModal} className="btn-ghost flex-1">
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddDependency}
+                                        disabled={(depActiveTab === 'predefined' && !depSelectedItem) || (depActiveTab === 'product' && !depSelectedItem) || (depActiveTab === 'propose' && !proposalName)}
+                                        className="btn-primary flex-1 flex items-center justify-center gap-2"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        {depActiveTab === 'propose' ? 'Proposer' : 'Ajouter'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

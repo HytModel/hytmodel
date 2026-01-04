@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI } from '../services/api'
+import { useSearchParams, Link } from 'react-router-dom'
+import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers, Gift } from 'lucide-react'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, bundlesAPI } from '../services/api'
 import ModelCard from '../components/ModelCard'
 import Loading from '../components/Loading'
 
@@ -9,6 +9,7 @@ export default function Models() {
     const [searchParams, setSearchParams] = useSearchParams()
 
     const [models, setModels] = useState([])
+    const [bundles, setBundles] = useState([])
     const [games, setGames] = useState([])
     const [categories, setCategories] = useState([])
     const [tags, setTags] = useState([])
@@ -16,6 +17,7 @@ export default function Models() {
     const [loading, setLoading] = useState(true)
     const [showFilters, setShowFilters] = useState(false)
     const [viewMode, setViewMode] = useState('grid')
+    const [activeTab, setActiveTab] = useState('products') // products, bundles
 
     // Filters
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -54,12 +56,14 @@ export default function Models() {
 
     const fetchInitialData = async () => {
         try {
-            const [gamesRes, categoriesRes] = await Promise.all([
+            const [gamesRes, categoriesRes, bundlesRes] = await Promise.all([
                 gamesAPI.getAll(),
-                categoriesAPI.getAll()
+                categoriesAPI.getAll(),
+                bundlesAPI.getAll()
             ])
             setGames(gamesRes.data.games || gamesRes.data || [])
             setCategories(categoriesRes.data.categories || categoriesRes.data || [])
+            setBundles(bundlesRes.data.bundles || [])
         } catch (error) {
             console.error('Failed to fetch initial data:', error)
         }
@@ -181,11 +185,11 @@ export default function Models() {
         <div className="min-h-screen pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="font-display text-3xl font-bold text-white">Produits</h1>
+                        <h1 className="font-display text-3xl font-bold text-white">Boutique</h1>
                         <p className="text-gray-400 mt-1">
-                            {models.length} produit{models.length !== 1 ? 's' : ''} disponible{models.length !== 1 ? 's' : ''}
+                            Découvrez nos produits et offres groupées
                         </p>
                     </div>
 
@@ -202,19 +206,16 @@ export default function Models() {
                             />
                         </div>
 
-                        {/* Filter Toggle */}
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`btn-ghost flex items-center gap-2 relative ${showFilters ? 'bg-hyt-accent/10 text-hyt-accent' : ''}`}
-                        >
-                            <SlidersHorizontal className="w-5 h-5" />
-                            <span className="hidden sm:inline">Filtres</span>
-                            {getActiveFiltersCount() > 0 && (
-                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-hyt-accent text-black text-xs font-bold rounded-full flex items-center justify-center">
-                                    {getActiveFiltersCount()}
-                                </span>
-                            )}
-                        </button>
+                        {/* Filter Toggle - Only for products */}
+                        {activeTab === 'products' && (
+                            <button
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`btn-ghost flex items-center gap-2 ${showFilters ? 'bg-hyt-accent/10 text-hyt-accent' : ''}`}
+                            >
+                                <SlidersHorizontal className="w-5 h-5" />
+                                <span className="hidden sm:inline">Filtres</span>
+                            </button>
+                        )}
 
                         {/* View Mode */}
                         <div className="hidden sm:flex items-center gap-1 bg-hyt-card rounded-lg p-1">
@@ -234,8 +235,40 @@ export default function Models() {
                     </div>
                 </div>
 
-                {/* Filters Panel */}
-                {showFilters && (
+                {/* Tabs */}
+                <div className="flex items-center gap-4 mb-6 border-b border-hyt-border">
+                    <button
+                        onClick={() => setActiveTab('products')}
+                        className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors relative ${
+                            activeTab === 'products' ? 'text-hyt-accent' : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Box className="w-5 h-5" />
+                        Produits
+                        <span className="text-sm text-gray-500">({models.length})</span>
+                        {activeTab === 'products' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('bundles')}
+                        className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors relative ${
+                            activeTab === 'bundles' ? 'text-hyt-accent' : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                        <Gift className="w-5 h-5" />
+                        Bundles
+                        {bundles.length > 0 && (
+                            <span className="text-sm text-gray-500">({bundles.length})</span>
+                        )}
+                        {activeTab === 'bundles' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
+                        )}
+                    </button>
+                </div>
+
+                {/* Filters Panel - Only for products */}
+                {showFilters && activeTab === 'products' && (
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 mb-8 animate-fade-in">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -400,8 +433,8 @@ export default function Models() {
                     </div>
                 )}
 
-                {/* Active Filters - Quick view */}
-                {hasActiveFilters && !showFilters && (
+                {/* Active Filters - Quick view - Only for products */}
+                {hasActiveFilters && !showFilters && activeTab === 'products' && (
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <span className="text-sm text-gray-400">Filtres actifs:</span>
 
@@ -468,38 +501,142 @@ export default function Models() {
                 )}
 
                 {/* Results Count */}
-                <div className="mb-4">
-                    <p className="text-gray-400 text-sm">
-                        {models.length} résultat{models.length !== 1 ? 's' : ''} trouvé{models.length !== 1 ? 's' : ''}
-                    </p>
-                </div>
-
-                {/* Models Grid */}
-                {loading ? (
-                    <Loading />
-                ) : models.length > 0 ? (
-                    <div className={
-                        viewMode === 'grid'
-                            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                            : 'space-y-4'
-                    }>
-                        {models.map((model) => (
-                            <ModelCard key={model.id} model={model} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20">
-                        <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                        <h3 className="text-xl font-semibold text-white mb-2">Aucun produit trouvé</h3>
-                        <p className="text-gray-500 mb-6">
-                            Essayez de modifier vos critères de recherche
+                {activeTab === 'products' && (
+                    <div className="mb-4">
+                        <p className="text-gray-400 text-sm">
+                            {models.length} résultat{models.length !== 1 ? 's' : ''} trouvé{models.length !== 1 ? 's' : ''}
                         </p>
-                        {hasActiveFilters && (
-                            <button onClick={clearFilters} className="btn-secondary">
-                                Effacer les filtres
-                            </button>
-                        )}
                     </div>
+                )}
+
+                {/* Bundles Section */}
+                {activeTab === 'bundles' ? (
+                    bundles.length > 0 ? (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {bundles
+                                .filter(b => !searchQuery || b.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map(bundle => (
+                                    <Link
+                                        key={bundle.id}
+                                        to={`/bundles/${bundle.id}`}
+                                        className="bg-hyt-card border border-hyt-border rounded-xl p-6 hover:border-hyt-accent/50 transition-all group"
+                                    >
+                                        {/* Header */}
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-semibold text-white group-hover:text-hyt-accent transition-colors">
+                                                    {bundle.title}
+                                                </h3>
+                                                {bundle.description && (
+                                                    <p className="text-gray-400 text-sm mt-1 line-clamp-2">{bundle.description}</p>
+                                                )}
+                                            </div>
+                                            <div className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-bold ml-3">
+                                                {bundle.discount_type === 'PERCENT'
+                                                    ? `-${bundle.discount_value}%`
+                                                    : `-${parseFloat(bundle.discount_value).toFixed(0)}€`
+                                                }
+                                            </div>
+                                        </div>
+
+                                        {/* Vendeur */}
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-6 h-6 rounded-full overflow-hidden bg-hyt-dark">
+                                                {bundle.creator_avatar ? (
+                                                    <img
+                                                        src={`http://localhost:3001${bundle.creator_avatar}`}
+                                                        alt={bundle.creator_username}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent to-hyt-purple">
+                                                    <span className="text-[10px] font-bold text-white">
+                                                        {bundle.creator_username?.charAt(0).toUpperCase()}
+                                                    </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-gray-400">{bundle.creator_username}</span>
+                                        </div>
+
+                                        {/* Produits inclus */}
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {bundle.items?.slice(0, 3).map(item => (
+                                                <div key={item.id} className="flex items-center gap-2 px-2 py-1 bg-hyt-dark rounded-lg">
+                                                    {item.thumbnail_url && (
+                                                        <img
+                                                            src={`http://localhost:3001${item.thumbnail_url}`}
+                                                            alt={item.title}
+                                                            className="w-5 h-5 rounded object-cover"
+                                                        />
+                                                    )}
+                                                    <span className="text-xs text-gray-300 truncate max-w-20">{item.title}</span>
+                                                </div>
+                                            ))}
+                                            {bundle.items?.length > 3 && (
+                                                <div className="px-2 py-1 bg-hyt-dark rounded-lg text-xs text-gray-400">
+                                                    +{bundle.items.length - 3}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Prix */}
+                                        <div className="flex items-center justify-between pt-4 border-t border-hyt-border">
+                                            <div className="text-sm text-gray-500">
+                                                {bundle.item_count} produits
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                            <span className="text-gray-500 line-through text-sm">
+                                                {parseFloat(bundle.original_price).toFixed(2)}€
+                                            </span>
+                                                <span className="text-xl font-bold text-hyt-accent">
+                                                {parseFloat(bundle.final_price).toFixed(2)}€
+                                            </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20">
+                            <Gift className="w-16 h-16 mx-auto text-gray-600 mb-4" />
+                            <h3 className="text-xl font-semibold text-white mb-2">Aucun bundle disponible</h3>
+                            <p className="text-gray-500">
+                                Les vendeurs n'ont pas encore créé d'offres groupées
+                            </p>
+                        </div>
+                    )
+                ) : (
+                    /* Products Section */
+                    <>
+                        {/* Models Grid */}
+                        {loading ? (
+                            <Loading />
+                        ) : models.length > 0 ? (
+                            <div className={
+                                viewMode === 'grid'
+                                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                                    : 'space-y-4'
+                            }>
+                                {models.map((model) => (
+                                    <ModelCard key={model.id} model={model} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20">
+                                <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
+                                <h3 className="text-xl font-semibold text-white mb-2">Aucun produit trouvé</h3>
+                                <p className="text-gray-500 mb-6">
+                                    Essayez de modifier vos critères de recherche
+                                </p>
+                                {hasActiveFilters && (
+                                    <button onClick={clearFilters} className="btn-secondary">
+                                        Effacer les filtres
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

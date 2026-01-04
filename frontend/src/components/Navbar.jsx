@@ -18,6 +18,7 @@ const NOTIFICATION_ICONS = {
     REPORT_REVIEWED: Info,
     PRODUCT_APPROVED: CheckCircle,
     PRODUCT_REJECTED: XCircle,
+    PRODUCT_UPDATE: Package,
     SALE: Package,
     default: Bell
 }
@@ -28,6 +29,7 @@ const NOTIFICATION_COLORS = {
     REPORT_REVIEWED: 'text-blue-500 bg-blue-500/20',
     PRODUCT_APPROVED: 'text-green-500 bg-green-500/20',
     PRODUCT_REJECTED: 'text-red-500 bg-red-500/20',
+    PRODUCT_UPDATE: 'text-blue-500 bg-blue-500/20',
     SALE: 'text-hyt-accent bg-hyt-accent/20',
     default: 'text-gray-400 bg-gray-500/20'
 }
@@ -235,12 +237,26 @@ export default function Navbar() {
                                                         const Icon = NOTIFICATION_ICONS[notif.type] || NOTIFICATION_ICONS.default
                                                         const colorClass = NOTIFICATION_COLORS[notif.type] || NOTIFICATION_COLORS.default
 
+                                                        // Extraire le lien depuis data si disponible
+                                                        const notifLink = notif.data?.link || null
+
+                                                        const handleNotifClick = () => {
+                                                            if (!notif.is_read) {
+                                                                handleMarkAsRead(notif.id)
+                                                            }
+                                                            if (notifLink) {
+                                                                setNotifMenuOpen(false)
+                                                                navigate(notifLink)
+                                                            }
+                                                        }
+
                                                         return (
                                                             <div
                                                                 key={notif.id}
+                                                                onClick={notifLink ? handleNotifClick : undefined}
                                                                 className={`px-4 py-3 border-b border-hyt-border/50 hover:bg-hyt-dark/50 transition-colors ${
                                                                     !notif.is_read ? 'bg-hyt-accent/5' : ''
-                                                                }`}
+                                                                } ${notifLink ? 'cursor-pointer' : ''}`}
                                                             >
                                                                 <div className="flex gap-3">
                                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorClass}`}>
@@ -253,11 +269,19 @@ export default function Navbar() {
                                                                         <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                                                                             {notif.message}
                                                                         </p>
-                                                                        <p className="text-xs text-gray-500 mt-1">
-                                                                            {formatTimeAgo(notif.created_at)}
-                                                                        </p>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <p className="text-xs text-gray-500">
+                                                                                {formatTimeAgo(notif.created_at)}
+                                                                            </p>
+                                                                            {notifLink && (
+                                                                                <span className="text-xs text-hyt-accent flex items-center gap-1">
+                                                                                    <ExternalLink className="w-3 h-3" />
+                                                                                    Voir
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex flex-col gap-1">
+                                                                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                                                         {!notif.is_read && (
                                                                             <button
                                                                                 onClick={() => handleMarkAsRead(notif.id)}
@@ -317,27 +341,63 @@ export default function Navbar() {
                                         }}
                                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-hyt-card transition-colors"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
-                                            <span className="text-sm font-bold text-white">
-                                                {user?.username?.charAt(0).toUpperCase()}
-                                            </span>
+                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
+                                            {user?.avatar_url ? (
+                                                <img
+                                                    src={`http://localhost:3001${user.avatar_url}`}
+                                                    alt={user.username}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-bold text-white">
+                                                    {user?.username?.charAt(0).toUpperCase()}
+                                                </span>
+                                            )}
                                         </div>
-                                        <span className="text-sm font-medium text-white">{user?.username}</span>
+                                        <span className="text-sm font-medium text-white">{user?.display_name || user?.username}</span>
                                         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                                     </button>
 
                                     {/* Dropdown */}
                                     {userMenuOpen && (
                                         <div className="absolute right-0 mt-2 w-56 py-2 bg-hyt-card border border-hyt-border rounded-xl shadow-xl animate-fade-in">
-                                            <div className="px-4 py-2 border-b border-hyt-border">
-                                                <p className="text-sm font-medium text-white">{user?.username}</p>
-                                                <p className="text-xs text-gray-500">{user?.email}</p>
-                                                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-hyt-accent/10 text-hyt-accent rounded-full">
+                                            {/* Header avec avatar */}
+                                            <div className="px-4 py-3 border-b border-hyt-border">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center flex-shrink-0">
+                                                        {user?.avatar_url ? (
+                                                            <img
+                                                                src={`http://localhost:3001${user.avatar_url}`}
+                                                                alt={user.username}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-lg font-bold text-white">
+                                                                {user?.username?.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-medium text-white truncate">{user?.display_name || user?.username}</p>
+                                                        <p className="text-xs text-gray-500 truncate">@{user?.username}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="inline-block mt-2 px-2 py-0.5 text-xs font-medium bg-hyt-accent/10 text-hyt-accent rounded-full">
                                                     {user?.role}
                                                 </span>
                                             </div>
 
                                             <div className="py-2">
+                                                {/* Mon Profil */}
+                                                <Link
+                                                    to="/profile"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
+                                                >
+                                                    <User className="w-4 h-4" />
+                                                    Mon profil
+                                                </Link>
+
                                                 {/* Dashboard - Seulement pour Créateurs et Staff */}
                                                 {(isCreator() || isStaff()) && (
                                                     <Link
@@ -347,6 +407,18 @@ export default function Navbar() {
                                                     >
                                                         <LayoutDashboard className="w-4 h-4" />
                                                         Dashboard
+                                                    </Link>
+                                                )}
+
+                                                {/* Ma boutique - Seulement pour les Créateurs */}
+                                                {isCreator() && (
+                                                    <Link
+                                                        to={`/seller/${user?.username}`}
+                                                        onClick={() => setUserMenuOpen(false)}
+                                                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
+                                                    >
+                                                        <Package className="w-4 h-4" />
+                                                        Ma boutique
                                                     </Link>
                                                 )}
 
@@ -367,7 +439,7 @@ export default function Navbar() {
                                                     onClick={() => setUserMenuOpen(false)}
                                                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                 >
-                                                    <Package className="w-4 h-4" />
+                                                    <ShoppingCart className="w-4 h-4" />
                                                     Mes achats
                                                 </Link>
 
@@ -464,6 +536,37 @@ export default function Navbar() {
 
                         {isAuthenticated ? (
                             <>
+                                {/* Header utilisateur mobile */}
+                                <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-hyt-dark rounded-lg">
+                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center flex-shrink-0">
+                                        {user?.avatar_url ? (
+                                            <img
+                                                src={`http://localhost:3001${user.avatar_url}`}
+                                                alt={user.username}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="text-xl font-bold text-white">
+                                                {user?.username?.charAt(0).toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-white truncate">{user?.display_name || user?.username}</p>
+                                        <p className="text-sm text-gray-500 truncate">@{user?.username}</p>
+                                    </div>
+                                </div>
+
+                                {/* Mon Profil Mobile */}
+                                <Link
+                                    to="/profile"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                >
+                                    <User className="w-4 h-4" />
+                                    Mon profil
+                                </Link>
+
                                 {/* Notifications Mobile */}
                                 <Link
                                     to="/notifications"
@@ -486,7 +589,10 @@ export default function Navbar() {
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="flex items-center justify-between px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
-                                    <span>Panier</span>
+                                    <span className="flex items-center gap-2">
+                                        <ShoppingCart className="w-4 h-4" />
+                                        Panier
+                                    </span>
                                     {itemCount > 0 && (
                                         <span className="px-2 py-0.5 text-xs font-bold bg-hyt-accent text-hyt-dark rounded-full">
                                             {itemCount}
@@ -499,9 +605,22 @@ export default function Navbar() {
                                     <Link
                                         to="/dashboard"
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                        className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
+                                        <LayoutDashboard className="w-4 h-4" />
                                         Dashboard
+                                    </Link>
+                                )}
+
+                                {/* Ma boutique Mobile - Seulement pour les Créateurs */}
+                                {isCreator() && (
+                                    <Link
+                                        to={`/seller/${user?.username}`}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                    >
+                                        <Package className="w-4 h-4" />
+                                        Ma boutique
                                     </Link>
                                 )}
 
@@ -510,8 +629,9 @@ export default function Navbar() {
                                     <Link
                                         to="/become-creator"
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-4 py-3 text-hyt-accent hover:bg-hyt-accent/10 rounded-lg"
+                                        className="flex items-center gap-2 px-4 py-3 text-hyt-accent hover:bg-hyt-accent/10 rounded-lg"
                                     >
+                                        <Upload className="w-4 h-4" />
                                         Devenir créateur
                                     </Link>
                                 )}
@@ -519,16 +639,18 @@ export default function Navbar() {
                                 <Link
                                     to="/purchases"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                    className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
+                                    <ShoppingCart className="w-4 h-4" />
                                     Mes achats
                                 </Link>
 
                                 <Link
                                     to="/invoices"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                    className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
+                                    <FileText className="w-4 h-4" />
                                     Factures
                                 </Link>
 
@@ -536,8 +658,9 @@ export default function Navbar() {
                                     <Link
                                         to="/admin"
                                         onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                        className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
+                                        <Settings className="w-4 h-4" />
                                         Administration
                                     </Link>
                                 )}
@@ -547,8 +670,9 @@ export default function Navbar() {
                                         handleLogout()
                                         setMobileMenuOpen(false)
                                     }}
-                                    className="w-full px-4 py-3 text-left text-red-400 rounded-lg hover:bg-red-500/10"
+                                    className="w-full flex items-center gap-2 px-4 py-3 text-left text-red-400 rounded-lg hover:bg-red-500/10"
                                 >
+                                    <LogOut className="w-4 h-4" />
                                     Déconnexion
                                 </button>
                             </>

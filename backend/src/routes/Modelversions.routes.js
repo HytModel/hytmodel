@@ -60,7 +60,8 @@ router.get("/:modelId", async (req, res, next) => {
             FROM model_file_versions mfv
                      LEFT JOIN model_file_version_compatibilities mfvc ON mfvc.file_version_id = mfv.id
                      LEFT JOIN game_versions gv ON gv.id = mfvc.game_version_id
-            WHERE mfv.model_id = $1 AND mfv.is_active = true
+            WHERE mfv.model_id = $1
+              AND COALESCE(mfv.is_active, true) = true
         `;
 
         const params = [modelId];
@@ -263,6 +264,28 @@ router.post("/:modelId", requireAuth, requireRole("CREATOR", "STAFF", "ADMIN"), 
             }
         }
 
+        // Récupérer le titre du produit pour la notification
+        const { rows: modelInfo } = await pool.query(`
+            SELECT title FROM models WHERE id = $1
+        `, [modelId]);
+        const modelTitle = modelInfo[0]?.title || 'Produit';
+
+        // Notifier tous les acheteurs de ce produit
+        const { rows: buyers } = await pool.query(`
+            SELECT DISTINCT user_id FROM purchases WHERE model_id = $1
+        `, [modelId]);
+
+        for (const buyer of buyers) {
+            await pool.query(`
+                INSERT INTO notifications (user_id, type, title, message, data)
+                VALUES ($1, 'PRODUCT_UPDATE', 'Nouvelle version disponible', $2, $3)
+            `, [
+                buyer.user_id,
+                `${modelTitle} a été mis à jour vers la version ${versionNumber}`,
+                JSON.stringify({ modelId, versionNumber, link: `/models/${modelId}` })
+            ]);
+        }
+
         // Récupérer les versions compatibles pour la réponse
         const { rows: compatibilities } = await pool.query(`
             SELECT gv.id, gv.version
@@ -303,6 +326,19 @@ router.put("/:modelId/:versionId", requireAuth, requireRole("CREATOR", "STAFF", 
 
         if (models[0].creator_id !== userId && !["STAFF", "ADMIN"].includes(req.user.role)) {
             return res.status(403).json({ error: "Non autorisé" });
+        }
+
+        // Vérifier si on essaie de retirer le statut principal
+        if (isLatest === false) {
+            const { rows: currentVersion } = await pool.query(`
+                SELECT is_latest FROM model_file_versions WHERE id = $1
+            `, [versionId]);
+
+            if (currentVersion.length > 0 && currentVersion[0].is_latest) {
+                return res.status(400).json({
+                    error: "Impossible de retirer le statut principal. Définissez d'abord une autre version comme principale."
+                });
+            }
         }
 
         // Mettre à jour la version
@@ -418,6 +454,11 @@ router.delete("/:modelId/:versionId", requireAuth, requireRole("CREATOR", "STAFF
 
         const wasLatest = versions[0].is_latest;
 
+        // Empêcher la suppression de la version principale
+        if (wasLatest) {
+            return res.status(400).json({ error: "Impossible de supprimer la version principale. Définissez d'abord une autre version comme principale." });
+        }
+
         // Supprimer le fichier physique
         const fileUrl = versions[0].file_url.replace(/\\/g, '/');
         const filePath = path.join(__dirname, "../../", fileUrl);
@@ -427,17 +468,6 @@ router.delete("/:modelId/:versionId", requireAuth, requireRole("CREATOR", "STAFF
 
         // Supprimer la version
         await pool.query(`DELETE FROM model_file_versions WHERE id = $1`, [versionId]);
-
-        // Si c'était la dernière version, définir la plus récente comme latest
-        if (wasLatest) {
-            await pool.query(`
-                UPDATE model_file_versions
-                SET is_latest = true
-                WHERE model_id = $1 AND is_active = true
-                    ORDER BY created_at DESC
-                LIMIT 1
-            `, [modelId]);
-        }
 
         res.json({ success: true });
     } catch (error) {

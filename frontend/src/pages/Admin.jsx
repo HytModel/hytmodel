@@ -34,12 +34,12 @@ import {
     Activity,
     PieChart
 } from 'lucide-react'
-import { adminAPI, modelsAPI } from '../services/api'
+import { adminAPI, modelsAPI, dependenciesAPI } from '../services/api'
 import toast from 'react-hot-toast'
-import AdminSellers from './AdminSellers.jsx'
-import AdminSettings from './Adminsettings.jsx'
-import AdminFeedback from './Adminfeedback.jsx'
-import AdminAnalytics from './Adminanalytics.jsx'
+import AdminSellers from './AdminSellers'
+import AdminSettings from './AdminSettings'
+import AdminFeedback from './AdminFeedback'
+import AdminAnalytics from './AdminAnalytics'
 
 // Fonction pour obtenir l'URL complète de l'image
 const getImageUrl = (url) => {
@@ -1404,11 +1404,13 @@ export default function Admin() {
 
     const loadFeedbackCounts = async () => {
         try {
-            const [proposalsRes, reportsRes] = await Promise.all([
+            const [proposalsRes, depProposalsRes, reportsRes] = await Promise.all([
                 adminAPI.getProposals('PENDING').catch(() => ({ data: { proposals: [] } })),
+                dependenciesAPI.getProposals('PENDING').catch(() => ({ data: { proposals: [] } })),
                 adminAPI.getReports('PENDING').catch(() => ({ data: { reports: [] } }))
             ])
-            setProposalsCount(proposalsRes.data.proposals?.length || 0)
+            const totalProposals = (proposalsRes.data.proposals?.length || 0) + (depProposalsRes.data.proposals?.length || 0)
+            setProposalsCount(totalProposals)
             setReportsCount(reportsRes.data.reports?.length || 0)
         } catch (error) {
             console.error('Failed to load feedback counts:', error)

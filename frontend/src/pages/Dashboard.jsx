@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom'
 import {
     TrendingUp, DollarSign, ShoppingBag, Eye,
     ArrowUpRight, ArrowDownRight, Package, FileText,
-    Upload, Settings, CreditCard, Lightbulb, ChevronRight
+    Upload, Settings, CreditCard, Lightbulb, ChevronRight,
+    Link2, Plus, X, Loader2, Check, Clock, XCircle, CheckCircle,
+    Search, Trash2, Gift
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI } from '../services/api'
+import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI } from '../services/api'
 import Loading from '../components/Loading'
 import SellerProposals from './SellerProposals'
 import toast from 'react-hot-toast'
+import BundleManager from '../components/BundleManager'
 
 export default function Dashboard() {
     const { user, isCreator } = useAuth()
@@ -18,12 +21,50 @@ export default function Dashboard() {
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
     const [connectingStripe, setConnectingStripe] = useState(false)
-    const [activeTab, setActiveTab] = useState('overview') // overview, proposals
+    const [activeTab, setActiveTab] = useState('overview') // overview, proposals, dependencies
     const [proposalsCount, setProposalsCount] = useState(0)
+
+    // Propositions de dépendances
+    const [depProposals, setDepProposals] = useState([])
+    const [depProposalsLoading, setDepProposalsLoading] = useState(false)
+    const [showDepModal, setShowDepModal] = useState(false)
+    const [games, setGames] = useState([])
+    const [depForm, setDepForm] = useState({ name: '', description: '', websiteUrl: '', gameId: '' })
+    const [depLogo, setDepLogo] = useState(null)
+    const [depLogoPreview, setDepLogoPreview] = useState(null)
+    const [submittingDep, setSubmittingDep] = useState(false)
 
     useEffect(() => {
         fetchData()
+        fetchGames()
     }, [])
+
+    useEffect(() => {
+        if (activeTab === 'dependencies' && isCreator()) {
+            fetchDepProposals()
+        }
+    }, [activeTab])
+
+    const fetchGames = async () => {
+        try {
+            const { data } = await gamesAPI.getAll()
+            setGames(data.games || data || [])
+        } catch (error) {
+            console.error('Failed to fetch games:', error)
+        }
+    }
+
+    const fetchDepProposals = async () => {
+        setDepProposalsLoading(true)
+        try {
+            const { data } = await dependenciesAPI.getMyProposals()
+            setDepProposals(data.proposals || [])
+        } catch (error) {
+            console.error('Failed to fetch dep proposals:', error)
+        } finally {
+            setDepProposalsLoading(false)
+        }
+    }
 
     const fetchData = async () => {
         try {
@@ -65,6 +106,61 @@ export default function Dashboard() {
             toast.error('Erreur lors de la connexion à Stripe')
         } finally {
             setConnectingStripe(false)
+        }
+    }
+
+    const handleDepLogoChange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error('Logo trop volumineux (max 2MB)')
+                return
+            }
+            setDepLogo(file)
+            setDepLogoPreview(URL.createObjectURL(file))
+        }
+    }
+
+    const handleSubmitDepProposal = async (e) => {
+        e.preventDefault()
+        if (!depForm.name.trim() || !depForm.gameId) {
+            toast.error('Nom et jeu requis')
+            return
+        }
+
+        setSubmittingDep(true)
+        try {
+            const formData = new FormData()
+            formData.append('name', depForm.name.trim())
+            formData.append('description', depForm.description)
+            formData.append('websiteUrl', depForm.websiteUrl)
+            formData.append('gameId', depForm.gameId)
+            if (depLogo) {
+                formData.append('logo', depLogo)
+            }
+
+            await dependenciesAPI.propose(formData)
+            toast.success('Proposition envoyée !')
+            setShowDepModal(false)
+            setDepForm({ name: '', description: '', websiteUrl: '', gameId: '' })
+            setDepLogo(null)
+            setDepLogoPreview(null)
+            fetchDepProposals()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setSubmittingDep(false)
+        }
+    }
+
+    const handleDeleteDepProposal = async (id) => {
+        if (!confirm('Supprimer cette proposition ?')) return
+        try {
+            await dependenciesAPI.deleteProposal(id)
+            toast.success('Proposition supprimée')
+            fetchDepProposals()
+        } catch (error) {
+            toast.error('Erreur')
         }
     }
 
@@ -129,12 +225,280 @@ export default function Dashboard() {
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                             )}
                         </button>
+                        <button
+                            onClick={() => setActiveTab('dependencies')}
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                                activeTab === 'dependencies'
+                                    ? 'text-hyt-accent'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <Link2 className="w-4 h-4" />
+                            Dépendances
+                            {activeTab === 'dependencies' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('bundles')}
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                                activeTab === 'bundles'
+                                    ? 'text-hyt-accent'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <Gift className="w-4 h-4" />
+                            Bundles
+                            {activeTab === 'bundles' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
+                            )}
+                        </button>
                     </div>
                 )}
 
                 {/* Contenu selon l'onglet actif */}
                 {activeTab === 'proposals' && isCreator() ? (
                     <SellerProposals />
+                ) : activeTab === 'bundles' && isCreator() ? (
+                    <BundleManager />
+                ) : activeTab === 'dependencies' && isCreator() ? (
+                    /* Onglet Dépendances */
+                    <div className="space-y-6">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Propositions de dépendances</h2>
+                                <p className="text-gray-400 text-sm">
+                                    Proposez de nouvelles dépendances pour les produits
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowDepModal(true)}
+                                className="btn-primary flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Proposer
+                            </button>
+                        </div>
+
+                        {/* Info Card */}
+                        <div className="card bg-blue-500/5 border-blue-500/30">
+                            <div className="flex items-start gap-3">
+                                <Link2 className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-blue-400 font-medium">Qu'est-ce qu'une dépendance ?</p>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                        Une dépendance est une ressource externe nécessaire pour faire fonctionner un produit
+                                        (ex: Fabric, Forge, OptiFine pour Minecraft). Proposez des dépendances manquantes
+                                        et notre équipe les ajoutera après validation.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Liste des propositions */}
+                        {depProposalsLoading ? (
+                            <div className="flex justify-center py-12">
+                                <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
+                            </div>
+                        ) : depProposals.length === 0 ? (
+                            <div className="card text-center py-12">
+                                <Link2 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                                <p className="text-gray-400 mb-2">Aucune proposition</p>
+                                <p className="text-gray-500 text-sm">
+                                    Proposez une dépendance manquante pour les produits
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {depProposals.map(proposal => (
+                                    <div
+                                        key={proposal.id}
+                                        className="card flex items-center gap-4"
+                                    >
+                                        {/* Logo */}
+                                        <div className="w-14 h-14 rounded-xl bg-hyt-dark flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            {proposal.logo_url ? (
+                                                <img
+                                                    src={`http://localhost:3001${proposal.logo_url}`}
+                                                    alt={proposal.name}
+                                                    className="w-full h-full object-contain p-1"
+                                                />
+                                            ) : (
+                                                <Link2 className="w-6 h-6 text-gray-500" />
+                                            )}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="font-semibold text-white">{proposal.name}</h3>
+                                                <span className="px-2 py-0.5 text-xs bg-hyt-border text-gray-400 rounded">
+                                                    {proposal.game_name}
+                                                </span>
+                                                <span className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                                                    proposal.status === 'PENDING' ? 'bg-orange-500/20 text-orange-400' :
+                                                        proposal.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                                                            'bg-red-500/20 text-red-400'
+                                                }`}>
+                                                    {proposal.status === 'PENDING' && <Clock className="w-3 h-3" />}
+                                                    {proposal.status === 'APPROVED' && <CheckCircle className="w-3 h-3" />}
+                                                    {proposal.status === 'REJECTED' && <XCircle className="w-3 h-3" />}
+                                                    {proposal.status === 'PENDING' ? 'En attente' :
+                                                        proposal.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
+                                                </span>
+                                            </div>
+                                            {proposal.description && (
+                                                <p className="text-sm text-gray-400 mt-1 line-clamp-1">{proposal.description}</p>
+                                            )}
+                                            {proposal.rejection_reason && (
+                                                <p className="text-sm text-red-400 mt-1">
+                                                    Raison: {proposal.rejection_reason}
+                                                </p>
+                                            )}
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                            </p>
+                                        </div>
+
+                                        {/* Actions */}
+                                        {proposal.status === 'PENDING' && (
+                                            <button
+                                                onClick={() => handleDeleteDepProposal(proposal.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                title="Supprimer"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Modal de proposition */}
+                        {showDepModal && (
+                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                                <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
+                                    <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Link2 className="w-5 h-5 text-hyt-accent" />
+                                            Proposer une dépendance
+                                        </h3>
+                                        <button onClick={() => setShowDepModal(false)} className="text-gray-400 hover:text-white">
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={handleSubmitDepProposal} className="p-4 space-y-4">
+                                        {/* Logo */}
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    onClick={() => document.getElementById('dep-logo-input').click()}
+                                                    className="w-16 h-16 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex items-center justify-center cursor-pointer overflow-hidden"
+                                                >
+                                                    {depLogoPreview ? (
+                                                        <img src={depLogoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+                                                    ) : (
+                                                        <Link2 className="w-6 h-6 text-gray-500" />
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    <p>Cliquez pour uploader</p>
+                                                    <p className="text-xs">PNG, JPG (max 2MB)</p>
+                                                </div>
+                                            </div>
+                                            <input
+                                                id="dep-logo-input"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleDepLogoChange}
+                                                className="hidden"
+                                            />
+                                        </div>
+
+                                        {/* Nom */}
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                                            <input
+                                                type="text"
+                                                value={depForm.name}
+                                                onChange={(e) => setDepForm({ ...depForm, name: e.target.value })}
+                                                placeholder="Ex: Fabric, Forge, OptiFine..."
+                                                className="input-field w-full"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Jeu */}
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                                            <select
+                                                value={depForm.gameId}
+                                                onChange={(e) => setDepForm({ ...depForm, gameId: e.target.value })}
+                                                className="input-field w-full"
+                                                required
+                                            >
+                                                <option value="">Sélectionner un jeu</option>
+                                                {games.map(game => (
+                                                    <option key={game.id} value={game.id}>{game.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Description */}
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Description (optionnel)</label>
+                                            <textarea
+                                                value={depForm.description}
+                                                onChange={(e) => setDepForm({ ...depForm, description: e.target.value })}
+                                                placeholder="Courte description..."
+                                                rows={2}
+                                                className="input-field w-full resize-none"
+                                            />
+                                        </div>
+
+                                        {/* Site web */}
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-2">Site web (optionnel)</label>
+                                            <input
+                                                type="url"
+                                                value={depForm.websiteUrl}
+                                                onChange={(e) => setDepForm({ ...depForm, websiteUrl: e.target.value })}
+                                                placeholder="https://..."
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+
+                                        {/* Boutons */}
+                                        <div className="flex gap-3 pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDepModal(false)}
+                                                className="btn-ghost flex-1"
+                                            >
+                                                Annuler
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={submittingDep}
+                                                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                                            >
+                                                {submittingDep ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Check className="w-4 h-4" />
+                                                )}
+                                                Proposer
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 ) : (
                     <>
                         {/* Quick Actions */}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { authAPI } from '../services/api'
+import { authAPI, profileAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext()
@@ -51,13 +51,34 @@ export function AuthProvider({ children }) {
     }
 
     // Connexion
-    const login = async (email, password) => {
+    const login = async (email, password, totpCode = null) => {
         try {
-            const { data } = await authAPI.login({ email, password })
+            const { data } = await authAPI.login({ email, password, totpCode })
+
+            // Si 2FA requis
+            if (data.requires2FA) {
+                return { success: false, requires2FA: true }
+            }
+
             localStorage.setItem('token', data.token)
             localStorage.setItem('user', JSON.stringify(data.user))
             setUser(data.user)
             toast.success('Connexion réussie !')
+
+            // Rafraîchir pour récupérer les infos complètes si nécessaire
+            if (!data.user.avatar_url && !data.user.display_name) {
+                setTimeout(async () => {
+                    try {
+                        const { data: profileData } = await profileAPI.get()
+                        const updatedUser = { ...data.user, ...profileData }
+                        setUser(updatedUser)
+                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                    } catch (e) {
+                        console.error('Failed to fetch profile after login:', e)
+                    }
+                }, 100)
+            }
+
             return { success: true }
         } catch (error) {
             const message = error.response?.data?.error || 'Email ou mot de passe incorrect'
@@ -72,6 +93,40 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('user')
         setUser(null)
         toast.success('Déconnexion réussie')
+    }
+
+    // Rafraîchir les infos utilisateur (après modif profil, avatar, etc.)
+    const refreshUser = async () => {
+        try {
+            const token = localStorage.getItem('token')
+            if (!token) return
+
+            const { data } = await profileAPI.get()
+
+            // Mettre à jour le state et le localStorage
+            const updatedUser = {
+                ...user,
+                ...data,
+                // S'assurer que les champs importants sont présents
+                avatar_url: data.avatar_url,
+                display_name: data.display_name,
+                bio: data.bio,
+                website_url: data.website_url,
+                social_discord: data.social_discord,
+                social_twitter: data.social_twitter,
+                social_youtube: data.social_youtube,
+                two_factor_enabled: data.two_factor_enabled
+            }
+
+            setUser(updatedUser)
+            localStorage.setItem('user', JSON.stringify(updatedUser))
+
+            console.log('User refreshed:', updatedUser)
+            return updatedUser
+        } catch (error) {
+            console.error('Failed to refresh user:', error)
+            return null
+        }
     }
 
     // Vérifications de rôle
@@ -102,6 +157,7 @@ export function AuthProvider({ children }) {
             register,
             login,
             logout,
+            refreshUser,
             isCreator,
             isStaff,
             isAdmin

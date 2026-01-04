@@ -1,12 +1,13 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { ShoppingCart, Star, Eye, Download, Check } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ShoppingCart, Star, Eye, Download, Check, User } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 
 export default function ModelCard({ model, showActions = true }) {
     const { addToCart, isInCart } = useCart()
     const { isAuthenticated } = useAuth()
+    const navigate = useNavigate()
 
     const inCart = isInCart(model.id)
 
@@ -18,6 +19,14 @@ export default function ModelCard({ model, showActions = true }) {
         }
     }
 
+    const handleSellerClick = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (model.creator_username) {
+            navigate(`/seller/${model.creator_username}`)
+        }
+    }
+
     // Fonction pour obtenir l'URL complète de l'image
     const getImageUrl = (url) => {
         if (!url) return null
@@ -26,6 +35,7 @@ export default function ModelCard({ model, showActions = true }) {
     }
 
     const imageUrl = getImageUrl(model.thumbnail_url)
+    const creatorAvatarUrl = getImageUrl(model.creator_avatar_url || model.creator_avatar)
 
     return (
         <Link
@@ -60,6 +70,31 @@ export default function ModelCard({ model, showActions = true }) {
                                 {typeof tag === 'object' ? tag.name : tag}
                             </span>
                         ))}
+                    </div>
+                )}
+
+                {/* Seller Avatar - Top Right */}
+                {model.creator_username && (
+                    <div
+                        onClick={handleSellerClick}
+                        className="absolute top-3 right-3 cursor-pointer group/seller"
+                        title={`Voir la boutique de ${model.creator_display_name || model.creator_username}`}
+                    >
+                        <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 bg-hyt-dark shadow-lg transition-all group-hover/seller:border-hyt-accent group-hover/seller:scale-110">
+                            {creatorAvatarUrl ? (
+                                <img
+                                    src={creatorAvatarUrl}
+                                    alt={model.creator_display_name || model.creator_username}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent to-hyt-purple">
+                                    <span className="text-xs font-bold text-white">
+                                        {(model.creator_display_name || model.creator_username)?.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -111,11 +146,31 @@ export default function ModelCard({ model, showActions = true }) {
                     {model.title}
                 </h3>
 
-                {/* Description */}
-                {model.description && (
-                    <p className="text-sm text-gray-500 line-clamp-2 mb-3">
-                        {model.description}
-                    </p>
+                {/* Seller info */}
+                {model.creator_username && (
+                    <div
+                        onClick={handleSellerClick}
+                        className="flex items-center gap-2 mb-3 cursor-pointer group/seller"
+                    >
+                        <div className="w-5 h-5 rounded-full overflow-hidden bg-hyt-dark flex-shrink-0">
+                            {creatorAvatarUrl ? (
+                                <img
+                                    src={creatorAvatarUrl}
+                                    alt={model.creator_display_name || model.creator_username}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent to-hyt-purple">
+                                    <span className="text-[10px] font-bold text-white">
+                                        {(model.creator_display_name || model.creator_username)?.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <span className="text-xs text-gray-400 group-hover/seller:text-hyt-accent transition-colors truncate">
+                            {model.creator_display_name || model.creator_username}
+                        </span>
+                    </div>
                 )}
 
                 {/* Stats & Price */}
@@ -127,16 +182,16 @@ export default function ModelCard({ model, showActions = true }) {
                                 {parseFloat(model.rating_avg).toFixed(1)}
                             </span>
                         )}
-                        {model.views !== undefined && (
+                        {(model.views !== undefined || model.view_count !== undefined) && (
                             <span className="flex items-center gap-1">
                                 <Eye className="w-3.5 h-3.5" />
-                                {model.views}
+                                {model.views || model.view_count || 0}
                             </span>
                         )}
-                        {model.downloads !== undefined && (
+                        {(model.downloads !== undefined || model.download_count !== undefined) && (
                             <span className="flex items-center gap-1">
                                 <Download className="w-3.5 h-3.5" />
-                                {model.downloads}
+                                {model.downloads || model.download_count || 0}
                             </span>
                         )}
                     </div>

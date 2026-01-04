@@ -30,12 +30,12 @@ class InvoicesService {
         return pdfPath && typeof pdfPath === "string" && fs.existsSync(pdfPath);
     }
 
-    // Récupérer les factures vendeur
+    // Récupérer les notes de paiement vendeur
     async getSellerInvoices(sellerId) {
         const { rows } = await pool.query(
-            `SELECT id, invoice_number, gross_amount, commission_amount, 
-                    net_amount, pdf_path, created_at
-             FROM seller_invoices
+            `SELECT id, payment_number as invoice_number, gross_amount,
+                    commission_amount, net_amount, pdf_path, created_at, status
+             FROM seller_payments
              WHERE seller_id = $1
              ORDER BY created_at DESC`,
             [sellerId]
@@ -43,12 +43,12 @@ class InvoicesService {
         return rows;
     }
 
-    // Récupérer une facture vendeur
+    // Récupérer une note de paiement vendeur par ID
     async getSellerInvoiceById(invoiceId, sellerId) {
         const { rows } = await pool.query(
-            `SELECT id, invoice_number, gross_amount, commission_amount,
-                    net_amount, pdf_path, created_at
-             FROM seller_invoices
+            `SELECT id, payment_number as invoice_number, gross_amount,
+                    commission_amount, net_amount, pdf_path, created_at, status
+             FROM seller_payments
              WHERE id = $1 AND seller_id = $2`,
             [invoiceId, sellerId]
         );

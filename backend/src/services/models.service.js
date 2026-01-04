@@ -48,7 +48,7 @@ class ModelsService {
             const { rows } = await client.query(
                 `INSERT INTO models (title, description, price, creator_id, file_path, game_id, category_id, youtube_url, status)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                 RETURNING *`,
+                     RETURNING *`,
                 [title, description || "", price, creatorId, filePath, gameId, categoryId, youtubeUrl || null, initialStatus]
             );
 
@@ -98,16 +98,76 @@ class ModelsService {
     }
 
     // NOUVEAU : Récupérer un modèle avec tous ses détails
-    async getModelWithDetails(id) {
+    async getModelWithDetails(id, visitorIp = null, userId = null) {
+        // 1. Enregistrer la vue (unique par IP/user par jour PAR MODÈLE)
+        try {
+            let shouldInsert = true;
+
+            // Vérifier par user_id si connecté
+            if (userId) {
+                const { rows: userView } = await pool.query(
+                    `SELECT id FROM model_views 
+                     WHERE model_id = $1 
+                     AND user_id = $2
+                     AND viewed_at > NOW() - INTERVAL '24 hours'
+                     LIMIT 1`,
+                    [id, userId]
+                );
+                if (userView.length > 0) {
+                    shouldInsert = false;
+                }
+            }
+
+            // Sinon vérifier par IP
+            if (shouldInsert && visitorIp) {
+                const { rows: ipView } = await pool.query(
+                    `SELECT id FROM model_views 
+                     WHERE model_id = $1 
+                     AND visitor_ip = $2
+                     AND user_id IS NULL
+                     AND viewed_at > NOW() - INTERVAL '24 hours'
+                     LIMIT 1`,
+                    [id, visitorIp]
+                );
+                if (ipView.length > 0) {
+                    shouldInsert = false;
+                }
+            }
+
+            // Insérer la vue si nécessaire
+            if (shouldInsert && (visitorIp || userId)) {
+                await pool.query(
+                    `INSERT INTO model_views (model_id, visitor_ip, user_id)
+                     VALUES ($1, $2, $3)`,
+                    [id, visitorIp || null, userId || null]
+                );
+
+                // Mettre à jour le compteur dans models
+                await pool.query(
+                    `UPDATE models SET view_count = (
+                        SELECT COUNT(*) FROM model_views WHERE model_id = $1
+                    ) WHERE id = $1`,
+                    [id]
+                );
+            }
+        } catch (err) {
+            console.error('Error tracking view:', err);
+        }
+
+        // 2. Récupérer le modèle avec les stats
         const { rows } = await pool.query(
             `SELECT m.*,
                     g.name AS game_name, g.slug AS game_slug,
                     c.name AS category_name, c.slug AS category_slug,
-                    u.username AS creator_username
+                    u.username AS creator_username,
+                    u.display_name AS creator_display_name,
+                    u.avatar_url AS creator_avatar_url,
+                    COALESCE(ms.downloads, 0) AS download_count
              FROM models m
                       LEFT JOIN games g ON g.id = m.game_id
                       LEFT JOIN categories c ON c.id = m.category_id
                       LEFT JOIN users u ON u.id = m.creator_id
+                      LEFT JOIN model_stats ms ON ms.model_id = m.id
              WHERE m.id = $1 AND m.deleted_at IS NULL`,
             [id]
         );
@@ -228,8 +288,8 @@ class ModelsService {
             // Mettre à jour le modèle
             const { rows } = await client.query(
                 `UPDATE models
-                 SET title = $1, 
-                     description = $2, 
+                 SET title = $1,
+                     description = $2,
                      price = $3,
                      game_id = $4,
                      category_id = $5,
@@ -242,7 +302,7 @@ class ModelsService {
                      previous_values = $10,
                      updated_at = NOW()
                  WHERE id = $11 AND deleted_at IS NULL
-                 RETURNING *`,
+                     RETURNING *`,
                 [title, description, price, gameId, categoryId || null, newStatus, modificationReason, previousReason, youtubeUrl || null, JSON.stringify(previousValues), id]
             );
 
@@ -482,6 +542,8 @@ class ModelsService {
                     g.name AS game_name,
                     c.name AS category_name,
                     u.username AS creator_username,
+                    u.display_name AS creator_display_name,
+                    u.avatar_url AS creator_avatar_url,
                     array_remove(array_agg(DISTINCT t.name), NULL) AS tags
              FROM models m
                       LEFT JOIN games g ON g.id = m.game_id
@@ -490,7 +552,7 @@ class ModelsService {
                       LEFT JOIN model_tags mt ON mt.model_id = m.id
                       LEFT JOIN tags t ON t.id = mt.tag_id
                  ${where} ${tagFilter} ${versionFilter}
-             GROUP BY m.id, g.name, c.name, u.username
+             GROUP BY m.id, g.name, c.name, u.username, u.display_name, u.avatar_url
              ORDER BY m.created_at DESC`,
             values
         );

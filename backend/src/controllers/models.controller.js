@@ -136,7 +136,11 @@ class ModelsController {
     // NOUVEAU : Récupérer un modèle avec détails
     async getModelWithDetails(req, res, next) {
         try {
-            const model = await modelsService.getModelWithDetails(req.params.id);
+            // Récupérer l'IP du visiteur
+            const visitorIp = req.headers['x-forwarded-for']?.split(',')[0] || req.ip || req.connection.remoteAddress;
+            const userId = req.user?.id || null;
+
+            const model = await modelsService.getModelWithDetails(req.params.id, visitorIp, userId);
 
             if (!model) {
                 return res.status(404).json({ error: "Model not found" });

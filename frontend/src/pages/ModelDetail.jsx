@@ -4,9 +4,9 @@ import {
     ShoppingCart, Download, Star, Eye, Calendar, User,
     Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2,
     ChevronLeft, ChevronRight, Youtube, X, ZoomIn, AlertTriangle, Flag,
-    Package, ChevronDown
+    Package, ChevronDown, Link2, ExternalLink, AlertCircle
 } from 'lucide-react'
-import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI } from '../services/api'
+import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI, dependenciesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import Loading, { LoadingButton } from '../components/Loading'
@@ -60,6 +60,189 @@ function ImageModal({ image, onClose, onPrev, onNext, hasPrev, hasNext }) {
     )
 }
 
+// Composant d'affichage des dépendances
+function DependenciesSection({ modelId }) {
+    const [dependencies, setDependencies] = useState([])
+    const [loading, setLoading] = useState(true)
+    const { cart } = useCart()
+
+    useEffect(() => {
+        loadDependencies()
+    }, [modelId])
+
+    const loadDependencies = async () => {
+        try {
+            const { data } = await dependenciesAPI.getByModel(modelId)
+            setDependencies(data.dependencies || [])
+        } catch (error) {
+            console.error('Failed to load dependencies:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="mb-6">
+                <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Dépendances
+                </h3>
+                <div className="animate-pulse bg-hyt-darker rounded-lg h-20"></div>
+            </div>
+        )
+    }
+
+    if (dependencies.length === 0) {
+        return null
+    }
+
+    const requiredDeps = dependencies.filter(d => d.is_required)
+    const recommendedDeps = dependencies.filter(d => !d.is_required)
+
+    const checkProductInCart = (productId) => {
+        return cart?.some(item => item.model_id === productId)
+    }
+
+    return (
+        <div className="mb-6">
+            <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-hyt-accent" />
+                Dépendances
+                <span className="text-xs text-gray-500 font-normal">({dependencies.length})</span>
+            </h3>
+
+            <div className="space-y-3">
+                {/* Dépendances requises */}
+                {requiredDeps.length > 0 && (
+                    <div>
+                        <p className="text-xs text-red-400 font-medium mb-2 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Requis pour le fonctionnement
+                        </p>
+                        <div className="space-y-2">
+                            {requiredDeps.map(dep => (
+                                <DependencyItem
+                                    key={dep.id}
+                                    dep={dep}
+                                    isRequired={true}
+                                    inCart={dep.product_id ? checkProductInCart(dep.product_id) : false}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Dépendances recommandées */}
+                {recommendedDeps.length > 0 && (
+                    <div>
+                        <p className="text-xs text-yellow-400 font-medium mb-2">Recommandé</p>
+                        <div className="space-y-2">
+                            {recommendedDeps.map(dep => (
+                                <DependencyItem
+                                    key={dep.id}
+                                    dep={dep}
+                                    isRequired={false}
+                                    inCart={dep.product_id ? checkProductInCart(dep.product_id) : false}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+// Item de dépendance individuel
+function DependencyItem({ dep, isRequired, inCart }) {
+    const isPredefined = !!dep.dependency_id
+    const isProduct = !!dep.product_id
+
+    return (
+        <div className={`flex items-center gap-3 p-3 rounded-lg border ${
+            isRequired
+                ? 'bg-red-500/5 border-red-500/20'
+                : 'bg-yellow-500/5 border-yellow-500/20'
+        }`}>
+            {/* Logo/Thumbnail */}
+            <div className="w-12 h-12 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                {dep.dep_logo ? (
+                    <img
+                        src={`http://localhost:3001${dep.dep_logo}`}
+                        alt={dep.dep_name}
+                        className="w-full h-full object-contain p-1"
+                    />
+                ) : dep.product_thumbnail ? (
+                    <img
+                        src={dep.product_thumbnail.startsWith('http') ? dep.product_thumbnail : `http://localhost:3001${dep.product_thumbnail}`}
+                        alt={dep.product_title}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <Link2 className="w-5 h-5 text-gray-500" />
+                )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-white">
+                        {dep.dep_name || dep.product_title}
+                    </span>
+                    {isProduct && (
+                        <span className="px-1.5 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">
+                            Produit du site
+                        </span>
+                    )}
+                    {inCart && (
+                        <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            Dans le panier
+                        </span>
+                    )}
+                </div>
+
+                {dep.version_info && (
+                    <p className="text-xs text-gray-500">Version: {dep.version_info}</p>
+                )}
+
+                {dep.product_creator && (
+                    <p className="text-xs text-gray-500">par {dep.product_creator}</p>
+                )}
+
+                {dep.note && (
+                    <p className="text-xs text-gray-400 italic mt-1">{dep.note}</p>
+                )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {isPredefined && dep.dep_website && (
+                    <a
+                        href={dep.dep_website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg transition-colors"
+                        title="Site officiel"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                    </a>
+                )}
+
+                {isProduct && (
+                    <Link
+                        to={`/models/${dep.product_id}`}
+                        className="px-3 py-1.5 text-sm bg-hyt-accent/20 text-hyt-accent hover:bg-hyt-accent/30 rounded-lg transition-colors"
+                    >
+                        Voir
+                    </Link>
+                )}
+            </div>
+        </div>
+    )
+}
+
 // Composant de sélection de version pour le téléchargement
 function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
     const [fileVersions, setFileVersions] = useState([])
@@ -94,7 +277,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             setFileVersions(loadedVersions)
             setGameVersions(gameVersionsRes.data.versions || [])
 
-            // Sélectionner la version principale par défaut
             const latestVersion = loadedVersions.find(v => v.is_latest) || loadedVersions[0]
             setSelectedVersion(latestVersion)
         } catch (error) {
@@ -176,7 +358,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
         )
     }
 
-    // Si aucune version de fichier, bouton simple (fallback ancien système)
     if (fileVersions.length === 0) {
         return (
             <LoadingButton
@@ -192,7 +373,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
 
     return (
         <div className="space-y-3">
-            {/* Liste des versions du fichier */}
             {fileVersions.length > 0 && (
                 <div>
                     <label className="block text-xs text-gray-500 mb-2">
@@ -236,7 +416,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                                             <span>• {formatFileSize(version.file_size)}</span>
                                         )}
                                     </div>
-                                    {/* Versions du jeu compatibles */}
                                     {version.compatible_versions?.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-1">
                                             {version.compatible_versions.slice(0, 3).map(cv => (
@@ -261,7 +440,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                 </div>
             )}
 
-            {/* Filtre par version du jeu (optionnel) */}
             {gameVersions.length > 0 && fileVersions.some(v => v.compatible_versions?.length > 0) && (
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">
@@ -280,7 +458,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                 </div>
             )}
 
-            {/* Info compatibilité */}
             {selectedVersion?.compatible_versions?.length > 0 && (
                 <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p className="text-xs text-green-400 mb-1">Compatible avec :</p>
@@ -294,7 +471,6 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                 </div>
             )}
 
-            {/* Bouton télécharger */}
             <LoadingButton
                 onClick={handleDownload}
                 loading={downloading}
@@ -330,14 +506,13 @@ export default function ModelDetail() {
     useEffect(() => {
         fetchModel()
         fetchImages()
-    }, [id, isAuthenticated])  // <-- isAuthenticated doit être là
+    }, [id, isAuthenticated])
 
     const fetchModel = async () => {
         try {
             const { data } = await modelsAPI.getById(id)
             setModel(data.model)
 
-            // Vérifier si l'utilisateur a acheté ce produit
             if (isAuthenticated) {
                 try {
                     const purchaseRes = await modelsAPI.checkPurchase(id)
@@ -414,6 +589,12 @@ export default function ModelDetail() {
         return `http://localhost:3001${img.image_url}`
     }
 
+    // Formater les nombres avec séparateur de milliers
+    const formatNumber = (num) => {
+        if (!num && num !== 0) return '0'
+        return num.toLocaleString('fr-FR')
+    }
+
     const allImages = images.length > 0
         ? images
         : model?.thumbnail_url
@@ -469,7 +650,6 @@ export default function ModelDetail() {
                                 </div>
                             )}
 
-                            {/* Navigation arrows */}
                             {allImages.length > 1 && (
                                 <>
                                     <button
@@ -544,19 +724,19 @@ export default function ModelDetail() {
                                         {model.rating_avg ? parseFloat(model.rating_avg).toFixed(1) : '-'}
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-500">{model.rating_count || 0} avis</p>
+                                <p className="text-xs text-gray-500">{formatNumber(model.rating_count || 0)} avis</p>
                             </div>
                             <div className="card text-center">
-                                <div className="flex items-center justify-center gap-1 text-gray-400 mb-1">
+                                <div className="flex items-center justify-center gap-1 text-blue-400 mb-1">
                                     <Eye className="w-5 h-5" />
-                                    <span className="font-bold text-lg">{model.views || 0}</span>
+                                    <span className="font-bold text-lg">{formatNumber(model.view_count || model.views || 0)}</span>
                                 </div>
                                 <p className="text-xs text-gray-500">Vues</p>
                             </div>
                             <div className="card text-center">
-                                <div className="flex items-center justify-center gap-1 text-gray-400 mb-1">
+                                <div className="flex items-center justify-center gap-1 text-green-400 mb-1">
                                     <Download className="w-5 h-5" />
-                                    <span className="font-bold text-lg">{model.downloads || 0}</span>
+                                    <span className="font-bold text-lg">{formatNumber(model.download_count || model.downloads || 0)}</span>
                                 </div>
                                 <p className="text-xs text-gray-500">Téléchargements</p>
                             </div>
@@ -587,20 +767,35 @@ export default function ModelDetail() {
                         </h1>
 
                         {/* Creator */}
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
-                                <span className="text-sm font-bold text-white">
-                                    {model.creator_username?.charAt(0).toUpperCase() || 'U'}
-                                </span>
+                        <Link
+                            to={`/seller/${model.creator_username}`}
+                            className="flex items-center gap-3 mb-6 group cursor-pointer"
+                        >
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-transparent group-hover:border-hyt-accent transition-colors">
+                                {model.creator_avatar_url ? (
+                                    <img
+                                        src={model.creator_avatar_url.startsWith('http') ? model.creator_avatar_url : `http://localhost:3001${model.creator_avatar_url}`}
+                                        alt={model.creator_display_name || model.creator_username}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
+                                        <span className="text-lg font-bold text-white">
+                                            {(model.creator_display_name || model.creator_username)?.charAt(0).toUpperCase() || 'U'}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div>
-                                <p className="font-medium text-white">{model.creator_username || 'Créateur'}</p>
+                                <p className="font-medium text-white group-hover:text-hyt-accent transition-colors">
+                                    {model.creator_display_name || model.creator_username || 'Créateur'}
+                                </p>
                                 <p className="text-sm text-gray-500 flex items-center gap-1">
                                     <Calendar className="w-3.5 h-3.5" />
                                     {new Date(model.created_at).toLocaleDateString('fr-FR')}
                                 </p>
                             </div>
-                        </div>
+                        </Link>
 
                         {/* Description */}
                         {model.description && (
@@ -626,6 +821,9 @@ export default function ModelDetail() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Dépendances */}
+                        <DependenciesSection modelId={model.id} />
 
                         {/* Versions compatibles du jeu */}
                         {model.versions && model.versions.length > 0 && (
@@ -657,7 +855,6 @@ export default function ModelDetail() {
                                     </Link>
                                 ) : hasPurchased ? (
                                     <>
-                                        {/* Utilisateur a acheté - Afficher sélecteur de version */}
                                         <DownloadSection
                                             modelId={model.id}
                                             gameId={model.game_id}
@@ -685,7 +882,6 @@ export default function ModelDetail() {
                                     </>
                                 ) : (
                                     <>
-                                        {/* Utilisateur n'a pas acheté - Afficher panier */}
                                         <button
                                             onClick={handleAddToCart}
                                             disabled={inCart}

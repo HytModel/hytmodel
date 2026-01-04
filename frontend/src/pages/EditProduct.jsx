@@ -5,9 +5,9 @@ import {
     DollarSign, Gamepad2, Tag, Image, Trash2,
     Plus, Youtube, Star, X, AlertCircle, AlertTriangle,
     Upload, Check, Calendar, FileArchive, ChevronDown, ChevronUp,
-    Layers
+    Layers, Link2, Search, ExternalLink
 } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, modelFileVersionsAPI } from '../services/api'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, modelFileVersionsAPI, dependenciesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
@@ -331,14 +331,20 @@ function FileVersionsManager({ modelId, gameId }) {
                                         >
                                             Modifier
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDelete(version.id)}
-                                            disabled={processing === version.id || versions.length <= 1}
-                                            className="btn-ghost text-sm text-red-500 hover:bg-red-500/10 disabled:opacity-50"
-                                        >
-                                            Supprimer
-                                        </button>
+                                        {version.is_latest ? (
+                                            <span className="text-xs text-gray-500 italic px-2">
+                                                Version principale non supprimable
+                                            </span>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDelete(version.id)}
+                                                disabled={processing === version.id}
+                                                className="btn-ghost text-sm text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                            >
+                                                Supprimer
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -488,23 +494,35 @@ function FileVersionsManager({ modelId, gameId }) {
                             </div>
 
                             {/* Version principale */}
-                            <label className="flex items-center gap-3 p-3 bg-hyt-dark rounded-lg cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={isLatest}
-                                    onChange={(e) => setIsLatest(e.target.checked)}
-                                    className="sr-only"
-                                />
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                                    isLatest ? 'bg-hyt-accent border-hyt-accent' : 'border-gray-500'
-                                }`}>
-                                    {isLatest && <Check className="w-3 h-3 text-black" />}
+                            {editingVersion?.is_latest ? (
+                                <div className="flex items-center gap-3 p-3 bg-hyt-dark rounded-lg opacity-60">
+                                    <div className="w-5 h-5 rounded border flex items-center justify-center bg-hyt-accent border-hyt-accent">
+                                        <Check className="w-3 h-3 text-black" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-medium">Version principale</p>
+                                        <p className="text-gray-500 text-xs">Impossible de retirer le statut principal. Définissez d'abord une autre version comme principale.</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-white font-medium">Version principale</p>
-                                    <p className="text-gray-500 text-xs">Cette version sera téléchargée par défaut</p>
-                                </div>
-                            </label>
+                            ) : (
+                                <label className="flex items-center gap-3 p-3 bg-hyt-dark rounded-lg cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isLatest}
+                                        onChange={(e) => setIsLatest(e.target.checked)}
+                                        className="sr-only"
+                                    />
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                        isLatest ? 'bg-hyt-accent border-hyt-accent' : 'border-gray-500'
+                                    }`}>
+                                        {isLatest && <Check className="w-3 h-3 text-black" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-medium">Version principale</p>
+                                        <p className="text-gray-500 text-xs">Cette version sera téléchargée par défaut</p>
+                                    </div>
+                                </label>
+                            )}
 
                             {/* Boutons */}
                             <div className="flex gap-3 pt-2">
@@ -527,6 +545,708 @@ function FileVersionsManager({ modelId, gameId }) {
                                         <Upload className="w-4 h-4" />
                                     )}
                                     {editingVersion ? 'Mettre à jour' : 'Ajouter'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ============ COMPOSANT GESTION DES DÉPENDANCES ============
+function DependenciesManager({ modelId, gameId, gameName }) {
+    const [dependencies, setDependencies] = useState([])
+    const [availableDeps, setAvailableDeps] = useState([])
+    const [availableProducts, setAvailableProducts] = useState([]) // Liste des produits pour dropdown
+    const [loading, setLoading] = useState(true)
+    const [showModal, setShowModal] = useState(false)
+    const [activeTab, setActiveTab] = useState('predefined')
+
+    const [selectedDep, setSelectedDep] = useState(null)
+    const [depSearchQuery, setDepSearchQuery] = useState('') // Recherche dépendances prédéfinies
+    const [selectedProduct, setSelectedProduct] = useState(null)
+    const [productVersions, setProductVersions] = useState([]) // Versions du produit sélectionné
+    const [selectedVersion, setSelectedVersion] = useState(null) // Version sélectionnée
+    const [loadingVersions, setLoadingVersions] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState([])
+    const [searching, setSearching] = useState(false)
+    const [proposalName, setProposalName] = useState('')
+    const [proposalLogo, setProposalLogo] = useState(null)
+
+    const [versionInfo, setVersionInfo] = useState('')
+    const [isRequired, setIsRequired] = useState(true)
+    const [note, setNote] = useState('')
+    const [adding, setAdding] = useState(false)
+
+    useEffect(() => {
+        if (modelId) loadDependencies()
+    }, [modelId])
+
+    useEffect(() => {
+        if (gameId) {
+            loadAvailableDeps()
+            loadAvailableProducts()
+        }
+    }, [gameId])
+
+    // Charger les versions quand un produit est sélectionné
+    useEffect(() => {
+        if (selectedProduct) {
+            loadProductVersions(selectedProduct)
+        } else {
+            setProductVersions([])
+            setSelectedVersion(null)
+        }
+    }, [selectedProduct])
+
+    const loadDependencies = async () => {
+        setLoading(true)
+        try {
+            const { data } = await dependenciesAPI.getByModel(modelId)
+            setDependencies(data.dependencies || [])
+        } catch (error) {
+            console.error('Failed to load dependencies:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const loadAvailableDeps = async () => {
+        console.log('Loading deps for gameId:', gameId) // DEBUG
+        try {
+            const { data } = await dependenciesAPI.getAll(gameId)
+            console.log('Deps loaded:', data) // DEBUG
+            setAvailableDeps(data.dependencies || [])
+        } catch (error) {
+            console.error('Failed to load available deps:', error)
+        }
+    }
+
+    const loadProductVersions = async (productId) => {
+        setLoadingVersions(true)
+        try {
+            const { data } = await modelFileVersionsAPI.getByModel(productId)
+            setProductVersions(data.versions || data || [])
+            // Sélectionner la dernière version par défaut (null = dernière)
+            setSelectedVersion(null)
+        } catch (error) {
+            console.error('Failed to load product versions:', error)
+            setProductVersions([])
+        } finally {
+            setLoadingVersions(false)
+        }
+    }
+
+    const loadAvailableProducts = async () => {
+        try {
+            const { data } = await dependenciesAPI.searchProducts({
+                gameId,
+                excludeModelId: modelId
+            })
+            setAvailableProducts(data.products || [])
+        } catch (error) {
+            console.error('Failed to load available products:', error)
+        }
+    }
+
+    const handleSearchProducts = async (query) => {
+        setSearchQuery(query)
+        if (query.length < 2) {
+            setSearchResults([])
+            return
+        }
+
+        setSearching(true)
+        try {
+            const { data } = await dependenciesAPI.searchProducts({
+                q: query,
+                gameId,
+                excludeModelId: modelId
+            })
+            const existingProductIds = dependencies.filter(d => d.product_id).map(d => d.product_id)
+            setSearchResults(data.products.filter(p => !existingProductIds.includes(p.id)))
+        } catch (error) {
+            console.error('Search failed:', error)
+        } finally {
+            setSearching(false)
+        }
+    }
+
+    const handleAddDependency = async () => {
+        setAdding(true)
+        try {
+            if (activeTab === 'predefined' && selectedDep) {
+                await dependenciesAPI.addToModel(modelId, {
+                    dependencyId: selectedDep,
+                    versionInfo: versionInfo || null,
+                    isRequired,
+                    note: note || null
+                })
+            } else if (activeTab === 'product' && selectedProduct) {
+                // Construire versionInfo avec la version sélectionnée
+                let finalVersionInfo = versionInfo
+                if (selectedVersion) {
+                    const version = productVersions.find(v => v.id === selectedVersion)
+                    if (version) {
+                        finalVersionInfo = version.version_name || `v${version.version_number}`
+                    }
+                } else if (productVersions.length > 0) {
+                    // "Dernière version" sélectionnée
+                    finalVersionInfo = versionInfo || 'Dernière version'
+                }
+
+                await dependenciesAPI.addToModel(modelId, {
+                    productDependencyId: selectedProduct,
+                    productVersionId: selectedVersion || null, // ID de la version spécifique
+                    versionInfo: finalVersionInfo || null,
+                    isRequired,
+                    note: note || null
+                })
+            } else if (activeTab === 'propose' && proposalName) {
+                const formData = new FormData()
+                formData.append('name', proposalName)
+                formData.append('gameId', gameId)
+                if (proposalLogo) formData.append('logo', proposalLogo)
+                await dependenciesAPI.propose(formData)
+                toast.success('Proposition envoyée !')
+                closeModal()
+                return
+            } else {
+                toast.error('Sélectionnez une dépendance')
+                setAdding(false)
+                return
+            }
+
+            toast.success('Dépendance ajoutée')
+            closeModal()
+            loadDependencies()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setAdding(false)
+        }
+    }
+
+    const handleRemoveDependency = async (linkId) => {
+        if (!confirm('Supprimer cette dépendance ?')) return
+        try {
+            await dependenciesAPI.removeFromModel(modelId, linkId)
+            toast.success('Dépendance supprimée')
+            loadDependencies()
+        } catch (error) {
+            toast.error('Erreur')
+        }
+    }
+
+    const closeModal = () => {
+        setShowModal(false)
+        setSelectedDep(null)
+        setDepSearchQuery('')
+        setSelectedProduct(null)
+        setProductVersions([])
+        setSelectedVersion(null)
+        setSearchQuery('')
+        setSearchResults([])
+        setProposalName('')
+        setProposalLogo(null)
+        setVersionInfo('')
+        setIsRequired(true)
+        setNote('')
+        setActiveTab('predefined')
+    }
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 text-hyt-accent animate-spin" />
+            </div>
+        )
+    }
+
+    // Filtrer les dépendances et produits déjà ajoutés
+    const existingDepIds = dependencies.filter(d => d.dep_id).map(d => d.dep_id)
+    const existingProductIds = dependencies.filter(d => d.product_id).map(d => d.product_id)
+
+    // Filtrer les dépendances prédéfinies (exclure déjà ajoutées + recherche)
+    const filteredAvailableDeps = availableDeps
+        .filter(d => !existingDepIds.includes(d.id))
+        .filter(d => !depSearchQuery || d.name.toLowerCase().includes(depSearchQuery.toLowerCase()))
+
+    const filteredAvailableProducts = availableProducts.filter(p => !existingProductIds.includes(p.id))
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Link2 className="w-5 h-5 text-hyt-accent" />
+                        Dépendances
+                    </h3>
+                    <p className="text-sm text-gray-400">Produits ou ressources requis pour votre produit</p>
+                </div>
+                <button type="button" onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Ajouter
+                </button>
+            </div>
+
+            {/* Message jeu lié */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                <p className="text-sm text-blue-400 flex items-center gap-2">
+                    <Gamepad2 className="w-4 h-4" />
+                    Les dépendances sont liées au jeu <span className="font-semibold text-white">{gameName || 'sélectionné'}</span>
+                </p>
+            </div>
+
+            {dependencies.length === 0 ? (
+                <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-6 text-center">
+                    <Link2 className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+                    <p className="text-gray-400">Aucune dépendance</p>
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {dependencies.map((dep) => (
+                        <div key={dep.id} className="flex items-center gap-4 p-3 bg-hyt-dark border border-hyt-border rounded-lg">
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-hyt-card flex-shrink-0 flex items-center justify-center">
+                                {dep.dep_logo ? (
+                                    <img src={`http://localhost:3001${dep.dep_logo}`} alt={dep.dep_name} className="w-full h-full object-contain p-1" />
+                                ) : dep.product_thumbnail ? (
+                                    <img src={`http://localhost:3001${dep.product_thumbnail}`} alt={dep.product_title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <Package className="w-6 h-6 text-gray-500" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-white">{dep.dep_name || dep.product_title}</span>
+                                    <span className={`px-2 py-0.5 text-xs rounded ${dep.is_required ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                        {dep.is_required ? 'Requis' : 'Recommandé'}
+                                    </span>
+                                    {dep.product_id && <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">Produit du site</span>}
+                                </div>
+                                {dep.version_info && <p className="text-sm text-gray-400">Version: {dep.version_info}</p>}
+                                {dep.product_creator && <p className="text-xs text-gray-500">par {dep.product_creator}</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {dep.product_id && (
+                                    <a href={`/models/${dep.product_id}`} target="_blank" className="p-2 text-gray-400 hover:text-white">
+                                        <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                )}
+                                <button type="button" onClick={() => handleRemoveDependency(dep.id)} className="p-2 text-gray-400 hover:text-red-500">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-lg my-8">
+                        <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Link2 className="w-5 h-5 text-hyt-accent" />
+                                Ajouter une dépendance
+                            </h3>
+                            <button type="button" onClick={closeModal} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                        </div>
+
+                        {/* Info jeu */}
+                        <div className="px-4 pt-4">
+                            <div className="bg-hyt-dark rounded-lg p-3 flex items-center gap-2">
+                                <Gamepad2 className="w-4 h-4 text-hyt-accent" />
+                                <span className="text-sm text-gray-400">Jeu :</span>
+                                <span className="text-sm font-medium text-white">{gameName}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex border-b border-hyt-border mt-4">
+                            <button type="button" onClick={() => { setActiveTab('predefined'); setSelectedDep(null); setSelectedProduct(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'predefined' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
+                                Prédéfinies
+                            </button>
+                            <button type="button" onClick={() => { setActiveTab('product'); setSelectedDep(null); setSelectedProduct(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'product' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
+                                Produit du site
+                            </button>
+                            <button type="button" onClick={() => { setActiveTab('propose'); setSelectedDep(null); setSelectedProduct(null) }}
+                                    className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'propose' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
+                                Proposer
+                            </button>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                            {activeTab === 'predefined' && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm text-gray-400">Sélectionner une dépendance</label>
+
+                                    {filteredAvailableDeps.length === 0 && availableDeps.length === 0 ? (
+                                        <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
+                                            <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                            <p>Aucune dépendance disponible pour ce jeu</p>
+                                            <p className="text-sm mt-1">Proposez-en une dans l'onglet "Proposer"</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Recherche */}
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                <input
+                                                    type="text"
+                                                    value={depSearchQuery}
+                                                    onChange={(e) => setDepSearchQuery(e.target.value)}
+                                                    placeholder="Rechercher une dépendance..."
+                                                    className="input-field w-full pl-10"
+                                                />
+                                                {depSearchQuery && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDepSearchQuery('')}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Liste des dépendances avec icônes */}
+                                            <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                {filteredAvailableDeps.length === 0 ? (
+                                                    <div className="text-center py-4 text-gray-500">
+                                                        <p>Aucune dépendance trouvée pour "{depSearchQuery}"</p>
+                                                    </div>
+                                                ) : (
+                                                    filteredAvailableDeps.map(dep => (
+                                                        <button
+                                                            key={dep.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedDep(dep.id)}
+                                                            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                selectedDep === dep.id
+                                                                    ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                    : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                            }`}
+                                                        >
+                                                            {/* Logo */}
+                                                            <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                                {dep.logo_url ? (
+                                                                    <img
+                                                                        src={`http://localhost:3001${dep.logo_url}`}
+                                                                        alt={dep.name}
+                                                                        className="w-full h-full object-contain p-1"
+                                                                    />
+                                                                ) : (
+                                                                    <Link2 className="w-5 h-5 text-gray-500" />
+                                                                )}
+                                                            </div>
+
+                                                            {/* Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-medium text-white truncate">{dep.name}</p>
+                                                                {dep.description && (
+                                                                    <p className="text-xs text-gray-500 truncate">{dep.description}</p>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Check */}
+                                                            {selectedDep === dep.id && (
+                                                                <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                    <Check className="w-4 h-4 text-black" />
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+
+                                            {/* Dépendance sélectionnée */}
+                                            {selectedDep && (
+                                                <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
+                                                    {(() => {
+                                                        const dep = availableDeps.find(d => d.id === selectedDep)
+                                                        if (!dep) return null
+                                                        return (
+                                                            <>
+                                                                <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                                    {dep.logo_url ? (
+                                                                        <img src={`http://localhost:3001${dep.logo_url}`} alt={dep.name} className="w-full h-full object-contain p-1" />
+                                                                    ) : (
+                                                                        <Link2 className="w-5 h-5 text-gray-500" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="font-medium text-white">{dep.name}</p>
+                                                                    {dep.description && <p className="text-xs text-gray-400">{dep.description}</p>}
+                                                                </div>
+                                                                <button type="button" onClick={() => setSelectedDep(null)} className="p-1 text-gray-400 hover:text-white">
+                                                                    <X className="w-4 h-4" />
+                                                                </button>
+                                                            </>
+                                                        )
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'product' && (
+                                <div className="space-y-3">
+                                    <label className="block text-sm text-gray-400">Sélectionner un produit du site</label>
+
+                                    {filteredAvailableProducts.length === 0 && availableProducts.length === 0 ? (
+                                        <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
+                                            <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                            <p>Aucun autre produit disponible pour ce jeu</p>
+                                        </div>
+                                    ) : !selectedProduct ? (
+                                        <>
+                                            {/* Recherche */}
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                <input
+                                                    type="text"
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    placeholder="Rechercher un produit..."
+                                                    className="input-field w-full pl-10"
+                                                />
+                                                {searchQuery && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSearchQuery('')}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Liste des produits avec images */}
+                                            <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                {(() => {
+                                                    const filtered = filteredAvailableProducts.filter(p =>
+                                                        !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                                        p.creator_username?.toLowerCase().includes(searchQuery.toLowerCase())
+                                                    )
+
+                                                    if (filtered.length === 0) {
+                                                        return (
+                                                            <div className="text-center py-4 text-gray-500">
+                                                                <p>Aucun produit trouvé {searchQuery && `pour "${searchQuery}"`}</p>
+                                                            </div>
+                                                        )
+                                                    }
+
+                                                    return filtered.map(product => (
+                                                        <button
+                                                            key={product.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedProduct(product.id)}
+                                                            className="w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-hyt-border hover:bg-hyt-dark text-left transition-all"
+                                                        >
+                                                            {/* Thumbnail */}
+                                                            <div className="w-12 h-12 rounded-lg bg-hyt-card overflow-hidden flex-shrink-0">
+                                                                {product.thumbnail_url ? (
+                                                                    <img
+                                                                        src={`http://localhost:3001${product.thumbnail_url}`}
+                                                                        alt={product.title}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <Package className="w-5 h-5 text-gray-500" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="font-medium text-white truncate">{product.title}</p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    par {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                })()}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        /* Produit sélectionné - Afficher versions */
+                                        <div className="space-y-4">
+                                            {/* Aperçu produit sélectionné */}
+                                            <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
+                                                {(() => {
+                                                    const product = filteredAvailableProducts.find(p => p.id === selectedProduct) || availableProducts.find(p => p.id === selectedProduct)
+                                                    if (!product) return <span className="text-white">Produit sélectionné</span>
+                                                    return (
+                                                        <>
+                                                            <div className="w-14 h-14 rounded-lg bg-hyt-dark overflow-hidden flex-shrink-0">
+                                                                {product.thumbnail_url ? (
+                                                                    <img src={`http://localhost:3001${product.thumbnail_url}`} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <Package className="w-6 h-6 text-gray-500" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-white">{product.title}</p>
+                                                                <p className="text-sm text-gray-400">par {product.creator_username}</p>
+                                                                <p className="text-xs text-hyt-accent">{parseFloat(product.price).toFixed(2)}€</p>
+                                                            </div>
+                                                            <button type="button" onClick={() => { setSelectedProduct(null); setSelectedVersion(null); }} className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg">
+                                                                <X className="w-5 h-5" />
+                                                            </button>
+                                                        </>
+                                                    )
+                                                })()}
+                                            </div>
+
+                                            {/* Sélection de version */}
+                                            <div>
+                                                <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
+                                                    <Layers className="w-4 h-4" />
+                                                    Sélectionner une version
+                                                </label>
+
+                                                {loadingVersions ? (
+                                                    <div className="flex items-center justify-center gap-2 text-gray-500 py-6 bg-hyt-dark rounded-lg">
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                        <span>Chargement des versions...</span>
+                                                    </div>
+                                                ) : productVersions.length === 0 ? (
+                                                    <div className="text-center py-4 bg-hyt-dark rounded-lg">
+                                                        <Layers className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                                                        <p className="text-gray-400">Aucune version disponible</p>
+                                                        <p className="text-xs text-gray-500 mt-1">La dernière version sera utilisée par défaut</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="max-h-48 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
+                                                        {/* Option: Dernière version (par défaut) */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedVersion(null)}
+                                                            className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                selectedVersion === null
+                                                                    ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                    : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                            }`}
+                                                        >
+                                                            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                                                <Layers className="w-5 h-5 text-green-400" />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-white">Dernière version</p>
+                                                                <p className="text-xs text-gray-500">Toujours à jour automatiquement</p>
+                                                            </div>
+                                                            {selectedVersion === null && (
+                                                                <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                    <Check className="w-4 h-4 text-black" />
+                                                                </div>
+                                                            )}
+                                                        </button>
+
+                                                        {/* Liste des versions */}
+                                                        {productVersions.map((version, index) => (
+                                                            <button
+                                                                key={version.id}
+                                                                type="button"
+                                                                onClick={() => setSelectedVersion(version.id)}
+                                                                className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                                                                    selectedVersion === version.id
+                                                                        ? 'border-hyt-accent bg-hyt-accent/10'
+                                                                        : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
+                                                                }`}
+                                                            >
+                                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                                                    index === 0 ? 'bg-blue-500/20' : 'bg-hyt-card'
+                                                                }`}>
+                                                                    <span className={`text-sm font-bold ${index === 0 ? 'text-blue-400' : 'text-gray-400'}`}>
+                                                                        v{version.version_number || index + 1}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p className="font-medium text-white">
+                                                                            {version.version_name || `Version ${version.version_number || index + 1}`}
+                                                                        </p>
+                                                                        {index === 0 && (
+                                                                            <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
+                                                                                Actuelle
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        {new Date(version.created_at).toLocaleDateString('fr-FR')}
+                                                                        {version.changelog && ` • ${version.changelog.substring(0, 30)}...`}
+                                                                    </p>
+                                                                </div>
+                                                                {selectedVersion === version.id && (
+                                                                    <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
+                                                                        <Check className="w-4 h-4 text-black" />
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'propose' && (
+                                <>
+                                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                                        <p className="text-sm text-blue-400">Proposez une nouvelle dépendance. Elle sera examinée par notre équipe.</p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                                        <input type="text" value={proposalName} onChange={(e) => setProposalName(e.target.value)} placeholder="Ex: Fabric, Forge..." className="input-field w-full" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                        <input type="file" accept="image/*" onChange={(e) => setProposalLogo(e.target.files[0])} className="input-field w-full" />
+                                    </div>
+                                </>
+                            )}
+
+                            {activeTab !== 'propose' && (selectedDep || selectedProduct) && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-2">Version requise (optionnel)</label>
+                                        <input type="text" value={versionInfo} onChange={(e) => setVersionInfo(e.target.value)} placeholder="Ex: 1.20+..." className="input-field w-full" />
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button type="button" onClick={() => setIsRequired(true)} className={`flex-1 p-3 rounded-lg border ${isRequired ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-hyt-border text-gray-400'}`}>
+                                            <p className="font-medium">Requis</p>
+                                        </button>
+                                        <button type="button" onClick={() => setIsRequired(false)} className={`flex-1 p-3 rounded-lg border ${!isRequired ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-hyt-border text-gray-400'}`}>
+                                            <p className="font-medium">Recommandé</p>
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-2">Note (optionnel)</label>
+                                        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Info supplémentaire..." className="input-field w-full" />
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={closeModal} className="btn-ghost flex-1">Annuler</button>
+                                <button type="button" onClick={handleAddDependency} disabled={adding || (activeTab === 'predefined' && !selectedDep) || (activeTab === 'product' && !selectedProduct) || (activeTab === 'propose' && !proposalName)}
+                                        className="btn-primary flex-1 flex items-center justify-center gap-2">
+                                    {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                    {activeTab === 'propose' ? 'Proposer' : 'Ajouter'}
                                 </button>
                             </div>
                         </div>
@@ -1178,6 +1898,13 @@ export default function EditProduct() {
                                     </button>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Dépendances - afficher seulement si un jeu est sélectionné */}
+                    {gameId && (
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                            <DependenciesManager modelId={id} gameId={gameId} gameName={games.find(g => g.id === gameId)?.name} />
                         </div>
                     )}
 

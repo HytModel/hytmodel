@@ -3,6 +3,8 @@ const bodyParser = require("body-parser");
 const helmet = require("helmet");
 const cors = require("cors");
 const morgan = require("morgan");
+const session = require("express-session");
+const passport = require("passport");
 const { generalLimiter } = require("./middlewares/rateLimiter");
 const path = require('path');
 
@@ -39,11 +41,29 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Session pour OAuth
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-session-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 heures
+    }
+}));
+
+// Passport OAuth
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Rate limiting général
 app.use("/api", generalLimiter);
 
 // Routes
 app.use("/api/auth", require("./routes/auth.routes"));
+app.use("/api/auth", require("./routes/oauth.routes")); // OAuth Discord/Google
+app.use("/api/profile", require("./routes/profile.routes"));
+app.use("/api/sellers", require("./routes/sellers.routes"));
 app.use("/api/models", require("./routes/models.routes"));
 app.use('/api/model-images', require('./routes/model-images.routes'));
 app.use("/api/cart", require("./routes/cart.routes"));
@@ -59,9 +79,12 @@ app.use("/api/categories", require("./routes/categories.routes"));
 app.use("/api/versions", require("./routes/gameVersions.routes"));
 app.use("/api/creator-request", require("./routes/creator-request.routes"));
 app.use("/api/feedback", require("./routes/feedback.routes"));
-app.use('/api/notifications', require('./routes/notifications.routes'));
-app.use('/api/proposals', require('./routes/proposals.routes'));
-app.use('/api/model-versions', require('./routes/modelVersions.routes'));
+app.use("/api/notifications", require("./routes/notifications.routes"));
+app.use("/api/proposals", require("./routes/proposals.routes"));
+app.use("/api/bundles", require("./routes/bundles.routes"));
+app.use("/api/dependencies", require("./routes/dependencies.routes"));
+app.use("/api/model-versions", require("./routes/modelVersions.routes"));
+
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 

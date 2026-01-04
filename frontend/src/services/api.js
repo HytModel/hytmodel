@@ -79,6 +79,57 @@ export const modelsAPI = {
     unhide: (id) => api.post(`/models/${id}/unhide`)
 }
 
+// ==================== BUNDLES API ====================
+// Ajouter dans api.js
+
+export const bundlesAPI = {
+    // Mes bundles (vendeur)
+    getMy: () => api.get('/bundles/my'),
+
+    // Créer un bundle
+    create: (data) => api.post('/bundles', data),
+
+    // Modifier un bundle
+    update: (id, data) => api.put(`/bundles/${id}`, data),
+
+    // Supprimer un bundle
+    delete: (id) => api.delete(`/bundles/${id}`),
+
+    // Liste des bundles actifs (public)
+    getAll: (params) => api.get('/bundles', { params }),
+
+    // Détails d'un bundle
+    getById: (id) => api.get(`/bundles/${id}`),
+
+    // Acheter un bundle
+    purchase: (id) => api.post(`/bundles/${id}/purchase`),
+
+    // Vérifier si acheté
+    checkPurchase: (id) => api.get(`/bundles/check/${id}`),
+}
+
+
+export const modelDependenciesAPI = {
+    // Obtenir les dépendances d'un produit
+    getByModel: (modelId) => api.get(`/model-dependencies/${modelId}`),
+
+    // Obtenir les produits qui dépendent de celui-ci
+    getDependents: (modelId) => api.get(`/model-dependencies/${modelId}/dependents`),
+
+    // Rechercher des produits pour ajouter comme dépendance
+    searchProducts: (params) => api.get('/model-dependencies/search/products', { params }),
+
+    // Ajouter une dépendance
+    add: (modelId, data) => api.post(`/model-dependencies/${modelId}`, data),
+    // data = { dependencyId, isRequired, note }
+
+    // Modifier une dépendance
+    update: (modelId, dependencyId, data) => api.put(`/model-dependencies/${modelId}/${dependencyId}`, data),
+
+    // Supprimer une dépendance
+    delete: (modelId, dependencyId) => api.delete(`/model-dependencies/${modelId}/${dependencyId}`),
+}
+
 // ============ CART ============
 export const cartAPI = {
     get: () => api.get('/cart'),
@@ -234,6 +285,45 @@ export const proposalsAPI = {
     reject: (id, reason) => api.post(`/proposals/${id}/reject`, { reason }),
 }
 
+// ==================== PROFILE API ====================
+// Ajouter dans api.js
+
+export const profileAPI = {
+    // Récupérer son profil
+    get: () => api.get('/profile'),
+
+    // Mettre à jour son profil (avec avatar)
+    update: (formData) => api.put('/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+    // Changer le mot de passe
+    changePassword: (data) => api.post('/profile/change-password', data),
+
+    // 2FA
+    setup2FA: () => api.post('/profile/2fa/setup'),
+    verify2FA: (data) => api.post('/profile/2fa/verify', data),
+    disable2FA: () => api.post('/profile/2fa/disable'),
+
+    // OAuth
+    disconnectOAuth: (provider) => api.delete(`/profile/oauth/${provider}`),
+
+    // Sessions
+    getSessions: () => api.get('/profile/sessions'),
+    revokeSession: (sessionId) => api.delete(`/profile/sessions/${sessionId}`),
+    revokeAllSessions: () => api.delete('/profile/sessions'),
+}
+
+// ==================== SELLERS API ====================
+
+export const sellersAPI = {
+    // Profil public d'un vendeur
+    getPublicProfile: (username) => api.get(`/sellers/${username}`),
+
+    // Liste des vendeurs (page "Nos créateurs")
+    getAll: (params) => api.get('/sellers', { params }),
+}
+
 // ============ ADMIN ============
 export const adminAPI = {
     // Users
@@ -294,6 +384,55 @@ export const adminAPI = {
     getRevenueChart: (days = 30) => api.get(`/admin/dashboard/chart?days=${days}`),
     getSellerStats: (days = 30) => api.get(`/admin/dashboard/sellers?days=${days}`),
     getTopModels: (days = 30) => api.get(`/admin/dashboard/top-models?days=${days}`)
+}
+
+export const dependenciesAPI = {
+    // === Dépendances prédéfinies ===
+    getAll: (gameId = null) => {
+        const params = gameId ? `?gameId=${gameId}` : '';
+        return api.get(`/dependencies${params}`);
+    },
+    getById: (id) => api.get(`/dependencies/${id}`),
+
+    // === Admin - Gestion des dépendances ===
+    adminGetAll: (gameId = null) => {
+        const params = gameId ? `?gameId=${gameId}` : '';
+        return api.get(`/dependencies/admin/all${params}`);
+    },
+    create: (formData) => api.post('/dependencies', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    update: (id, formData) => api.put(`/dependencies/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    delete: (id) => api.delete(`/dependencies/${id}`),
+
+    // === Propositions vendeurs ===
+    getMyProposals: () => api.get('/dependencies/proposals/my'),
+    propose: (formData) => api.post('/dependencies/proposals', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    deleteProposal: (id) => api.delete(`/dependencies/proposals/${id}`),
+
+    // === Admin - Gestion des propositions ===
+    getProposals: (status = null) => {
+        const params = status ? `?status=${status}` : '';
+        return api.get(`/dependencies/proposals${params}`);
+    },
+    getPendingCount: () => api.get('/dependencies/proposals/pending/count'),
+    approveProposal: (id) => api.post(`/dependencies/proposals/${id}/approve`),
+    rejectProposal: (id, reason) => api.post(`/dependencies/proposals/${id}/reject`, { reason }),
+
+    // === Liaisons produit <-> dépendance ===
+    getByModel: (modelId) => api.get(`/dependencies/model/${modelId}`),
+    addToModel: (modelId, data) => api.post(`/dependencies/model/${modelId}`, data),
+    // data = { dependencyId?, productDependencyId?, versionInfo?, isRequired?, note? }
+    updateLink: (modelId, linkId, data) => api.put(`/dependencies/model/${modelId}/${linkId}`, data),
+    removeFromModel: (modelId, linkId) => api.delete(`/dependencies/model/${modelId}/${linkId}`),
+
+    // === Recherche produits comme dépendance ===
+    searchProducts: (params) => api.get('/dependencies/search/products', { params }),
+    // params = { q, gameId, excludeModelId }
 }
 
 // ============ CREATOR REQUEST (pour les utilisateurs) ============

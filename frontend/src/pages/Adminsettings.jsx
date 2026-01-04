@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
     Tag, FolderOpen, Gamepad2, Plus, Pencil, Trash2, X,
-    Loader2, Upload, Image, Check, AlertTriangle, Search, Layers
+    Loader2, Upload, Image, Check, AlertTriangle, Search, Layers, Link2,
+    ExternalLink, Filter
 } from 'lucide-react'
-import { tagsAPI, categoriesAPI, gamesAPI, versionsAPI } from '../services/api.js'
+import { tagsAPI, categoriesAPI, gamesAPI, versionsAPI, dependenciesAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 // ============ MODAL GÉNÉRIQUE ============
@@ -23,6 +24,406 @@ function Modal({ isOpen, onClose, title, children }) {
                     {children}
                 </div>
             </div>
+        </div>
+    )
+}
+
+// ============ GESTION DES DÉPENDANCES ============
+function DependenciesManager() {
+    const [games, setGames] = useState([])
+    const [dependencies, setDependencies] = useState([])
+    const [selectedGame, setSelectedGame] = useState('')
+    const [loading, setLoading] = useState(true)
+    const [modalOpen, setModalOpen] = useState(false)
+    const [editingDep, setEditingDep] = useState(null)
+    const [formData, setFormData] = useState({ name: '', description: '', websiteUrl: '' })
+    const [logoFile, setLogoFile] = useState(null)
+    const [logoPreview, setLogoPreview] = useState(null)
+    const [saving, setSaving] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const fileInputRef = useRef(null)
+
+    useEffect(() => {
+        fetchGames()
+    }, [])
+
+    useEffect(() => {
+        if (selectedGame) {
+            fetchDependencies(selectedGame)
+        } else {
+            setDependencies([])
+        }
+    }, [selectedGame])
+
+    const fetchGames = async () => {
+        try {
+            const { data } = await gamesAPI.getAll()
+            const gamesList = data.games || data || []
+            setGames(gamesList)
+            if (gamesList.length > 0) {
+                setSelectedGame(gamesList[0].id)
+            }
+        } catch (error) {
+            toast.error('Erreur lors du chargement des jeux')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const fetchDependencies = async (gameId) => {
+        try {
+            const { data } = await dependenciesAPI.adminGetAll(gameId)
+            setDependencies(data.dependencies || [])
+        } catch (error) {
+            console.error('Error fetching dependencies:', error)
+            setDependencies([])
+        }
+    }
+
+    const openCreateModal = () => {
+        if (!selectedGame) {
+            toast.error('Sélectionnez un jeu d\'abord')
+            return
+        }
+        setEditingDep(null)
+        setFormData({ name: '', description: '', websiteUrl: '' })
+        setLogoFile(null)
+        setLogoPreview(null)
+        setModalOpen(true)
+    }
+
+    const openEditModal = (dep) => {
+        setEditingDep(dep)
+        setFormData({
+            name: dep.name,
+            description: dep.description || '',
+            websiteUrl: dep.website_url || ''
+        })
+        setLogoFile(null)
+        setLogoPreview(dep.logo_url ? `http://localhost:3001${dep.logo_url}` : null)
+        setModalOpen(true)
+    }
+
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error('Logo trop volumineux (max 2MB)')
+                return
+            }
+            setLogoFile(file)
+            setLogoPreview(URL.createObjectURL(file))
+        }
+    }
+
+    const handleSave = async () => {
+        if (!formData.name.trim()) {
+            toast.error('Le nom est requis')
+            return
+        }
+
+        setSaving(true)
+        try {
+            const fd = new FormData()
+            fd.append('name', formData.name.trim())
+            fd.append('description', formData.description)
+            fd.append('websiteUrl', formData.websiteUrl)
+            fd.append('gameId', selectedGame)
+            if (logoFile) {
+                fd.append('logo', logoFile)
+            }
+
+            if (editingDep) {
+                await dependenciesAPI.update(editingDep.id, fd)
+                toast.success('Dépendance modifiée')
+            } else {
+                await dependenciesAPI.create(fd)
+                toast.success('Dépendance créée')
+            }
+            setModalOpen(false)
+            fetchDependencies(selectedGame)
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDelete = async (dep) => {
+        if (!confirm(`Supprimer la dépendance "${dep.name}" ?`)) return
+
+        try {
+            await dependenciesAPI.delete(dep.id)
+            toast.success('Dépendance supprimée')
+            fetchDependencies(selectedGame)
+        } catch (error) {
+            toast.error('Erreur lors de la suppression')
+        }
+    }
+
+    const handleToggleActive = async (dep) => {
+        try {
+            const fd = new FormData()
+            fd.append('isActive', !dep.is_active)
+            await dependenciesAPI.update(dep.id, fd)
+            toast.success(dep.is_active ? 'Dépendance désactivée' : 'Dépendance activée')
+            fetchDependencies(selectedGame)
+        } catch (error) {
+            toast.error('Erreur')
+        }
+    }
+
+    const selectedGameName = games.find(g => g.id === selectedGame)?.name || ''
+
+    const filteredDeps = dependencies.filter(d =>
+        d.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
+    return (
+        <div className="space-y-4">
+            {/* Sélecteur de jeu */}
+            <div className="bg-hyt-dark rounded-xl p-4 border border-hyt-border">
+                <label className="block text-sm text-gray-400 mb-2">
+                    Sélectionnez un jeu pour gérer ses dépendances
+                </label>
+                <div className="flex gap-3">
+                    <select
+                        value={selectedGame}
+                        onChange={(e) => setSelectedGame(e.target.value)}
+                        className="input-field flex-1"
+                    >
+                        <option value="">-- Choisir un jeu --</option>
+                        {games.map(game => (
+                            <option key={game.id} value={game.id}>{game.name}</option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={openCreateModal}
+                        disabled={!selectedGame}
+                        className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Nouvelle dépendance
+                    </button>
+                </div>
+            </div>
+
+            {/* Recherche */}
+            {selectedGame && dependencies.length > 0 && (
+                <div className="relative max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Rechercher une dépendance..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="input-field pl-10 w-full text-sm"
+                    />
+                </div>
+            )}
+
+            {loading ? (
+                <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 text-hyt-accent animate-spin" />
+                </div>
+            ) : !selectedGame ? (
+                <div className="text-center py-12 text-gray-400">
+                    <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Sélectionnez un jeu pour voir ses dépendances</p>
+                </div>
+            ) : filteredDeps.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                    <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>{searchQuery ? 'Aucune dépendance trouvée' : `Aucune dépendance pour ${selectedGameName}`}</p>
+                    <button onClick={openCreateModal} className="mt-4 btn-ghost">
+                        <Plus className="w-4 h-4 inline mr-2" />
+                        Créer une dépendance
+                    </button>
+                </div>
+            ) : (
+                <div className="grid gap-3">
+                    {filteredDeps.map((dep) => (
+                        <div
+                            key={dep.id}
+                            className={`flex items-center gap-4 p-4 rounded-xl border ${
+                                dep.is_active
+                                    ? 'bg-hyt-dark border-hyt-border'
+                                    : 'bg-red-500/5 border-red-500/30 opacity-60'
+                            }`}
+                        >
+                            {/* Logo */}
+                            <div className="w-14 h-14 rounded-xl bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {dep.logo_url ? (
+                                    <img
+                                        src={`http://localhost:3001${dep.logo_url}`}
+                                        alt={dep.name}
+                                        className="w-full h-full object-contain p-1"
+                                    />
+                                ) : (
+                                    <Link2 className="w-6 h-6 text-gray-500" />
+                                )}
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-white">{dep.name}</span>
+                                    {!dep.is_active && (
+                                        <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded">
+                                            Désactivée
+                                        </span>
+                                    )}
+                                </div>
+                                {dep.description && (
+                                    <p className="text-sm text-gray-400 mt-1 line-clamp-1">{dep.description}</p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Utilisée par {dep.usage_count || 0} produit(s)
+                                </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                                {dep.website_url && (
+                                    <a
+                                        href={dep.website_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 text-gray-400 hover:text-white transition-colors"
+                                        title="Site web"
+                                    >
+                                        <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                )}
+                                <button
+                                    onClick={() => handleToggleActive(dep)}
+                                    className={`p-2 transition-colors ${
+                                        dep.is_active
+                                            ? 'text-gray-400 hover:text-yellow-500'
+                                            : 'text-green-500 hover:text-green-400'
+                                    }`}
+                                    title={dep.is_active ? 'Désactiver' : 'Activer'}
+                                >
+                                    {dep.is_active ? (
+                                        <X className="w-4 h-4" />
+                                    ) : (
+                                        <Check className="w-4 h-4" />
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => openEditModal(dep)}
+                                    className="p-2 text-gray-400 hover:text-hyt-accent transition-colors"
+                                    title="Modifier"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(dep)}
+                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Supprimer"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Modal Dépendance */}
+            <Modal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={editingDep ? 'Modifier la dépendance' : 'Nouvelle dépendance'}
+            >
+                <div className="space-y-4">
+                    {/* Logo */}
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                        <div className="flex items-center gap-4">
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-20 h-20 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex items-center justify-center cursor-pointer overflow-hidden"
+                            >
+                                {logoPreview ? (
+                                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
+                                ) : (
+                                    <Image className="w-8 h-8 text-gray-500" />
+                                )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                <p>Cliquez pour uploader</p>
+                                <p className="text-xs">PNG, JPG, SVG (max 2MB)</p>
+                            </div>
+                        </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoChange}
+                            className="hidden"
+                        />
+                    </div>
+
+                    {/* Nom */}
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="Ex: Fabric, Forge, OptiFine..."
+                            className="input-field w-full"
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Description</label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Courte description..."
+                            rows={2}
+                            className="input-field w-full resize-none"
+                        />
+                    </div>
+
+                    {/* Site web */}
+                    <div>
+                        <label className="block text-sm text-gray-400 mb-2">Site web</label>
+                        <input
+                            type="url"
+                            value={formData.websiteUrl}
+                            onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+                            placeholder="https://..."
+                            className="input-field w-full"
+                        />
+                    </div>
+
+                    {/* Jeu */}
+                    <div className="bg-hyt-dark rounded-lg p-3">
+                        <p className="text-sm text-gray-400">
+                            Jeu : <span className="text-white font-medium">{selectedGameName}</span>
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                        <button onClick={() => setModalOpen(false)} className="btn-ghost flex-1">
+                            Annuler
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="btn-primary flex-1 flex items-center justify-center gap-2"
+                        >
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            {editingDep ? 'Modifier' : 'Créer'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     )
 }
@@ -1137,7 +1538,8 @@ export default function AdminSettings() {
         { id: 'games', label: 'Jeux', icon: Gamepad2 },
         { id: 'categories', label: 'Catégories', icon: FolderOpen },
         { id: 'tags', label: 'Tags', icon: Tag },
-        { id: 'versions', label: 'Versions', icon: Layers }
+        { id: 'versions', label: 'Versions', icon: Layers },
+        { id: 'dependencies', label: 'Dépendances', icon: Link2 }
     ]
 
     return (
@@ -1145,12 +1547,12 @@ export default function AdminSettings() {
             <h2 className="text-2xl font-bold text-white">Paramètres</h2>
 
             {/* Tabs */}
-            <div className="flex gap-2 border-b border-hyt-border">
+            <div className="flex gap-2 border-b border-hyt-border overflow-x-auto">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors relative ${
+                        className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors relative whitespace-nowrap ${
                             activeTab === tab.id
                                 ? 'text-hyt-accent'
                                 : 'text-gray-400 hover:text-white'
@@ -1171,6 +1573,7 @@ export default function AdminSettings() {
                 {activeTab === 'categories' && <CategoriesManager />}
                 {activeTab === 'tags' && <TagsManager />}
                 {activeTab === 'versions' && <VersionsManager />}
+                {activeTab === 'dependencies' && <DependenciesManager />}
             </div>
         </div>
     )

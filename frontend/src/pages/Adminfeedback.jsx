@@ -3,22 +3,24 @@ import { Link } from 'react-router-dom'
 import {
     MessageSquare, Tag, FolderOpen, Layers, Clock, CheckCircle, XCircle,
     Loader2, Eye, Check, X, AlertTriangle, Bug, AlertCircle, Copyright, Ban, HelpCircle,
-    ExternalLink, MessageCircleReply, Filter
+    ExternalLink, MessageCircleReply, Filter, Link2, Gamepad2
 } from 'lucide-react'
-import { adminAPI } from '../services/api'
+import { adminAPI, dependenciesAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
 // Icônes pour les types de propositions
 const TYPE_ICONS = {
     CATEGORY: FolderOpen,
     TAG: Tag,
-    VERSION: Layers
+    VERSION: Layers,
+    DEPENDENCY: Link2
 }
 
 const TYPE_LABELS = {
     CATEGORY: 'Catégorie',
     TAG: 'Tag',
-    VERSION: 'Version'
+    VERSION: 'Version',
+    DEPENDENCY: 'Dépendance'
 }
 
 // Icônes pour les raisons de signalement
@@ -57,6 +59,7 @@ const STATUS_COLORS = {
 export default function AdminFeedback() {
     const [activeTab, setActiveTab] = useState('proposals')
     const [proposals, setProposals] = useState([])
+    const [depProposals, setDepProposals] = useState([]) // Propositions de dépendances
     const [reports, setReports] = useState([])
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(null)
@@ -65,6 +68,7 @@ export default function AdminFeedback() {
     const [reportFilter, setReportFilter] = useState('PENDING') // Filtre pour les signalements
     const [staffNoteModal, setStaffNoteModal] = useState(null)
     const [staffNote, setStaffNote] = useState('')
+    const [rejectDepModal, setRejectDepModal] = useState(null) // Modal rejet dépendance
 
     useEffect(() => {
         fetchData()
@@ -73,11 +77,13 @@ export default function AdminFeedback() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            const [proposalsRes, reportsRes] = await Promise.all([
+            const [proposalsRes, depProposalsRes, reportsRes] = await Promise.all([
                 adminAPI.getProposals('PENDING').catch(() => ({ data: { proposals: [] } })),
+                dependenciesAPI.getProposals('PENDING').catch(() => ({ data: { proposals: [] } })),
                 adminAPI.getReports(reportFilter === 'ALL' ? null : reportFilter).catch(() => ({ data: { reports: [] } }))
             ])
             setProposals(proposalsRes.data.proposals || [])
+            setDepProposals(depProposalsRes.data.proposals || [])
             setReports(reportsRes.data.reports || [])
         } catch (error) {
             console.error('Error fetching data:', error)
@@ -92,8 +98,7 @@ export default function AdminFeedback() {
         try {
             await adminAPI.approveProposal(id)
             toast.success('Proposition approuvée et créée !')
-            // Retirer immédiatement la proposition de la liste
-            setProposals(prev => prev.filter(p => p.id !== id))
+            fetchData()
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erreur')
         } finally {
@@ -108,10 +113,9 @@ export default function AdminFeedback() {
         try {
             await adminAPI.rejectProposal(rejectModal, rejectReason)
             toast.success('Proposition rejetée')
-            // Retirer immédiatement la proposition de la liste
-            setProposals(prev => prev.filter(p => p.id !== rejectModal))
             setRejectModal(null)
             setRejectReason('')
+            fetchData()
         } catch (error) {
             toast.error('Erreur lors du rejet')
         } finally {
@@ -135,12 +139,43 @@ export default function AdminFeedback() {
         }
     }
 
+    // ============ PROPOSITIONS DE DÉPENDANCES ============
+    const handleApproveDepProposal = async (id) => {
+        setProcessing(`dep-${id}`)
+        try {
+            await dependenciesAPI.approveProposal(id)
+            toast.success('Dépendance approuvée et créée !')
+            fetchData()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const handleRejectDepProposal = async () => {
+        if (!rejectDepModal) return
+
+        setProcessing(`dep-${rejectDepModal}`)
+        try {
+            await dependenciesAPI.rejectProposal(rejectDepModal, rejectReason)
+            toast.success('Proposition de dépendance rejetée')
+            setRejectDepModal(null)
+            setRejectReason('')
+            fetchData()
+        } catch (error) {
+            toast.error('Erreur lors du rejet')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
     const openStaffNoteModal = (report, status) => {
         setStaffNoteModal({ report, status })
         setStaffNote('')
     }
 
-    const pendingProposalsCount = proposals.length
+    const pendingProposalsCount = proposals.length + depProposals.length
     const pendingReportsCount = reports.filter(r => r.status === 'PENDING').length
     const reportsWithResponse = reports.filter(r => r.seller_response).length
 
@@ -202,64 +237,163 @@ export default function AdminFeedback() {
                     {/* Tab: Propositions */}
                     {activeTab === 'proposals' && (
                         <div className="space-y-4">
-                            {proposals.length === 0 ? (
+                            {/* Message si aucune proposition */}
+                            {proposals.length === 0 && depProposals.length === 0 ? (
                                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
-                                    <Tag className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                                    <MessageSquare className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                                     <p className="text-white font-medium">Aucune proposition en attente</p>
                                     <p className="text-gray-400 text-sm mt-1">
                                         Les propositions des vendeurs apparaîtront ici
                                     </p>
                                 </div>
                             ) : (
-                                proposals.map((proposal) => {
-                                    const Icon = TYPE_ICONS[proposal.type] || Tag
-                                    return (
+                                <div className="space-y-3">
+                                    {/* Propositions classiques (catégories, tags, versions) */}
+                                    {proposals.map((proposal) => {
+                                        const Icon = TYPE_ICONS[proposal.type] || Tag
+                                        const colors = {
+                                            CATEGORY: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30' },
+                                            TAG: { bg: 'bg-hyt-accent/20', text: 'text-hyt-accent', border: 'border-hyt-accent/30' },
+                                            VERSION: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30' }
+                                        }
+                                        const color = colors[proposal.type] || colors.TAG
+
+                                        return (
+                                            <div
+                                                key={`prop-${proposal.id}`}
+                                                className={`bg-hyt-card border ${color.border} rounded-xl p-4`}
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className={`w-12 h-12 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0`}>
+                                                        <Icon className={`w-6 h-6 ${color.text}`} />
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                            <span className="text-white font-semibold text-lg">
+                                                                {proposal.name}
+                                                            </span>
+                                                            <span className={`px-2 py-0.5 ${color.bg} ${color.text} text-xs rounded-full flex items-center gap-1`}>
+                                                                <Icon className="w-3 h-3" />
+                                                                {TYPE_LABELS[proposal.type]}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-gray-400 text-sm">
+                                                            <Gamepad2 className="w-4 h-4 inline mr-1" />
+                                                            <span className="text-white">{proposal.game_name}</span>
+                                                            {' • '}
+                                                            Par : <span className="text-white">{proposal.user_name}</span>
+                                                        </p>
+                                                        {proposal.description && (
+                                                            <p className="text-gray-500 text-sm mt-2 italic">
+                                                                "{proposal.description}"
+                                                            </p>
+                                                        )}
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <button
+                                                            onClick={() => handleApproveProposal(proposal.id)}
+                                                            disabled={processing === proposal.id}
+                                                            className="p-2 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                                                            title="Approuver et créer"
+                                                        >
+                                                            {processing === proposal.id ? (
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                            ) : (
+                                                                <Check className="w-5 h-5" />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setRejectModal(proposal.id)}
+                                                            disabled={processing === proposal.id}
+                                                            className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                                                            title="Refuser"
+                                                        >
+                                                            <X className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+
+                                    {/* Propositions de dépendances */}
+                                    {depProposals.map((proposal) => (
                                         <div
-                                            key={proposal.id}
-                                            className="bg-hyt-card border border-hyt-border rounded-xl p-4"
+                                            key={`dep-${proposal.id}`}
+                                            className="bg-hyt-card border border-blue-500/30 rounded-xl p-4"
                                         >
                                             <div className="flex items-start gap-4">
-                                                <div className="w-12 h-12 rounded-xl bg-hyt-accent/20 flex items-center justify-center flex-shrink-0">
-                                                    <Icon className="w-6 h-6 text-hyt-accent" />
+                                                {/* Logo */}
+                                                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                    {proposal.logo_url ? (
+                                                        <img
+                                                            src={`http://localhost:3001${proposal.logo_url}`}
+                                                            alt={proposal.name}
+                                                            className="w-full h-full object-contain p-1"
+                                                        />
+                                                    ) : (
+                                                        <Link2 className="w-6 h-6 text-blue-400" />
+                                                    )}
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                         <span className="text-white font-semibold text-lg">
                                                             {proposal.name}
                                                         </span>
-                                                        <span className="px-2 py-0.5 bg-hyt-dark text-gray-400 text-xs rounded-full">
-                                                            {TYPE_LABELS[proposal.type]}
+                                                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full flex items-center gap-1">
+                                                            <Link2 className="w-3 h-3" />
+                                                            Dépendance
                                                         </span>
                                                     </div>
                                                     <p className="text-gray-400 text-sm">
-                                                        Pour : <span className="text-white">{proposal.game_name}</span>
+                                                        <Gamepad2 className="w-4 h-4 inline mr-1" />
+                                                        <span className="text-white">{proposal.game_name}</span>
                                                         {' • '}
-                                                        Par : <span className="text-white">{proposal.user_name}</span>
+                                                        Par : <span className="text-white">{proposal.proposed_by_username}</span>
                                                     </p>
                                                     {proposal.description && (
-                                                        <p className="text-gray-500 text-sm mt-2 italic">
-                                                            "{proposal.description}"
+                                                        <p className="text-gray-500 text-sm mt-2">
+                                                            {proposal.description}
                                                         </p>
                                                     )}
+                                                    {proposal.website_url && (
+                                                        <a
+                                                            href={proposal.website_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-hyt-accent text-sm hover:underline flex items-center gap-1 mt-1 inline-flex"
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" />
+                                                            Site web
+                                                        </a>
+                                                    )}
+                                                    <p className="text-xs text-gray-500 mt-2">
+                                                        Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                                    </p>
                                                 </div>
 
                                                 <div className="flex items-center gap-2 flex-shrink-0">
                                                     <button
-                                                        onClick={() => handleApproveProposal(proposal.id)}
-                                                        disabled={processing === proposal.id}
+                                                        onClick={() => handleApproveDepProposal(proposal.id)}
+                                                        disabled={processing === `dep-${proposal.id}`}
                                                         className="p-2 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
                                                         title="Approuver et créer"
                                                     >
-                                                        {processing === proposal.id ? (
+                                                        {processing === `dep-${proposal.id}` ? (
                                                             <Loader2 className="w-5 h-5 animate-spin" />
                                                         ) : (
                                                             <Check className="w-5 h-5" />
                                                         )}
                                                     </button>
                                                     <button
-                                                        onClick={() => setRejectModal(proposal.id)}
-                                                        disabled={processing === proposal.id}
+                                                        onClick={() => setRejectDepModal(proposal.id)}
+                                                        disabled={processing === `dep-${proposal.id}`}
                                                         className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
                                                         title="Refuser"
                                                     >
@@ -268,8 +402,8 @@ export default function AdminFeedback() {
                                                 </div>
                                             </div>
                                         </div>
-                                    )
-                                })
+                                    ))}
+                                </div>
                             )}
                         </div>
                     )}
@@ -540,6 +674,56 @@ export default function AdminFeedback() {
                                         <Check className="w-4 h-4" />
                                     )}
                                     Confirmer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de rejet proposition dépendance */}
+            {rejectDepModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
+                        <div className="p-4 border-b border-hyt-border">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Link2 className="w-5 h-5 text-blue-500" />
+                                Refuser la proposition de dépendance
+                            </h3>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    Raison du refus (optionnel)
+                                </label>
+                                <textarea
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Expliquez pourquoi cette dépendance est refusée..."
+                                    className="input-field w-full h-24 resize-none"
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setRejectDepModal(null)
+                                        setRejectReason('')
+                                    }}
+                                    className="btn-ghost flex-1"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleRejectDepProposal}
+                                    disabled={processing}
+                                    className="btn-primary flex-1 bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2"
+                                >
+                                    {processing ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <X className="w-4 h-4" />
+                                    )}
+                                    Refuser
                                 </button>
                             </div>
                         </div>
