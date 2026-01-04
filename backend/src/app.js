@@ -61,6 +61,7 @@ app.use("/api/creator-request", require("./routes/creator-request.routes"));
 app.use("/api/feedback", require("./routes/feedback.routes"));
 app.use('/api/notifications', require('./routes/notifications.routes'));
 app.use('/api/proposals', require('./routes/proposals.routes'));
+app.use('/api/model-versions', require('./routes/modelVersions.routes'));
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 

@@ -144,6 +144,42 @@ export const versionsAPI = {
     update: (id, data) => api.put(`/versions/${id}`, data),
     delete: (id) => api.delete(`/versions/${id}`)
 }
+// ============ MODEL FILE VERSIONS ============
+export const modelFileVersionsAPI = {
+    // Obtenir toutes les versions d'un produit
+    getByModel: (modelId, gameVersionId = null) => {
+        const params = gameVersionId ? `?gameVersionId=${gameVersionId}` : '';
+        return api.get(`/model-versions/${modelId}${params}`);
+    },
+
+    // Obtenir la dernière version (ou la dernière compatible avec une version du jeu)
+    getLatest: (modelId, gameVersionId = null) => {
+        const params = gameVersionId ? `?gameVersionId=${gameVersionId}` : '';
+        return api.get(`/model-versions/${modelId}/latest${params}`);
+    },
+
+    // Télécharger une version spécifique
+    download: (modelId, versionId) =>
+        api.get(`/model-versions/${modelId}/download/${versionId}`, { responseType: 'blob' }),
+
+    // Vendeur: Ajouter une nouvelle version
+    create: (modelId, formData) =>
+        api.post(`/model-versions/${modelId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }),
+
+    // Vendeur: Modifier une version
+    update: (modelId, versionId, data) =>
+        api.put(`/model-versions/${modelId}/${versionId}`, data),
+
+    // Vendeur: Supprimer une version
+    delete: (modelId, versionId) =>
+        api.delete(`/model-versions/${modelId}/${versionId}`),
+
+    // Vendeur: Définir comme version principale
+    setLatest: (modelId, versionId) =>
+        api.post(`/model-versions/${modelId}/${versionId}/set-latest`),
+}
 
 // ============ SELLER DASHBOARD ============
 export const sellerAPI = {

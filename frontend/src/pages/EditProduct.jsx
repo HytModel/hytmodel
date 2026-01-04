@@ -3,13 +3,541 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
     ArrowLeft, Save, Loader2, Package, FileText,
     DollarSign, Gamepad2, Tag, Image, Trash2,
-    Plus, Youtube, Star, X, AlertCircle, AlertTriangle
+    Plus, Youtube, Star, X, AlertCircle, AlertTriangle,
+    Upload, Check, Calendar, FileArchive, ChevronDown, ChevronUp,
+    Layers
 } from 'lucide-react'
-import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI } from '../services/api'
+import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, modelFileVersionsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
 
+// ============ COMPOSANT GESTION DES VERSIONS DE FICHIERS ============
+function FileVersionsManager({ modelId, gameId }) {
+    const [versions, setVersions] = useState([])
+    const [gameVersions, setGameVersions] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [showModal, setShowModal] = useState(false)
+    const [editingVersion, setEditingVersion] = useState(null)
+    const [expandedVersion, setExpandedVersion] = useState(null)
+    const [processing, setProcessing] = useState(null)
+
+    // Form state
+    const [versionNumber, setVersionNumber] = useState('')
+    const [changelog, setChangelog] = useState('')
+    const [file, setFile] = useState(null)
+    const [compatibleVersions, setCompatibleVersions] = useState([])
+    const [isLatest, setIsLatest] = useState(true)
+    const [uploading, setUploading] = useState(false)
+
+    useEffect(() => {
+        loadData()
+    }, [modelId, gameId])
+
+    const loadData = async () => {
+        setLoading(true)
+        try {
+            const [versionsRes, gameVersionsRes] = await Promise.all([
+                modelFileVersionsAPI.getByModel(modelId),
+                gameId ? versionsAPI.getByGame(gameId) : Promise.resolve({ data: { versions: [] } })
+            ])
+            setVersions(versionsRes.data.versions || [])
+            setGameVersions(gameVersionsRes.data.versions || [])
+        } catch (error) {
+            console.error('Failed to load versions:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const openCreateModal = () => {
+        setEditingVersion(null)
+        setVersionNumber('')
+        setChangelog('')
+        setFile(null)
+        setCompatibleVersions([])
+        setIsLatest(true)
+        setShowModal(true)
+    }
+
+    const openEditModal = (version) => {
+        setEditingVersion(version)
+        setVersionNumber(version.version_number)
+        setChangelog(version.changelog || '')
+        setCompatibleVersions(version.compatible_versions?.map(v => v.id) || [])
+        setIsLatest(version.is_latest)
+        setFile(null)
+        setShowModal(true)
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+
+        if (!versionNumber.trim()) {
+            toast.error('Numéro de version requis')
+            return
+        }
+
+        if (!editingVersion && !file) {
+            toast.error('Fichier requis')
+            return
+        }
+
+        setUploading(true)
+        try {
+            if (editingVersion) {
+                await modelFileVersionsAPI.update(modelId, editingVersion.id, {
+                    changelog,
+                    compatibleVersions,
+                    isLatest
+                })
+                toast.success('Version mise à jour')
+            } else {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('versionNumber', versionNumber.trim())
+                formData.append('changelog', changelog)
+                formData.append('compatibleVersions', JSON.stringify(compatibleVersions))
+                formData.append('isLatest', isLatest)
+
+                await modelFileVersionsAPI.create(modelId, formData)
+                toast.success('Version ajoutée')
+            }
+
+            setShowModal(false)
+            loadData()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    const handleSetLatest = async (versionId) => {
+        setProcessing(versionId)
+        try {
+            await modelFileVersionsAPI.setLatest(modelId, versionId)
+            toast.success('Version principale mise à jour')
+            loadData()
+        } catch (error) {
+            toast.error('Erreur')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const handleDelete = async (versionId) => {
+        if (!confirm('Supprimer cette version ? Cette action est irréversible.')) return
+
+        setProcessing(versionId)
+        try {
+            await modelFileVersionsAPI.delete(modelId, versionId)
+            toast.success('Version supprimée')
+            loadData()
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur')
+        } finally {
+            setProcessing(null)
+        }
+    }
+
+    const toggleGameVersion = (versionId) => {
+        setCompatibleVersions(prev =>
+            prev.includes(versionId)
+                ? prev.filter(id => id !== versionId)
+                : [...prev, versionId]
+        )
+    }
+
+    const formatFileSize = (bytes) => {
+        if (!bytes) return ''
+        const k = 1024
+        const sizes = ['B', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    }
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 text-hyt-accent animate-spin" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Layers className="w-5 h-5 text-hyt-accent" />
+                        Versions du fichier
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                        Gérez les différentes versions de votre ressource
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={openCreateModal}
+                    className="btn-primary flex items-center gap-2"
+                >
+                    <Plus className="w-4 h-4" />
+                    Nouvelle version
+                </button>
+            </div>
+
+            {/* Liste des versions */}
+            {versions.length === 0 ? (
+                <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-8 text-center">
+                    <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                    <p className="text-white font-medium">Aucune version</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                        Ajoutez votre première version de fichier
+                    </p>
+                    <button
+                        type="button"
+                        onClick={openCreateModal}
+                        className="btn-primary mt-4"
+                    >
+                        <Plus className="w-4 h-4 inline mr-2" />
+                        Ajouter une version
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {versions.map((version) => (
+                        <div
+                            key={version.id}
+                            className={`bg-hyt-dark border rounded-xl overflow-hidden transition-colors ${
+                                version.is_latest ? 'border-hyt-accent/50' : 'border-hyt-border'
+                            }`}
+                        >
+                            {/* Header de la version */}
+                            <div
+                                className="flex items-center gap-4 p-4 cursor-pointer hover:bg-hyt-card/30"
+                                onClick={() => setExpandedVersion(expandedVersion === version.id ? null : version.id)}
+                            >
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                    version.is_latest ? 'bg-hyt-accent/20' : 'bg-hyt-border'
+                                }`}>
+                                    <Package className={`w-5 h-5 ${version.is_latest ? 'text-hyt-accent' : 'text-gray-400'}`} />
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-white">
+                                            v{version.version_number}
+                                        </span>
+                                        {version.is_latest && (
+                                            <span className="px-2 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded-full flex items-center gap-1">
+                                                <Star className="w-3 h-3" />
+                                                Principale
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-gray-400 mt-1">
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" />
+                                            {new Date(version.created_at).toLocaleDateString('fr-FR')}
+                                        </span>
+                                        {version.file_size && (
+                                            <span className="flex items-center gap-1">
+                                                <FileArchive className="w-3 h-3" />
+                                                {formatFileSize(version.file_size)}
+                                            </span>
+                                        )}
+                                        <span className="text-gray-500">
+                                            {version.download_count || 0} téléchargements
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Versions compatibles preview */}
+                                {version.compatible_versions?.length > 0 && (
+                                    <div className="hidden sm:flex items-center gap-1">
+                                        {version.compatible_versions.slice(0, 2).map(cv => (
+                                            <span key={cv.id} className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
+                                                {cv.version}
+                                            </span>
+                                        ))}
+                                        {version.compatible_versions.length > 2 && (
+                                            <span className="text-gray-500 text-xs">
+                                                +{version.compatible_versions.length - 2}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {expandedVersion === version.id ? (
+                                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                                ) : (
+                                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                                )}
+                            </div>
+
+                            {/* Détails expandus */}
+                            {expandedVersion === version.id && (
+                                <div className="border-t border-hyt-border p-4 space-y-4">
+                                    {/* Changelog */}
+                                    {version.changelog && (
+                                        <div>
+                                            <p className="text-sm text-gray-400 mb-1">Notes de version :</p>
+                                            <p className="text-gray-300 text-sm bg-hyt-card p-3 rounded-lg whitespace-pre-wrap">
+                                                {version.changelog}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Versions compatibles */}
+                                    {version.compatible_versions?.length > 0 && (
+                                        <div>
+                                            <p className="text-sm text-gray-400 mb-2">Compatible avec :</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {version.compatible_versions.map(cv => (
+                                                    <span
+                                                        key={cv.id}
+                                                        className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded-lg"
+                                                    >
+                                                        {cv.version}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 pt-2 border-t border-hyt-border">
+                                        {!version.is_latest && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSetLatest(version.id)}
+                                                disabled={processing === version.id}
+                                                className="btn-ghost text-sm flex items-center gap-1"
+                                            >
+                                                {processing === version.id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Star className="w-4 h-4" />
+                                                )}
+                                                Définir comme principale
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => openEditModal(version)}
+                                            className="btn-ghost text-sm"
+                                        >
+                                            Modifier
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDelete(version.id)}
+                                            disabled={processing === version.id || versions.length <= 1}
+                                            className="btn-ghost text-sm text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                        >
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Modal d'ajout/édition */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-lg my-8">
+                        <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Package className="w-5 h-5 text-hyt-accent" />
+                                {editingVersion ? 'Modifier la version' : 'Nouvelle version'}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowModal(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                            {/* Numéro de version */}
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    Numéro de version *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={versionNumber}
+                                    onChange={(e) => setVersionNumber(e.target.value)}
+                                    placeholder="Ex: 1.0.0, 2.1.3..."
+                                    className="input-field w-full"
+                                    disabled={!!editingVersion}
+                                />
+                            </div>
+
+                            {/* Fichier (seulement en création) */}
+                            {!editingVersion && (
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">
+                                        Fichier *
+                                    </label>
+                                    <div className="border-2 border-dashed border-hyt-border rounded-xl p-6 text-center hover:border-hyt-accent/50 transition-colors">
+                                        <input
+                                            type="file"
+                                            accept=".zip,.rar,.7z,.tar,.gz"
+                                            onChange={(e) => setFile(e.target.files[0])}
+                                            className="hidden"
+                                            id="version-file-input"
+                                        />
+                                        <label htmlFor="version-file-input" className="cursor-pointer">
+                                            {file ? (
+                                                <div className="flex items-center justify-center gap-2 text-hyt-accent">
+                                                    <FileArchive className="w-6 h-6" />
+                                                    <span>{file.name}</span>
+                                                    <span className="text-gray-500">
+                                                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-8 h-8 mx-auto text-gray-500 mb-2" />
+                                                    <p className="text-gray-400">Cliquez pour sélectionner</p>
+                                                    <p className="text-gray-500 text-xs mt-1">ZIP, RAR, 7Z (max 500MB)</p>
+                                                </>
+                                            )}
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Versions du jeu compatibles */}
+                            {gameVersions.length > 0 && (
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-sm text-gray-400">
+                                            Versions du jeu compatibles
+                                        </label>
+                                        <div className="flex gap-2 text-xs">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCompatibleVersions(gameVersions.map(v => v.id))}
+                                                className="text-hyt-accent hover:underline"
+                                            >
+                                                Tout
+                                            </button>
+                                            <span className="text-gray-600">|</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setCompatibleVersions([])}
+                                                className="text-gray-400 hover:underline"
+                                            >
+                                                Aucun
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="max-h-32 overflow-y-auto border border-hyt-border rounded-lg p-2 space-y-1">
+                                        {gameVersions.map(gv => (
+                                            <label
+                                                key={gv.id}
+                                                className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                                    compatibleVersions.includes(gv.id)
+                                                        ? 'bg-hyt-accent/20 text-hyt-accent'
+                                                        : 'hover:bg-hyt-dark text-gray-300'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={compatibleVersions.includes(gv.id)}
+                                                    onChange={() => toggleGameVersion(gv.id)}
+                                                    className="sr-only"
+                                                />
+                                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                                                    compatibleVersions.includes(gv.id)
+                                                        ? 'bg-hyt-accent border-hyt-accent'
+                                                        : 'border-gray-500'
+                                                }`}>
+                                                    {compatibleVersions.includes(gv.id) && (
+                                                        <Check className="w-3 h-3 text-black" />
+                                                    )}
+                                                </div>
+                                                <span>{gv.version}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Changelog */}
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    Notes de version (changelog)
+                                </label>
+                                <textarea
+                                    value={changelog}
+                                    onChange={(e) => setChangelog(e.target.value)}
+                                    placeholder="Décrivez les changements de cette version..."
+                                    rows={3}
+                                    className="input-field w-full resize-none"
+                                />
+                            </div>
+
+                            {/* Version principale */}
+                            <label className="flex items-center gap-3 p-3 bg-hyt-dark rounded-lg cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isLatest}
+                                    onChange={(e) => setIsLatest(e.target.checked)}
+                                    className="sr-only"
+                                />
+                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                    isLatest ? 'bg-hyt-accent border-hyt-accent' : 'border-gray-500'
+                                }`}>
+                                    {isLatest && <Check className="w-3 h-3 text-black" />}
+                                </div>
+                                <div>
+                                    <p className="text-white font-medium">Version principale</p>
+                                    <p className="text-gray-500 text-xs">Cette version sera téléchargée par défaut</p>
+                                </div>
+                            </label>
+
+                            {/* Boutons */}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="btn-ghost flex-1"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={uploading}
+                                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                                >
+                                    {uploading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Upload className="w-4 h-4" />
+                                    )}
+                                    {editingVersion ? 'Mettre à jour' : 'Ajouter'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ============ COMPOSANT PRINCIPAL ============
 export default function EditProduct() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -31,9 +559,9 @@ export default function EditProduct() {
     const [youtubeUrl, setYoutubeUrl] = useState('')
 
     // Images
-    const [existingImages, setExistingImages] = useState([]) // Images déjà uploadées
-    const [newImages, setNewImages] = useState([]) // Nouvelles images à uploader
-    const [imagesToDelete, setImagesToDelete] = useState([]) // IDs des images à supprimer
+    const [existingImages, setExistingImages] = useState([])
+    const [newImages, setNewImages] = useState([])
+    const [imagesToDelete, setImagesToDelete] = useState([])
     const [uploadingImages, setUploadingImages] = useState(false)
 
     // Options
@@ -50,7 +578,7 @@ export default function EditProduct() {
     useEffect(() => {
         if (gameId) {
             fetchCategoriesAndVersions()
-            fetchTags() // Charger les tags quand le jeu change
+            fetchTags()
         } else {
             setCategories([])
             setVersions([])
@@ -125,9 +653,9 @@ export default function EditProduct() {
     const fetchTags = async () => {
         try {
             const { data } = await tagsAPI.getAll()
-            const allTags = data.tags || data || []
+            const allTagsList = data.tags || data || []
             // Filtrer: tags du jeu sélectionné + tags globaux (sans game_id)
-            const filteredTags = allTags.filter(tag =>
+            const filteredTags = allTagsList.filter(tag =>
                 !tag.game_id || tag.game_id === gameId
             )
             setAllTags(filteredTags)
@@ -326,6 +854,11 @@ export default function EditProduct() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Versions de fichiers */}
+                    <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                        <FileVersionsManager modelId={id} gameId={gameId} />
+                    </div>
+
                     {/* Images de galerie */}
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">

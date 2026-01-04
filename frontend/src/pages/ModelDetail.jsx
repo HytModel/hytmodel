@@ -3,9 +3,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
     ShoppingCart, Download, Star, Eye, Calendar, User,
     Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2,
-    ChevronLeft, ChevronRight, Youtube, X, ZoomIn, AlertTriangle, Flag
+    ChevronLeft, ChevronRight, Youtube, X, ZoomIn, AlertTriangle, Flag,
+    Package, ChevronDown
 } from 'lucide-react'
-import { modelsAPI, modelImagesAPI } from '../services/api'
+import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import Loading, { LoadingButton } from '../components/Loading'
@@ -59,6 +60,254 @@ function ImageModal({ image, onClose, onPrev, onNext, hasPrev, hasNext }) {
     )
 }
 
+// Composant de sélection de version pour le téléchargement
+function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
+    const [fileVersions, setFileVersions] = useState([])
+    const [gameVersions, setGameVersions] = useState([])
+    const [selectedVersion, setSelectedVersion] = useState(null)
+    const [filterGameVersion, setFilterGameVersion] = useState('')
+    const [showDropdown, setShowDropdown] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [downloading, setDownloading] = useState(false)
+
+    useEffect(() => {
+        loadData()
+    }, [modelId, gameId])
+
+    useEffect(() => {
+        if (filterGameVersion) {
+            loadFilteredVersions()
+        } else {
+            loadVersions()
+        }
+    }, [filterGameVersion])
+
+    const loadData = async () => {
+        setLoading(true)
+        try {
+            const [versionsRes, gameVersionsRes] = await Promise.all([
+                modelFileVersionsAPI.getByModel(modelId),
+                gameId ? versionsAPI.getByGame(gameId) : Promise.resolve({ data: { versions: [] } })
+            ])
+
+            const loadedVersions = versionsRes.data.versions || []
+            setFileVersions(loadedVersions)
+            setGameVersions(gameVersionsRes.data.versions || [])
+
+            // Sélectionner la version principale par défaut
+            const latestVersion = loadedVersions.find(v => v.is_latest) || loadedVersions[0]
+            setSelectedVersion(latestVersion)
+        } catch (error) {
+            console.error('Failed to load versions:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const loadVersions = async () => {
+        try {
+            const { data } = await modelFileVersionsAPI.getByModel(modelId)
+            setFileVersions(data.versions || [])
+        } catch (error) {
+            console.error('Failed to load versions:', error)
+        }
+    }
+
+    const loadFilteredVersions = async () => {
+        try {
+            const { data } = await modelFileVersionsAPI.getByModel(modelId, filterGameVersion)
+            setFileVersions(data.versions || [])
+
+            if (data.versions?.length > 0) {
+                const latestCompatible = data.versions.find(v => v.is_latest) || data.versions[0]
+                setSelectedVersion(latestCompatible)
+            } else {
+                setSelectedVersion(null)
+            }
+        } catch (error) {
+            console.error('Failed to filter versions:', error)
+        }
+    }
+
+    const handleDownload = async () => {
+        if (!selectedVersion) {
+            toast.error('Sélectionnez une version')
+            return
+        }
+
+        setDownloading(true)
+        onDownloadStart?.()
+
+        try {
+            const response = await modelFileVersionsAPI.download(modelId, selectedVersion.id)
+
+            const url = window.URL.createObjectURL(new Blob([response.data]))
+            const link = document.createElement('a')
+            link.href = url
+            link.setAttribute('download', selectedVersion.file_name || 'download.zip')
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            window.URL.revokeObjectURL(url)
+
+            toast.success('Téléchargement démarré')
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erreur de téléchargement')
+        } finally {
+            setDownloading(false)
+            onDownloadEnd?.()
+        }
+    }
+
+    const formatFileSize = (bytes) => {
+        if (!bytes) return ''
+        const k = 1024
+        const sizes = ['B', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    }
+
+    if (loading) {
+        return (
+            <div className="animate-pulse">
+                <div className="h-12 bg-hyt-dark rounded-lg mb-3"></div>
+                <div className="h-12 bg-hyt-accent/20 rounded-lg"></div>
+            </div>
+        )
+    }
+
+    // Si aucune version de fichier, bouton simple (fallback ancien système)
+    if (fileVersions.length === 0) {
+        return (
+            <LoadingButton
+                onClick={handleDownload}
+                loading={downloading}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+                <Download className="w-5 h-5" />
+                Télécharger
+            </LoadingButton>
+        )
+    }
+
+    return (
+        <div className="space-y-3">
+            {/* Liste des versions du fichier */}
+            {fileVersions.length > 0 && (
+                <div>
+                    <label className="block text-xs text-gray-500 mb-2">
+                        Versions disponibles
+                    </label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {fileVersions.map(version => (
+                            <button
+                                key={version.id}
+                                onClick={() => setSelectedVersion(version)}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                                    selectedVersion?.id === version.id
+                                        ? 'bg-hyt-accent/10 border-hyt-accent'
+                                        : 'bg-hyt-dark border-hyt-border hover:border-hyt-accent/50'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    selectedVersion?.id === version.id
+                                        ? 'bg-hyt-accent text-black'
+                                        : 'border-2 border-gray-500'
+                                }`}>
+                                    {selectedVersion?.id === version.id && (
+                                        <Check className="w-3 h-3" />
+                                    )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-white">
+                                            v{version.version_number}
+                                        </span>
+                                        {version.is_latest && (
+                                            <span className="px-1.5 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded">
+                                                Dernière
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                        <span>{new Date(version.created_at).toLocaleDateString('fr-FR')}</span>
+                                        {version.file_size > 0 && (
+                                            <span>• {formatFileSize(version.file_size)}</span>
+                                        )}
+                                    </div>
+                                    {/* Versions du jeu compatibles */}
+                                    {version.compatible_versions?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {version.compatible_versions.slice(0, 3).map(cv => (
+                                                <span
+                                                    key={cv.id}
+                                                    className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded"
+                                                >
+                                                    {cv.version}
+                                                </span>
+                                            ))}
+                                            {version.compatible_versions.length > 3 && (
+                                                <span className="text-gray-500 text-xs">
+                                                    +{version.compatible_versions.length - 3}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Filtre par version du jeu (optionnel) */}
+            {gameVersions.length > 0 && fileVersions.some(v => v.compatible_versions?.length > 0) && (
+                <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                        Filtrer par version du jeu
+                    </label>
+                    <select
+                        value={filterGameVersion}
+                        onChange={(e) => setFilterGameVersion(e.target.value)}
+                        className="input-field w-full text-sm"
+                    >
+                        <option value="">Toutes les versions</option>
+                        {gameVersions.map(gv => (
+                            <option key={gv.id} value={gv.id}>{gv.version}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {/* Info compatibilité */}
+            {selectedVersion?.compatible_versions?.length > 0 && (
+                <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-xs text-green-400 mb-1">Compatible avec :</p>
+                    <div className="flex flex-wrap gap-1">
+                        {selectedVersion.compatible_versions.map(cv => (
+                            <span key={cv.id} className="px-2 py-0.5 bg-green-500/20 text-green-300 text-xs rounded">
+                                {cv.version}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Bouton télécharger */}
+            <LoadingButton
+                onClick={handleDownload}
+                loading={downloading}
+                disabled={!selectedVersion}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+                <Download className="w-5 h-5" />
+                Télécharger {selectedVersion ? `v${selectedVersion.version_number}` : ''}
+            </LoadingButton>
+        </div>
+    )
+}
+
 export default function ModelDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -81,7 +330,7 @@ export default function ModelDetail() {
     useEffect(() => {
         fetchModel()
         fetchImages()
-    }, [id])
+    }, [id, isAuthenticated])  // <-- isAuthenticated doit être là
 
     const fetchModel = async () => {
         try {
@@ -121,33 +370,6 @@ export default function ModelDetail() {
             return
         }
         await addToCart(model.id)
-    }
-
-    const handleDownload = async () => {
-        if (!isAuthenticated) {
-            navigate('/login', { state: { from: `/models/${id}` } })
-            return
-        }
-
-        setDownloading(true)
-        try {
-            const response = await modelsAPI.download(id)
-            const blob = new Blob([response.data])
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${model.title}.zip`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-            toast.success('Téléchargement démarré')
-        } catch (error) {
-            const message = error.response?.data?.error || 'Erreur lors du téléchargement'
-            toast.error(message)
-        } finally {
-            setDownloading(false)
-        }
     }
 
     const handleRate = async (rating) => {
@@ -405,10 +627,10 @@ export default function ModelDetail() {
                             </div>
                         )}
 
-                        {/* Versions */}
+                        {/* Versions compatibles du jeu */}
                         {model.versions && model.versions.length > 0 && (
                             <div className="mb-6">
-                                <h3 className="font-semibold text-white mb-2">Versions compatibles</h3>
+                                <h3 className="font-semibold text-white mb-2">Versions du jeu compatibles</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {model.versions.map((version) => (
                                         <span key={version.id} className="px-3 py-1 bg-hyt-success/10 text-hyt-success rounded-full text-sm">
@@ -435,15 +657,13 @@ export default function ModelDetail() {
                                     </Link>
                                 ) : hasPurchased ? (
                                     <>
-                                        {/* Utilisateur a acheté - Afficher téléchargement */}
-                                        <LoadingButton
-                                            onClick={handleDownload}
-                                            loading={downloading}
-                                            className="btn-primary w-full flex items-center justify-center gap-2"
-                                        >
-                                            <Download className="w-5 h-5" />
-                                            Télécharger
-                                        </LoadingButton>
+                                        {/* Utilisateur a acheté - Afficher sélecteur de version */}
+                                        <DownloadSection
+                                            modelId={model.id}
+                                            gameId={model.game_id}
+                                            onDownloadStart={() => setDownloading(true)}
+                                            onDownloadEnd={() => setDownloading(false)}
+                                        />
 
                                         <div className="flex gap-3">
                                             <button
