@@ -459,6 +459,125 @@ export const stripeAPI = {
     createConnectAccount: () => api.post('/stripe/connect/create')
 }
 
+export const customOrdersAPI = {
+    // ==================== CLIENT ====================
 
+    // ==================== CONVERSATIONS ====================
+
+
+    // Démarrer ou récupérer une conversation
+    startConversation: (data) => api.post('/custom-orders/conversations', data),
+    // data = { request_id, creator_id? } - creator_id requis si c'est le client qui initie
+
+    // Mes conversations
+    getMyConversations: () => api.get('/custom-orders/conversations'),
+
+    // Détails d'une conversation avec messages
+    getConversation: (id) => api.get(`/custom-orders/conversations/${id}`),
+
+    makeConversationOffer: (conversationId, data) => api.post(`/custom-orders/conversations/${conversationId}/offer`, data),
+
+    sendOrderMessage: (orderId, formData) => api.post(`/custom-orders/orders/${orderId}/messages`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    deliverOrderWithFiles: (orderId, formData) => api.post(`/custom-orders/orders/${orderId}/deliver`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    approveDelivery: (orderId) => api.post(`/custom-orders/orders/${orderId}/approve`),
+    requestRevision: (orderId, data) => api.post(`/custom-orders/orders/${orderId}/revision`, data),
+
+
+    // Rétractation & Réclamations
+    withdrawOrder: (orderId, data) => api.post(`/custom-orders/orders/${orderId}/withdraw`, data),
+    openClaim: (orderId, data) => api.post(`/custom-orders/orders/${orderId}/claim`, data),
+    getClaims: (orderId) => api.get(`/custom-orders/orders/${orderId}/claims`),
+    sendFix: (orderId, formData) => api.post(`/custom-orders/orders/${orderId}/fix`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    acceptFix: (orderId, fixId) => api.post(`/custom-orders/orders/${orderId}/fix/${fixId}/accept`),
+    rejectFix: (orderId, fixId, data) => api.post(`/custom-orders/orders/${orderId}/fix/${fixId}/reject`, data),
+
+    // Envoyer un message
+    sendConversationMessage: (conversationId, formData) => api.post(
+        `/custom-orders/conversations/${conversationId}/messages`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+    ),
+
+
+
+    // Conversations d'une demande (pour le client)
+    getRequestConversations: (requestId) => api.get(`/custom-orders/requests/${requestId}/conversations`),
+    // Créer une demande
+    createRequest: (formData) => api.post('/custom-orders/requests', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+    // Mes demandes
+    getMyRequests: () => api.get('/custom-orders/requests/my'),
+
+    // Détails d'une demande
+    getRequest: (id) => api.get(`/custom-orders/requests/${id}`),
+
+    // Accepter une offre
+    acceptOffer: (offerId) => api.post(`/custom-orders/offers/${offerId}/accept`),
+
+    // Rejeter une offre
+    rejectOffer: (offerId) => api.post(`/custom-orders/offers/${offerId}/reject`),
+
+    // Mes commandes
+    getMyOrders: () => api.get('/custom-orders/orders/my'),
+
+    // Détails d'une commande
+    getOrder: (id) => api.get(`/custom-orders/orders/${id}`),
+
+    // Payer le premier versement (50%)
+    payFirstPayment: (orderId) => api.post(`/custom-orders/orders/${orderId}/pay-first`),
+
+    // Payer le solde (50%)
+    // Paiements
+    payFinalPayment: (orderId) => api.post(`/custom-orders/orders/${orderId}/pay-final`),
+
+    // Annuler une commande
+    cancelOrder: (orderId, reason) => api.post(`/custom-orders/orders/${orderId}/cancel`, { reason }),
+
+    // Envoyer un message
+    sendMessage: (orderId, formData) => api.post(`/custom-orders/orders/${orderId}/messages`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+
+    // ==================== CRÉATEUR ====================
+
+    // Demandes disponibles
+    getAvailableRequests: () => api.get('/custom-orders/creator/requests'),
+
+    // Faire une offre
+    makeOffer: (data) => api.post('/custom-orders/creator/offers', data),
+
+    // Mes commandes (créateur)
+    getCreatorOrders: () => api.get('/custom-orders/creator/orders'),
+
+    // Livrer une commande
+    deliverOrder: (orderId) => api.post(`/custom-orders/orders/${orderId}/deliver-simple`),
+
+
+
+    // ==================== STAFF ====================
+
+    // Toutes les demandes
+    getStaffRequests: (status) => api.get('/custom-orders/staff/requests', { params: { status } }),
+
+    // Approuver une demande
+    approveRequest: (id, notes) => api.post(`/custom-orders/staff/requests/${id}/approve`, { notes }),
+
+    // Rejeter une demande
+    rejectRequest: (id, reason) => api.post(`/custom-orders/staff/requests/${id}/reject`, { reason }),
+
+    // Liste des créateurs affiliés
+    getAffiliatedCreators: () => api.get('/custom-orders/staff/creators'),
+
+    // Ajouter un créateur affilié
+    addAffiliatedCreator: (data) => api.post('/custom-orders/staff/creators', data),
+
+    // Désactiver un créateur
+    removeAffiliatedCreator: (id) => api.delete(`/custom-orders/staff/creators/${id}`),
+
+    // Toutes les commandes
+    getStaffOrders: () => api.get('/custom-orders/staff/orders'),
+};
 
 export default api

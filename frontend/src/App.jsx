@@ -31,6 +31,13 @@ import MyProducts from './pages/MyProducts'
 import EditProduct from './pages/EditProduct'
 import BecomeCreator from './pages/BecomeCreator'
 
+// Commandes sur mesure
+import CustomOrders from './pages/CustomOrders'
+import NewCustomRequest from './pages/NewCustomRequest'
+import CustomRequestDetail from './pages/CustomRequestDetail'
+import CustomOrderConversation from "./pages/Customorderconversation.jsx";
+import CustomOrderDetail from './pages/Customorderdetail.jsx'
+
 // Route protégée (connecté requis)
 function ProtectedRoute({ children }) {
     const { user, loading } = useAuth()
@@ -92,6 +99,13 @@ export default function App() {
                     <Route path="/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/dashboard/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+
+                    {/* Commandes sur mesure - ORDRE IMPORTANT : routes spécifiques AVANT routes avec :id */}
+                    <Route path="/custom-orders" element={<ProtectedRoute><CustomOrders /></ProtectedRoute>} />
+                    <Route path="/custom-orders/new" element={<ProtectedRoute><NewCustomRequest /></ProtectedRoute>} />
+                    <Route path="/custom-orders/requests/:id" element={<ProtectedRoute><CustomRequestDetail /></ProtectedRoute>} />
+                    <Route path="/custom-orders/conversation/:id" element={<ProtectedRoute><CustomOrderConversation /></ProtectedRoute>} />
+                    <Route path="/custom-orders/orders/:id" element={<ProtectedRoute><CustomOrderDetail /></ProtectedRoute>} />
 
                     {/* Checkout Success - toutes les variantes */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />

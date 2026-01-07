@@ -49,7 +49,7 @@ router.get('/models/all', requireAuth, requireRole('STAFF', 'ADMIN'), async (req
 router.get('/creator-requests', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, res, next) => {
     try {
         const { rows } = await pool.query(`
-            SELECT cr.*, u.username, u.email
+            SELECT cr.*, u.username, u.email, u.avatar_url
             FROM creator_requests cr
                      JOIN users u ON u.id = cr.user_id
             WHERE cr.status = 'PENDING'
@@ -101,13 +101,19 @@ function getCommissionRate(creatorType) {
 router.get('/sellers', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, res, next) => {
     try {
         const { rows } = await pool.query(`
-            SELECT u.id, u.username, u.email, u.created_at, u.creator_type,
-                   COUNT(DISTINCT m.id) AS products_count,
-                   COUNT(DISTINCT p.id) AS sales_count,
-                   COALESCE(SUM(m.price), 0) AS total_revenue
+            SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.created_at,
+                u.creator_type,
+                u.avatar_url,
+                COUNT(DISTINCT m.id) AS products_count,
+                COUNT(DISTINCT p.id) AS sales_count,
+                COALESCE(SUM(m.price), 0) AS total_revenue
             FROM users u
-            LEFT JOIN models m ON m.creator_id = u.id AND m.deleted_at IS NULL
-            LEFT JOIN purchases p ON p.model_id = m.id
+                     LEFT JOIN models m ON m.creator_id = u.id AND m.deleted_at IS NULL
+                     LEFT JOIN purchases p ON p.model_id = m.id
             WHERE u.role = 'CREATOR'
             GROUP BY u.id
             ORDER BY total_revenue DESC
@@ -115,7 +121,12 @@ router.get('/sellers', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, r
         const sellersWithCommissions = rows.map(seller => {
             const revenue = Number(seller.total_revenue) || 0;
             const commissionRate = getCommissionRate(seller.creator_type);
-            return { ...seller, total_revenue: revenue, total_commission: revenue * commissionRate, commission_rate: commissionRate * 100 };
+            return {
+                ...seller,
+                total_revenue: revenue,
+                total_commission: revenue * commissionRate,
+                commission_rate: commissionRate * 100
+            };
         });
         res.json({ sellers: sellersWithCommissions });
     } catch (error) {
@@ -157,10 +168,22 @@ router.get('/sellers/stats', requireAuth, requireRole('STAFF', 'ADMIN'), async (
 router.get('/sellers/eligible-affiliate', requireAuth, requireRole('STAFF', 'ADMIN'), async (req, res, next) => {
     try {
         const { rows } = await pool.query(`
-            SELECT u.id, u.username, u.email, u.creator_type, u.created_at, COUNT(p.id) AS total_sales, COALESCE(SUM(m.price), 0) AS total_revenue
-            FROM users u JOIN models m ON m.creator_id = u.id JOIN purchases p ON p.model_id = m.id
+            SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.creator_type,
+                u.created_at,
+                u.avatar_url,
+                COUNT(p.id) AS total_sales,
+                COALESCE(SUM(m.price), 0) AS total_revenue
+            FROM users u
+                     JOIN models m ON m.creator_id = u.id
+                     JOIN purchases p ON p.model_id = m.id
             WHERE u.role = 'CREATOR' AND (u.creator_type = 'NON_AFFILIATED' OR u.creator_type IS NULL)
-            GROUP BY u.id HAVING COUNT(p.id) >= 1000 ORDER BY COUNT(p.id) DESC
+            GROUP BY u.id
+            HAVING COUNT(p.id) >= 1000
+            ORDER BY COUNT(p.id) DESC
         `);
         res.json({ sellers: rows });
     } catch (error) {
@@ -270,7 +293,7 @@ router.get("/analytics", requireAuth, requireRole("STAFF", "ADMIN"), async (req,
         try {
             const { rows } = await pool.query(`
                 SELECT CASE WHEN m.price < 1000 THEN '5-10€' WHEN m.price < 2000 THEN '10-20€' WHEN m.price < 5000 THEN '20-50€' WHEN m.price < 10000 THEN '50-100€' ELSE '100€+' END as price_range,
-                COUNT(*) as count, COALESCE(SUM(p.amount), 0) as revenue
+                       COUNT(*) as count, COALESCE(SUM(p.amount), 0) as revenue
                 FROM purchases p JOIN models m ON m.id = p.model_id WHERE p.created_at >= $1 ${gameFilter} GROUP BY price_range
             `, params);
             if (rows.length > 0) priceDistribution = rows.map(r => ({ range: r.price_range, count: parseInt(r.count || 0), revenue: parseInt(r.revenue || 0) / 100 }));
@@ -294,8 +317,8 @@ router.get("/analytics", requireAuth, requireRole("STAFF", "ADMIN"), async (req,
         try {
             const { rows } = await pool.query(`
                 SELECT t.name, COUNT(DISTINCT p.id) as sales FROM tags t
-                JOIN model_tags mt ON mt.tag_id = t.id JOIN models m ON m.id = mt.model_id
-                JOIN purchases p ON p.model_id = m.id AND p.created_at >= $1
+                                                                      JOIN model_tags mt ON mt.tag_id = t.id JOIN models m ON m.id = mt.model_id
+                                                                      JOIN purchases p ON p.model_id = m.id AND p.created_at >= $1
                 WHERE 1=1 ${gameFilter} GROUP BY t.id, t.name ORDER BY sales DESC LIMIT 10
             `, params);
             if (rows.length > 0) topTags = rows.map(r => ({ name: r.name, views: parseInt(r.sales || 0) * 15, sales: parseInt(r.sales || 0) }));
@@ -306,7 +329,7 @@ router.get("/analytics", requireAuth, requireRole("STAFF", "ADMIN"), async (req,
         try {
             const { rows } = await pool.query(`
                 SELECT m.title as name, COUNT(p.id) as sales FROM models m
-                JOIN purchases p ON p.model_id = m.id WHERE p.created_at >= $1 AND m.deleted_at IS NULL ${gameFilter}
+                                                                      JOIN purchases p ON p.model_id = m.id WHERE p.created_at >= $1 AND m.deleted_at IS NULL ${gameFilter}
                 GROUP BY m.id, m.title ORDER BY sales DESC LIMIT 5
             `, params);
             if (rows.length > 0) mostViewedProducts = rows.map(r => ({ name: r.name, views: parseInt(r.sales || 0) * 20, sales: parseInt(r.sales || 0), conversion: 5.0 }));

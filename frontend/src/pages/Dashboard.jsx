@@ -8,11 +8,13 @@ import {
     Search, Trash2, Gift
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI } from '../services/api'
+import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI, customOrdersAPI } from '../services/api'
 import Loading from '../components/Loading'
 import SellerProposals from './SellerProposals'
 import toast from 'react-hot-toast'
 import BundleManager from '../components/BundleManager'
+import { PenTool } from 'lucide-react'
+import CreatorCustomOrders from './CreatorCustomOrders'
 
 export default function Dashboard() {
     const { user, isCreator } = useAuth()
@@ -23,6 +25,7 @@ export default function Dashboard() {
     const [connectingStripe, setConnectingStripe] = useState(false)
     const [activeTab, setActiveTab] = useState('overview') // overview, proposals, dependencies
     const [proposalsCount, setProposalsCount] = useState(0)
+    const [customOrdersCount, setCustomOrdersCount] = useState(0)
 
     // Propositions de dépendances
     const [depProposals, setDepProposals] = useState([])
@@ -71,21 +74,35 @@ export default function Dashboard() {
             const purchasesRes = await checkoutAPI.getPurchases()
             setPurchases(purchasesRes.data.purchases || [])
 
-            if (isCreator()) {
-                const [statsRes, salesRes] = await Promise.all([
-                    sellerAPI.getStats(),
-                    sellerAPI.getSales(5)
-                ])
-                setStats(statsRes.data)
-                setRecentSales(salesRes.data || [])
+            // Pour les créateurs OU les STAFF/ADMIN
+            const canAccessCreatorFeatures = isCreator() || ['STAFF', 'ADMIN'].includes(user?.role)
 
-                // Charger le nombre de propositions en attente
+            if (canAccessCreatorFeatures) {
+                // Stats vendeur (seulement pour vrais créateurs)
+                if (isCreator()) {
+                    const [statsRes, salesRes] = await Promise.all([
+                        sellerAPI.getStats(),
+                        sellerAPI.getSales(5)
+                    ])
+                    setStats(statsRes.data)
+                    setRecentSales(salesRes.data || [])
+
+                    try {
+                        const proposalsRes = await proposalsAPI.getMy()
+                        const pending = (proposalsRes.data.proposals || []).filter(p => p.status === 'PENDING').length
+                        setProposalsCount(pending)
+                    } catch (e) {
+                        console.error('Failed to load proposals count:', e)
+                    }
+                }
+
+                // Commandes sur mesure (pour créateurs ET STAFF/ADMIN)
                 try {
-                    const proposalsRes = await proposalsAPI.getMy()
-                    const pending = (proposalsRes.data.proposals || []).filter(p => p.status === 'PENDING').length
-                    setProposalsCount(pending)
+                    const customRes = await customOrdersAPI.getAvailableRequests()
+                    const available = (customRes.data.requests || []).filter(r => r.status === 'APPROVED').length
+                    setCustomOrdersCount(available)
                 } catch (e) {
-                    console.error('Failed to load proposals count:', e)
+                    console.error('Failed to load custom orders count:', e)
                 }
             }
         } catch (error) {
@@ -192,10 +209,10 @@ export default function Dashboard() {
 
                 {/* Tabs pour les créateurs */}
                 {isCreator() && (
-                    <div className="flex items-center gap-2 mb-6 border-b border-hyt-border">
+                    <div className="flex items-center gap-2 mb-6 border-b border-hyt-border overflow-x-auto">
                         <button
                             onClick={() => setActiveTab('overview')}
-                            className={`px-4 py-3 font-medium transition-colors relative ${
+                            className={`px-4 py-3 font-medium transition-colors relative whitespace-nowrap ${
                                 activeTab === 'overview'
                                     ? 'text-hyt-accent'
                                     : 'text-gray-400 hover:text-white'
@@ -207,8 +224,27 @@ export default function Dashboard() {
                             )}
                         </button>
                         <button
+                            onClick={() => setActiveTab('custom-orders')}
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 whitespace-nowrap ${
+                                activeTab === 'custom-orders'
+                                    ? 'text-hyt-accent'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <PenTool className="w-4 h-4" />
+                            Sur mesure
+                            {customOrdersCount > 0 && (
+                                <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                    {customOrdersCount}
+                                </span>
+                            )}
+                            {activeTab === 'custom-orders' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
+                            )}
+                        </button>
+                        <button
                             onClick={() => setActiveTab('proposals')}
-                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 whitespace-nowrap ${
                                 activeTab === 'proposals'
                                     ? 'text-hyt-accent'
                                     : 'text-gray-400 hover:text-white'
@@ -227,7 +263,7 @@ export default function Dashboard() {
                         </button>
                         <button
                             onClick={() => setActiveTab('dependencies')}
-                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 whitespace-nowrap ${
                                 activeTab === 'dependencies'
                                     ? 'text-hyt-accent'
                                     : 'text-gray-400 hover:text-white'
@@ -241,7 +277,7 @@ export default function Dashboard() {
                         </button>
                         <button
                             onClick={() => setActiveTab('bundles')}
-                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                            className={`px-4 py-3 font-medium transition-colors relative flex items-center gap-2 whitespace-nowrap ${
                                 activeTab === 'bundles'
                                     ? 'text-hyt-accent'
                                     : 'text-gray-400 hover:text-white'
@@ -257,7 +293,9 @@ export default function Dashboard() {
                 )}
 
                 {/* Contenu selon l'onglet actif */}
-                {activeTab === 'proposals' && isCreator() ? (
+                {activeTab === 'custom-orders' && isCreator() ? (
+                    <CreatorCustomOrders />
+                ) : activeTab === 'proposals' && isCreator() ? (
                     <SellerProposals />
                 ) : activeTab === 'bundles' && isCreator() ? (
                     <BundleManager />
@@ -619,6 +657,29 @@ export default function Dashboard() {
                                         </p>
                                     </div>
                                 </div>
+
+                                {/* Custom Orders CTA - Affiché si des demandes sont disponibles */}
+                                {customOrdersCount > 0 && (
+                                    <div
+                                        onClick={() => setActiveTab('custom-orders')}
+                                        className="card mb-8 border-orange-500/30 bg-orange-500/5 cursor-pointer hover:bg-orange-500/10 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                                                <PenTool className="w-6 h-6 text-orange-500" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="font-semibold text-white mb-1">
+                                                    {customOrdersCount} demande{customOrdersCount > 1 ? 's' : ''} sur mesure disponible{customOrdersCount > 1 ? 's' : ''}
+                                                </h3>
+                                                <p className="text-gray-400 text-sm">
+                                                    Des clients recherchent vos compétences ! Faites une offre et décrochez de nouvelles commandes.
+                                                </p>
+                                            </div>
+                                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Propositions CTA Card */}
                                 <div

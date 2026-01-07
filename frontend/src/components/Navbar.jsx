@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Package, ChevronDown,
     Upload, FileText, MessageCircle, ExternalLink,
     Bell, Check, CheckCheck, Trash2, AlertTriangle,
-    CheckCircle, Info, XCircle
+    CheckCircle, Info, XCircle, PenTool
 } from 'lucide-react'
 import { notificationsAPI } from '../services/api'
 
@@ -128,6 +128,7 @@ export default function Navbar() {
 
     const navLinks = [
         { to: '/models', label: 'Produits', external: false },
+        { to: '/custom-orders', label: 'Sur mesure', external: false, icon: PenTool },
         { to: 'https://discord.gg/3VJQZ6sjRR', label: 'Discord', external: true },
     ]
 
@@ -163,13 +164,14 @@ export default function Navbar() {
                                     key={link.to}
                                     to={link.to}
                                     className={({ isActive }) =>
-                                        `px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                        `flex items-center gap-1.5 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                                             isActive
                                                 ? 'text-hyt-accent bg-hyt-accent/10'
                                                 : 'text-gray-400 hover:text-white hover:bg-hyt-card'
                                         }`
                                     }
                                 >
+                                    {link.icon && <link.icon className="w-4 h-4" />}
                                     {link.label}
                                 </NavLink>
                             )
@@ -443,6 +445,16 @@ export default function Navbar() {
                                                     Mes achats
                                                 </Link>
 
+                                                {/* Commandes sur mesure - AJOUTÉ */}
+                                                <Link
+                                                    to="/custom-orders"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
+                                                >
+                                                    <PenTool className="w-4 h-4" />
+                                                    Commandes sur mesure
+                                                </Link>
+
                                                 <Link
                                                     to="/invoices"
                                                     onClick={() => setUserMenuOpen(false)}
@@ -522,13 +534,14 @@ export default function Navbar() {
                                     to={link.to}
                                     onClick={() => setMobileMenuOpen(false)}
                                     className={({ isActive }) =>
-                                        `block px-4 py-3 rounded-lg font-medium transition-all ${
+                                        `flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
                                             isActive
                                                 ? 'text-hyt-accent bg-hyt-accent/10'
                                                 : 'text-gray-400 hover:text-white hover:bg-hyt-border/50'
                                         }`
                                     }
                                 >
+                                    {link.icon && <link.icon className="w-4 h-4" />}
                                     {link.label}
                                 </NavLink>
                             )
@@ -643,6 +656,16 @@ export default function Navbar() {
                                 >
                                     <ShoppingCart className="w-4 h-4" />
                                     Mes achats
+                                </Link>
+
+                                {/* Commandes sur mesure Mobile - AJOUTÉ */}
+                                <Link
+                                    to="/custom-orders"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
+                                >
+                                    <PenTool className="w-4 h-4" />
+                                    Commandes sur mesure
                                 </Link>
 
                                 <Link

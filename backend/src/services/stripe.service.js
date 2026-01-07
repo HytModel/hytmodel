@@ -19,12 +19,8 @@ class StripeService {
             quantity: 1
         }));
 
-        // Snapshot immutable pour le webhook
-        const metadataItems = items.map(i => ({
-            model_id: i.id,
-            title: i.title,
-            price: Math.round(Number(i.price) * 100)
-        }));
+        // Extraire les model_ids pour le webhook
+        const modelIds = items.map(i => i.id);
 
         const session = await this.stripe.checkout.sessions.create({
             mode: "payment",
@@ -33,9 +29,10 @@ class StripeService {
             success_url: successUrl,
             cancel_url: cancelUrl,
             metadata: {
+                type: "cart", // IMPORTANT: type pour le webhook
                 user_id: userId,
-                cart_id: cartId, // AJOUTÉ: cart_id pour le webhook
-                items: JSON.stringify(metadataItems)
+                cart_id: cartId,
+                model_ids: JSON.stringify(modelIds) // Liste des IDs pour le webhook
             }
         });
 

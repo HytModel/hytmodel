@@ -55,6 +55,10 @@ class WebhookController {
                 await this.handleBundlePurchase(client, metadata, session);
             } else if (metadata.type === "cart") {
                 await this.handleCartPurchase(client, metadata, session);
+            } else if (metadata.type === "custom_order_first") {
+                await this.handleCustomOrderFirstPayment(client, metadata, session);
+            } else if (metadata.type === "custom_order_final") {
+                await this.handleCustomOrderFinalPayment(client, metadata, session);
             } else {
                 // Achat simple d'un modèle
                 await this.handleModelPurchase(client, metadata, session);
@@ -111,8 +115,6 @@ class WebhookController {
             [bundle_id, user_id, bundle.final_price, session.id]
         );
 
-        const bundlePurchase = purchaseRows[0];
-
         // Récupérer les produits du bundle
         const { rows: items } = await client.query(
             `SELECT bi.model_id, m.title, m.price
@@ -153,7 +155,6 @@ class WebhookController {
         try {
             const invoiceNumber = `INV-B-${Date.now()}`;
 
-            // Créer l'entrée facture
             const { rows: invoiceRows } = await client.query(
                 `INSERT INTO invoices (user_id, invoice_number, total_amount, stripe_session_id)
                  VALUES ($1, $2, $3, $4)
@@ -163,7 +164,6 @@ class WebhookController {
 
             const invoiceId = invoiceRows[0].id;
 
-            // Générer le PDF avec le bon format
             const pdfPath = await generateInvoicePdf({
                 invoiceNumber,
                 user: {
@@ -172,13 +172,12 @@ class WebhookController {
                 },
                 items: [{
                     title: `Bundle: ${bundle.title}`,
-                    price: parseFloat(bundle.final_price) // en euros
+                    price: parseFloat(bundle.final_price)
                 }],
-                totalAmount: Math.round(parseFloat(bundle.final_price) * 100), // en centimes
+                totalAmount: Math.round(parseFloat(bundle.final_price) * 100),
                 createdAt: new Date()
             });
 
-            // Mettre à jour la facture avec le chemin du PDF
             await client.query(
                 `UPDATE invoices SET pdf_path = $1 WHERE id = $2`,
                 [pdfPath, invoiceId]
@@ -187,7 +186,6 @@ class WebhookController {
             console.log(`📄 Invoice generated: ${invoiceNumber}`);
         } catch (pdfError) {
             console.error("Error generating invoice PDF:", pdfError);
-            // Ne pas faire échouer la transaction si le PDF échoue
         }
 
         // Générer la note de paiement pour le vendeur
@@ -199,12 +197,11 @@ class WebhookController {
             const creator = creatorRows[0];
 
             const paymentNoteNumber = `PAY-B-${Date.now()}`;
-            const commissionRate = 0.15; // 15% de commission
+            const commissionRate = 0.15;
             const grossAmountCents = Math.round(parseFloat(bundle.final_price) * 100);
             const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
             const netAmountCents = grossAmountCents - commissionAmountCents;
 
-            // Créer l'entrée note de paiement vendeur
             const { rows: paymentRows } = await client.query(
                 `INSERT INTO seller_payments (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
@@ -212,7 +209,6 @@ class WebhookController {
                 [bundle.creator_id, paymentNoteNumber, grossAmountCents / 100, commissionRate, commissionAmountCents / 100, netAmountCents / 100, session.id]
             );
 
-            // Générer le PDF vendeur avec ton format
             const pdfPath = await generateSellerNotePdf({
                 invoiceNumber: paymentNoteNumber,
                 seller: {
@@ -224,13 +220,11 @@ class WebhookController {
                 netAmount: netAmountCents,
                 stripeTransferId: session.payment_intent,
                 createdAt: new Date(),
-                // Infos bundle
                 isBundle: true,
                 bundleTitle: bundle.title,
                 itemCount: items.length
             });
 
-            // Mettre à jour avec le chemin du PDF
             await client.query(
                 `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
                 [pdfPath, paymentRows[0].id]
@@ -241,10 +235,24 @@ class WebhookController {
             console.error("Error generating seller payment PDF:", paymentError);
         }
 
+        // Supprimer les produits du bundle du panier
+        try {
+            const itemIds = items.map(i => i.model_id);
+            await client.query(
+                `DELETE FROM cart_items
+                 WHERE cart_id = (SELECT id FROM carts WHERE user_id = $1)
+                   AND model_id = ANY($2)`,
+                [user_id, itemIds]
+            );
+            console.log(`🛒 Removed ${itemIds.length} bundle items from cart`);
+        } catch (cartError) {
+            console.error("Error removing bundle items from cart:", cartError);
+        }
+
         console.log(`✅ Bundle ${bundle_id} purchased successfully`);
     }
 
-    // Achat d'un panier (plusieurs modèles)
+    // Achat d'un panier
     async handleCartPurchase(client, metadata, session) {
         const { user_id, model_ids } = metadata;
         const modelIds = JSON.parse(model_ids);
@@ -254,7 +262,6 @@ class WebhookController {
         const purchasedItems = [];
 
         for (const modelId of modelIds) {
-            // Récupérer le prix du modèle
             const { rows: modelRows } = await client.query(
                 `SELECT id, title, price, creator_id FROM models WHERE id = $1`,
                 [modelId]
@@ -264,7 +271,6 @@ class WebhookController {
 
             const model = modelRows[0];
 
-            // Enregistrer l'achat
             await client.query(
                 `INSERT INTO purchases (user_id, model_id, price_paid)
                  VALUES ($1, $2, $3)
@@ -272,7 +278,6 @@ class WebhookController {
                 [user_id, modelId, model.price]
             );
 
-            // Mettre à jour les stats du modèle
             await client.query(
                 `INSERT INTO model_stats (model_id, downloads)
                  VALUES ($1, 0)
@@ -288,7 +293,7 @@ class WebhookController {
 
         // Vider le panier
         await client.query(
-            `DELETE FROM cart_items WHERE user_id = $1`,
+            `DELETE FROM cart_items WHERE cart_id = (SELECT id FROM carts WHERE user_id = $1)`,
             [user_id]
         );
 
@@ -310,91 +315,20 @@ class WebhookController {
                 [user_id, invoiceNumber, totalAmountEuros, session.id]
             );
 
-            const invoiceId = invoiceRows[0].id;
-
             const pdfPath = await generateInvoicePdf({
                 invoiceNumber,
-                user: {
-                    username: user.username,
-                    email: user.email
-                },
+                user: { username: user.username, email: user.email },
                 items: purchasedItems,
-                totalAmount: Math.round(totalAmountEuros * 100), // en centimes
+                totalAmount: Math.round(totalAmountEuros * 100),
                 createdAt: new Date()
             });
 
             await client.query(
                 `UPDATE invoices SET pdf_path = $1 WHERE id = $2`,
-                [pdfPath, invoiceId]
+                [pdfPath, invoiceRows[0].id]
             );
 
             console.log(`📄 Invoice generated: ${invoiceNumber}`);
-
-            // Générer les notes de paiement pour chaque vendeur
-            const sellerPayments = {};
-
-            for (const modelId of modelIds) {
-                const { rows: modelInfo } = await client.query(
-                    `SELECT m.title, m.price, m.creator_id, u.username, u.email
-                     FROM models m
-                              JOIN users u ON u.id = m.creator_id
-                     WHERE m.id = $1`,
-                    [modelId]
-                );
-
-                if (modelInfo[0]) {
-                    const info = modelInfo[0];
-                    if (!sellerPayments[info.creator_id]) {
-                        sellerPayments[info.creator_id] = {
-                            seller: { name: info.username, email: info.email },
-                            items: [],
-                            grossAmount: 0
-                        };
-                    }
-                    sellerPayments[info.creator_id].items.push({
-                        title: info.title,
-                        description: `Vendu à ${user.username}`,
-                        price: parseFloat(info.price)
-                    });
-                    sellerPayments[info.creator_id].grossAmount += parseFloat(info.price);
-                }
-            }
-
-            // Créer une note de paiement par vendeur
-            for (const [sellerId, payment] of Object.entries(sellerPayments)) {
-                const paymentNoteNumber = `PAY-${Date.now()}-${sellerId.slice(0, 8)}`;
-                const commissionRate = 0.15;
-                const grossAmountCents = Math.round(payment.grossAmount * 100);
-                const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
-                const netAmountCents = grossAmountCents - commissionAmountCents;
-
-                const { rows: paymentRows } = await client.query(
-                    `INSERT INTO seller_payments (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
-                         RETURNING id`,
-                    [sellerId, paymentNoteNumber, grossAmountCents / 100, commissionRate, commissionAmountCents / 100, netAmountCents / 100, session.id]
-                );
-
-                const pdfPath = await generateSellerNotePdf({
-                    invoiceNumber: paymentNoteNumber,
-                    seller: {
-                        username: payment.seller.name,
-                        email: payment.seller.email
-                    },
-                    grossAmount: grossAmountCents,
-                    commissionAmount: commissionAmountCents,
-                    netAmount: netAmountCents,
-                    stripeTransferId: session.payment_intent,
-                    createdAt: new Date()
-                });
-
-                await client.query(
-                    `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
-                    [pdfPath, paymentRows[0].id]
-                );
-
-                console.log(`💰 Seller payment note generated: ${paymentNoteNumber}`);
-            }
         } catch (pdfError) {
             console.error("Error generating invoice PDF:", pdfError);
         }
@@ -410,7 +344,6 @@ class WebhookController {
 
         console.log(`🎁 Processing model purchase: ${model_id} for user ${user_id}`);
 
-        // Récupérer le prix du modèle
         const { rows: modelRows } = await client.query(
             `SELECT title, price FROM models WHERE id = $1`,
             [model_id]
@@ -423,7 +356,6 @@ class WebhookController {
 
         const model = modelRows[0];
 
-        // Enregistrer l'achat
         await client.query(
             `INSERT INTO purchases (user_id, model_id, price_paid)
              VALUES ($1, $2, $3)
@@ -448,78 +380,296 @@ class WebhookController {
                 [user_id, invoiceNumber, model.price, session.id]
             );
 
-            const invoiceId = invoiceRows[0].id;
-
             const pdfPath = await generateInvoicePdf({
                 invoiceNumber,
-                user: {
-                    username: user.username,
-                    email: user.email
-                },
-                items: [{
-                    title: model.title,
-                    price: parseFloat(model.price)
-                }],
-                totalAmount: Math.round(parseFloat(model.price) * 100), // en centimes
+                user: { username: user.username, email: user.email },
+                items: [{ title: model.title, price: parseFloat(model.price) }],
+                totalAmount: Math.round(parseFloat(model.price) * 100),
                 createdAt: new Date()
             });
 
             await client.query(
                 `UPDATE invoices SET pdf_path = $1 WHERE id = $2`,
-                [pdfPath, invoiceId]
+                [pdfPath, invoiceRows[0].id]
             );
 
             console.log(`📄 Invoice generated: ${invoiceNumber}`);
-
-            // Générer la note de paiement pour le vendeur
-            const { rows: creatorRows } = await client.query(
-                `SELECT m.creator_id, u.username, u.email
-                 FROM models m
-                          JOIN users u ON u.id = m.creator_id
-                 WHERE m.id = $1`,
-                [model_id]
-            );
-
-            if (creatorRows[0]) {
-                const creator = creatorRows[0];
-                const paymentNoteNumber = `PAY-${Date.now()}`;
-                const commissionRate = 0.15;
-                const grossAmountCents = Math.round(parseFloat(model.price) * 100);
-                const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
-                const netAmountCents = grossAmountCents - commissionAmountCents;
-
-                const { rows: paymentRows } = await client.query(
-                    `INSERT INTO seller_payments (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
-                         RETURNING id`,
-                    [creator.creator_id, paymentNoteNumber, grossAmountCents / 100, commissionRate, commissionAmountCents / 100, netAmountCents / 100, session.id]
-                );
-
-                const pdfPath = await generateSellerNotePdf({
-                    invoiceNumber: paymentNoteNumber,
-                    seller: {
-                        username: creator.username,
-                        email: creator.email
-                    },
-                    grossAmount: grossAmountCents,
-                    commissionAmount: commissionAmountCents,
-                    netAmount: netAmountCents,
-                    stripeTransferId: session.payment_intent,
-                    createdAt: new Date()
-                });
-
-                await client.query(
-                    `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
-                    [pdfPath, paymentRows[0].id]
-                );
-
-                console.log(`💰 Seller payment note generated: ${paymentNoteNumber}`);
-            }
         } catch (pdfError) {
             console.error("Error generating invoice PDF:", pdfError);
         }
 
         console.log(`✅ Model ${model_id} purchased successfully`);
+    }
+
+    // Premier paiement commande sur mesure (50%)
+    async handleCustomOrderFirstPayment(client, metadata, session) {
+        const { order_id, user_id } = metadata;
+
+        console.log(`🎨 Processing custom order first payment: ${order_id}`);
+
+        const { rows } = await client.query(
+            `SELECT co.*, cr.title as request_title,
+                    creator.username as creator_username, creator.id as creator_id
+             FROM custom_orders co
+                      JOIN custom_requests cr ON cr.id = co.request_id
+                      JOIN users creator ON creator.id = co.creator_id
+             WHERE co.id = $1 AND co.client_id = $2 AND co.status = 'AWAITING_PAYMENT'`,
+            [order_id, user_id]
+        );
+
+        if (!rows[0]) {
+            console.error("Custom order not found or already paid:", order_id);
+            return;
+        }
+
+        const order = rows[0];
+
+        // Mettre à jour la commande
+        await client.query(
+            `UPDATE custom_orders
+             SET first_payment_paid = TRUE,
+                 first_payment_date = NOW(),
+                 first_payment_stripe_id = $2,
+                 status = 'IN_PROGRESS'
+             WHERE id = $1`,
+            [order_id, session.payment_intent]
+        );
+
+        // Mettre à jour la demande
+        await client.query(
+            `UPDATE custom_requests SET status = 'IN_PROGRESS'
+             WHERE id = (SELECT request_id FROM custom_orders WHERE id = $1)`,
+            [order_id]
+        );
+
+        // Message système
+        await client.query(
+            `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
+             VALUES ($1, $2, 'SYSTEM', $3, '[]')`,
+            [order_id, user_id, `💳 Acompte de ${Number(order.first_payment_amount).toFixed(2)}€ reçu ! Le créateur peut commencer le travail.`]
+        );
+
+        // Notification au créateur
+        await client.query(
+            `INSERT INTO notifications (user_id, type, title, message, data)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+                order.creator_id,
+                'CUSTOM_ORDER_PAID',
+                'Paiement reçu ! 💰',
+                `L'acompte pour "${order.request_title}" a été payé. Vous pouvez commencer le travail !`,
+                JSON.stringify({ order_id: order_id, link: `/custom-orders/orders/${order_id}` })
+            ]
+        );
+
+        // Générer la facture
+        try {
+            const { rows: userRows } = await client.query(
+                `SELECT username, email FROM users WHERE id = $1`,
+                [user_id]
+            );
+            const user = userRows[0];
+
+            const invoiceNumber = `INV-CO-${Date.now()}`;
+            const amountPaid = parseFloat(order.first_payment_amount);
+
+            const { rows: invoiceRows } = await client.query(
+                `INSERT INTO invoices (user_id, invoice_number, total_amount, stripe_session_id)
+                 VALUES ($1, $2, $3, $4)
+                     RETURNING id`,
+                [user_id, invoiceNumber, amountPaid, session.id]
+            );
+
+            const pdfPath = await generateInvoicePdf({
+                invoiceNumber,
+                user: { username: user.username, email: user.email },
+                items: [{
+                    title: `Commande sur mesure: ${order.request_title} (Acompte 50%)`,
+                    price: amountPaid
+                }],
+                totalAmount: Math.round(amountPaid * 100),
+                createdAt: new Date()
+            });
+
+            await client.query(
+                `UPDATE invoices SET pdf_path = $1 WHERE id = $2`,
+                [pdfPath, invoiceRows[0].id]
+            );
+
+            console.log(`📄 Invoice generated for first payment: ${invoiceNumber}`);
+        } catch (pdfError) {
+            console.error("Error generating invoice PDF:", pdfError);
+        }
+
+        console.log(`✅ Custom order ${order_id} first payment completed - Work can begin!`);
+    }
+
+    // Paiement final commande sur mesure (50%)
+    async handleCustomOrderFinalPayment(client, metadata, session) {
+        const { order_id, user_id } = metadata;
+
+        console.log(`🎨 Processing custom order final payment: ${order_id}`);
+
+        const { rows } = await client.query(
+            `SELECT co.*, cr.title as request_title,
+                    creator.username as creator_username, creator.email as creator_email,
+                    creator.stripe_account_id as creator_stripe_id
+             FROM custom_orders co
+                      JOIN custom_requests cr ON cr.id = co.request_id
+                      JOIN users creator ON creator.id = co.creator_id
+             WHERE co.id = $1 AND co.client_id = $2 AND co.status = 'AWAITING_FINAL_PAYMENT'`,
+            [order_id, user_id]
+        );
+
+        if (!rows[0]) {
+            console.error("Custom order not found or not ready for final payment:", order_id);
+            return;
+        }
+
+        const order = rows[0];
+
+        // Mettre à jour la commande
+        await client.query(
+            `UPDATE custom_orders
+             SET second_payment_paid = TRUE,
+                 second_payment_date = NOW(),
+                 second_payment_stripe_id = $2,
+                 status = 'COMPLETED',
+                 completed_at = NOW()
+             WHERE id = $1`,
+            [order_id, session.payment_intent]
+        );
+
+        // Mettre à jour la demande
+        await client.query(
+            `UPDATE custom_requests SET status = 'COMPLETED' WHERE id = $1`,
+            [order.request_id]
+        );
+
+        // Incrémenter les commandes du créateur
+        await client.query(
+            `UPDATE affiliated_creators
+             SET completed_orders = completed_orders + 1
+             WHERE user_id = $1`,
+            [order.creator_id]
+        );
+
+        // Message système
+        await client.query(
+            `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
+             VALUES ($1, $2, 'SYSTEM', $3, '[]')`,
+            [order_id, user_id, `💳 Paiement final de ${Number(order.second_payment_amount).toFixed(2)}€ reçu ! Commande terminée. 🎉`]
+        );
+
+        // Notification au créateur
+        await client.query(
+            `INSERT INTO notifications (user_id, type, title, message, data)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+                order.creator_id,
+                'CUSTOM_ORDER_COMPLETED',
+                'Commande terminée ! 🎉',
+                `La commande "${order.request_title}" est terminée. Le paiement a été traité.`,
+                JSON.stringify({ order_id: order_id, link: `/custom-orders/orders/${order_id}` })
+            ]
+        );
+
+        // Calculer le montant créateur
+        const totalPaid = parseFloat(order.first_payment_amount) + parseFloat(order.second_payment_amount);
+        const commissionAmount = parseFloat(order.commission_amount);
+        const creatorAmount = totalPaid - commissionAmount;
+
+        console.log(`💰 Creator payment: ${creatorAmount.toFixed(2)}€ (commission: ${commissionAmount.toFixed(2)}€)`);
+
+        // Transfert Stripe Connect si configuré
+        if (order.creator_stripe_id) {
+            try {
+                await stripe.transfers.create({
+                    amount: Math.round(creatorAmount * 100),
+                    currency: "eur",
+                    destination: order.creator_stripe_id,
+                    transfer_group: `custom_order_${order_id}`
+                });
+                console.log(`✅ Transfer to creator completed: ${creatorAmount.toFixed(2)}€`);
+            } catch (transferError) {
+                console.error("Stripe transfer error:", transferError);
+            }
+        }
+
+        // Enregistrer le paiement vendeur
+        try {
+            const paymentNoteNumber = `PAY-CO-${Date.now()}`;
+
+            const { rows: paymentRows } = await client.query(
+                `INSERT INTO seller_payments
+                 (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'PAID')
+                     RETURNING id`,
+                [order.creator_id, paymentNoteNumber, totalPaid, order.commission_rate, commissionAmount, creatorAmount, session.id]
+            );
+
+            const pdfPath = await generateSellerNotePdf({
+                invoiceNumber: paymentNoteNumber,
+                seller: { username: order.creator_username, email: order.creator_email },
+                grossAmount: Math.round(totalPaid * 100),
+                commissionAmount: Math.round(commissionAmount * 100),
+                netAmount: Math.round(creatorAmount * 100),
+                stripeTransferId: session.payment_intent,
+                createdAt: new Date(),
+                isCustomOrder: true,
+                orderTitle: order.request_title
+            });
+
+            await client.query(
+                `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
+                [pdfPath, paymentRows[0].id]
+            );
+
+            console.log(`💰 Seller payment recorded: ${paymentNoteNumber}`);
+        } catch (paymentError) {
+            console.error("Error recording seller payment:", paymentError);
+        }
+
+        // Générer la facture finale
+        try {
+            const { rows: userRows } = await client.query(
+                `SELECT username, email FROM users WHERE id = $1`,
+                [user_id]
+            );
+            const user = userRows[0];
+
+            const invoiceNumber = `INV-CO-FINAL-${Date.now()}`;
+            const amountPaid = parseFloat(order.second_payment_amount);
+
+            const { rows: invoiceRows } = await client.query(
+                `INSERT INTO invoices (user_id, invoice_number, total_amount, stripe_session_id)
+                 VALUES ($1, $2, $3, $4)
+                     RETURNING id`,
+                [user_id, invoiceNumber, amountPaid, session.id]
+            );
+
+            const pdfPath = await generateInvoicePdf({
+                invoiceNumber,
+                user: { username: user.username, email: user.email },
+                items: [{
+                    title: `Commande sur mesure: ${order.request_title} (Solde 50%)`,
+                    price: amountPaid
+                }],
+                totalAmount: Math.round(amountPaid * 100),
+                createdAt: new Date()
+            });
+
+            await client.query(
+                `UPDATE invoices SET pdf_path = $1 WHERE id = $2`,
+                [pdfPath, invoiceRows[0].id]
+            );
+
+            console.log(`📄 Invoice generated for final payment: ${invoiceNumber}`);
+        } catch (pdfError) {
+            console.error("Error generating final invoice PDF:", pdfError);
+        }
+
+        console.log(`✅ Custom order ${order_id} completed!`);
     }
 }
 

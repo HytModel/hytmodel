@@ -84,6 +84,7 @@ app.use("/api/proposals", require("./routes/proposals.routes"));
 app.use("/api/bundles", require("./routes/bundles.routes"));
 app.use("/api/dependencies", require("./routes/dependencies.routes"));
 app.use("/api/model-versions", require("./routes/modelVersions.routes"));
+app.use("/api/custom-orders", require("./routes/customOrders.routes"));
 
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));

@@ -32,14 +32,16 @@ import {
     Globe,
     Timer,
     Activity,
-    PieChart
+    PieChart,
+    PenTool
 } from 'lucide-react'
-import { adminAPI, modelsAPI, dependenciesAPI } from '../services/api'
+import { adminAPI, modelsAPI, dependenciesAPI, customOrdersAPI } from '../services/api'
 import toast from 'react-hot-toast'
 import AdminSellers from './AdminSellers'
 import AdminSettings from './AdminSettings'
 import AdminFeedback from './AdminFeedback'
 import AdminAnalytics from './AdminAnalytics'
+import AdminCustomOrders from './AdminCustomOrders'
 
 // Fonction pour obtenir l'URL complète de l'image
 const getImageUrl = (url) => {
@@ -91,11 +93,13 @@ function AdminOverview() {
     const [loading, setLoading] = useState(true)
     const [reportsCount, setReportsCount] = useState({ pending: 0, reviewed: 0, total: 0 })
     const [siteStats, setSiteStats] = useState({ visits: 0, downloads: 0, avgTime: '0:00' })
+    const [customOrdersCount, setCustomOrdersCount] = useState(0)
 
     useEffect(() => {
         loadStats()
         loadReportsCount()
         loadSiteStats()
+        loadCustomOrdersCount()
     }, [])
 
     const loadStats = async () => {
@@ -138,6 +142,15 @@ function AdminOverview() {
             }
         } catch (error) {
             console.error('Failed to load site stats:', error)
+        }
+    }
+
+    const loadCustomOrdersCount = async () => {
+        try {
+            const { data } = await customOrdersAPI.getStaffRequests('PENDING').catch(() => ({ data: { requests: [] } }))
+            setCustomOrdersCount(data.requests?.length || 0)
+        } catch (error) {
+            console.error('Failed to load custom orders count:', error)
         }
     }
 
@@ -202,16 +215,16 @@ function AdminOverview() {
                     color="bg-purple-500/20 text-purple-500"
                 />
                 <MiniStatCard
-                    title="En attente"
+                    title="Signalements"
                     value={reportsCount.pending}
                     icon={Flag}
                     color="bg-red-500/20 text-red-500"
                 />
                 <MiniStatCard
-                    title="En cours"
-                    value={reportsCount.reviewed}
-                    icon={Activity}
-                    color="bg-yellow-500/20 text-yellow-500"
+                    title="Sur mesure"
+                    value={customOrdersCount}
+                    icon={PenTool}
+                    color="bg-orange-500/20 text-orange-500"
                 />
                 <MiniStatCard
                     title="Total signalés"
@@ -221,30 +234,60 @@ function AdminOverview() {
                 />
             </div>
 
-            {/* Alertes Signalements */}
-            {reportsCount.pending > 0 && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-red-500/20 rounded-lg">
-                                <Flag className="w-5 h-5 text-red-500" />
-                            </div>
-                            <div>
-                                <p className="text-red-400 font-medium">
-                                    {reportsCount.pending} signalement{reportsCount.pending > 1 ? 's' : ''} en attente
-                                </p>
-                                <p className="text-red-400/70 text-sm">
-                                    Des produits ont été signalés et nécessitent votre attention
-                                </p>
+            {/* Alertes Signalements et Commandes sur mesure */}
+            {(reportsCount.pending > 0 || customOrdersCount > 0) && (
+                <div className="space-y-3">
+                    {reportsCount.pending > 0 && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-red-500/20 rounded-lg">
+                                        <Flag className="w-5 h-5 text-red-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-red-400 font-medium">
+                                            {reportsCount.pending} signalement{reportsCount.pending > 1 ? 's' : ''} en attente
+                                        </p>
+                                        <p className="text-red-400/70 text-sm">
+                                            Des produits ont été signalés et nécessitent votre attention
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    to="/admin/feedback"
+                                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                                >
+                                    Voir les signalements
+                                </Link>
                             </div>
                         </div>
-                        <Link
-                            to="/admin/feedback"
-                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
-                        >
-                            Voir les signalements
-                        </Link>
-                    </div>
+                    )}
+
+                    {customOrdersCount > 0 && (
+                        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                                        <PenTool className="w-5 h-5 text-orange-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-orange-400 font-medium">
+                                            {customOrdersCount} demande{customOrdersCount > 1 ? 's' : ''} sur mesure en attente
+                                        </p>
+                                        <p className="text-orange-400/70 text-sm">
+                                            Des clients attendent la validation de leur demande
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    to="/admin/custom-orders"
+                                    className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
+                                >
+                                    Voir les demandes
+                                </Link>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -268,14 +311,14 @@ function AdminOverview() {
                             <span className="text-white">Utilisateurs</span>
                         </Link>
                         <Link
-                            to="/admin/feedback"
+                            to="/admin/custom-orders"
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors relative"
                         >
-                            <MessageSquare className="w-5 h-5 text-blue-500" />
-                            <span className="text-white">Feedback</span>
-                            {reportsCount.pending > 0 && (
-                                <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                                    {reportsCount.pending}
+                            <PenTool className="w-5 h-5 text-orange-500" />
+                            <span className="text-white">Sur mesure</span>
+                            {customOrdersCount > 0 && (
+                                <span className="absolute top-2 right-2 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                    {customOrdersCount}
                                 </span>
                             )}
                         </Link>
@@ -388,15 +431,6 @@ function ModifiedValue({ label, oldValue, newValue, type = 'text' }) {
 // Modal de détail des modifications
 function ModificationDetailModal({ model, onClose }) {
     const prev = model.previous_values || {}
-
-    // Fonction pour comparer les arrays (tags, versions)
-    const arraysChanged = (oldArr, newArr) => {
-        if (!oldArr || !newArr) return oldArr !== newArr
-        if (oldArr.length !== newArr.length) return true
-        const oldIds = oldArr.map(id => String(id)).sort()
-        const newIds = newArr.map(item => String(item.id || item)).sort()
-        return JSON.stringify(oldIds) !== JSON.stringify(newIds)
-    }
 
     const changes = []
 
@@ -542,12 +576,10 @@ function PendingModels({ onCountChange }) {
         }
     }
 
-    // Fonction pour vérifier si un modèle a des modifications
     const hasModifications = (model) => {
         return model.modification_reason === 'CREATOR_UPDATE' || model.modification_reason === 'HIDDEN_CORRECTION'
     }
 
-    // Compte les modifications
     const countChanges = (model) => {
         if (!model.previous_values) return 0
         const prev = model.previous_values
@@ -614,7 +646,6 @@ function PendingModels({ onCountChange }) {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                                             <h3 className="text-white font-medium truncate">{model.title}</h3>
-                                            {/* Badge selon le type */}
                                             {model.modification_reason === 'HIDDEN_CORRECTION' ? (
                                                 <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
                                                     <AlertTriangle className="w-3 h-3" />
@@ -631,7 +662,6 @@ function PendingModels({ onCountChange }) {
                                                     Nouveau
                                                 </span>
                                             )}
-                                            {/* Badge nombre de modifications */}
                                             {isModified && changeCount > 0 && (
                                                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium">
                                                     {changeCount} modif{changeCount > 1 ? 's' : ''}
@@ -641,7 +671,6 @@ function PendingModels({ onCountChange }) {
 
                                         <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
 
-                                        {/* Affichage rapide des infos */}
                                         <div className="flex flex-wrap gap-4 mt-2">
                                             <span className="text-hyt-accent font-medium">
                                                 {parseFloat(model.price).toFixed(2)} €
@@ -654,7 +683,6 @@ function PendingModels({ onCountChange }) {
                                             )}
                                         </div>
 
-                                        {/* Aperçu des modifications pour les produits modifiés */}
                                         {isModified && model.previous_values && (
                                             <div className="mt-3 p-3 bg-hyt-dark/50 rounded-lg border border-hyt-border">
                                                 <div className="flex items-center justify-between mb-2">
@@ -692,7 +720,6 @@ function PendingModels({ onCountChange }) {
                                             </div>
                                         )}
 
-                                        {/* Afficher l'ancienne raison de masquage si corrigé */}
                                         {model.modification_reason === 'HIDDEN_CORRECTION' && model.previous_hidden_reason && (
                                             <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                                 <p className="text-xs text-orange-400">
@@ -749,7 +776,6 @@ function PendingModels({ onCountChange }) {
                 </div>
             )}
 
-            {/* Modal de détail des modifications */}
             {selectedModel && (
                 <ModificationDetailModal
                     model={selectedModel}
@@ -1200,7 +1226,6 @@ function AdminModels() {
                 <span className="text-gray-400">{filteredModels.length} produit(s)</span>
             </div>
 
-            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                     <div className="relative">
@@ -1226,7 +1251,6 @@ function AdminModels() {
                 </select>
             </div>
 
-            {/* Models List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -1251,7 +1275,6 @@ function AdminModels() {
                             }`}
                         >
                             <div className="flex items-center gap-4">
-                                {/* Thumbnail */}
                                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-hyt-dark flex-shrink-0">
                                     {model.thumbnail_url ? (
                                         <img
@@ -1266,7 +1289,6 @@ function AdminModels() {
                                     )}
                                 </div>
 
-                                {/* Info */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                         <h3 className="text-white font-medium truncate">{model.title}</h3>
@@ -1286,7 +1308,6 @@ function AdminModels() {
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Link
                                         to={`/models/${model.id}`}
@@ -1360,7 +1381,6 @@ function AdminModels() {
                 </div>
             )}
 
-            {/* Modals */}
             {hideModal && (
                 <HideModelModal
                     model={hideModal}
@@ -1386,10 +1406,12 @@ export default function Admin() {
     const [pendingCount, setPendingCount] = useState(0)
     const [proposalsCount, setProposalsCount] = useState(0)
     const [reportsCount, setReportsCount] = useState(0)
+    const [customOrdersCount, setCustomOrdersCount] = useState(0)
 
     useEffect(() => {
         loadPendingCount()
         loadFeedbackCounts()
+        loadCustomOrdersCount()
     }, [])
 
     const loadPendingCount = async () => {
@@ -1417,6 +1439,15 @@ export default function Admin() {
         }
     }
 
+    const loadCustomOrdersCount = async () => {
+        try {
+            const { data } = await customOrdersAPI.getStaffRequests('PENDING').catch(() => ({ data: { requests: [] } }))
+            setCustomOrdersCount(data.requests?.length || 0)
+        } catch (error) {
+            console.error('Failed to load custom orders count:', error)
+        }
+    }
+
     const handlePendingCountChange = (count) => {
         setPendingCount(count)
     }
@@ -1434,6 +1465,13 @@ export default function Admin() {
         { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
         { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
         { path: '/admin/models', icon: Package, label: 'Produits' },
+        {
+            path: '/admin/custom-orders',
+            icon: PenTool,
+            label: 'Sur mesure',
+            badge: customOrdersCount > 0 ? customOrdersCount : null,
+            badgeColor: 'bg-orange-500 text-white'
+        },
         {
             path: '/admin/feedback',
             icon: MessageSquare,
@@ -1517,6 +1555,7 @@ export default function Admin() {
                             <Route path="feedback" element={<AdminFeedback />} />
                             <Route path="settings" element={<AdminSettings />} />
                             <Route path="models" element={<AdminModels />} />
+                            <Route path="custom-orders" element={<AdminCustomOrders />} />
                         </Routes>
                     </motion.main>
                 </div>
