@@ -6,10 +6,12 @@ import {
     AlertCircle, Layers, CheckCircle
 } from 'lucide-react'
 import { modelFileVersionsAPI, versionsAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 // Modal d'ajout/édition de version
 function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSuccess }) {
+    const { t } = useTranslation()
     const [versionNumber, setVersionNumber] = useState('')
     const [changelog, setChangelog] = useState('')
     const [file, setFile] = useState(null)
@@ -56,12 +58,12 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
         e.preventDefault()
 
         if (!versionNumber.trim()) {
-            toast.error('Numéro de version requis')
+            toast.error(t('productVersions.modal.errors.versionRequired'))
             return
         }
 
         if (!editingVersion && !file) {
-            toast.error('Fichier requis')
+            toast.error(t('productVersions.modal.errors.fileRequired'))
             return
         }
 
@@ -74,7 +76,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                     compatibleVersions,
                     isLatest
                 })
-                toast.success('Version mise à jour')
+                toast.success(t('productVersions.success.updated'))
             } else {
                 // Création
                 const formData = new FormData()
@@ -85,13 +87,13 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                 formData.append('isLatest', isLatest)
 
                 await modelFileVersionsAPI.create(modelId, formData)
-                toast.success('Version ajoutée')
+                toast.success(t('productVersions.success.added'))
             }
 
             onSuccess()
             onClose()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('common.error'))
         } finally {
             setLoading(false)
         }
@@ -125,7 +127,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                 <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <Package className="w-5 h-5 text-hyt-accent" />
-                        {editingVersion ? 'Modifier la version' : 'Nouvelle version'}
+                        {editingVersion ? t('productVersions.modal.editTitle') : t('productVersions.modal.createTitle')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -136,13 +138,13 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                     {/* Numéro de version */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Numéro de version *
+                            {t('productVersions.modal.versionNumber')} *
                         </label>
                         <input
                             type="text"
                             value={versionNumber}
                             onChange={(e) => setVersionNumber(e.target.value)}
-                            placeholder="Ex: 1.0.0, 2.1.3, v3.0..."
+                            placeholder={t('productVersions.modal.versionPlaceholder')}
                             className="input-field w-full"
                             disabled={!!editingVersion}
                         />
@@ -152,7 +154,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                     {!editingVersion && (
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
-                                Fichier *
+                                {t('productVersions.modal.file')} *
                             </label>
                             <div className="border-2 border-dashed border-hyt-border rounded-xl p-6 text-center hover:border-hyt-accent/50 transition-colors">
                                 <input
@@ -175,10 +177,10 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                                         <>
                                             <Upload className="w-8 h-8 mx-auto text-gray-500 mb-2" />
                                             <p className="text-gray-400">
-                                                Cliquez pour sélectionner un fichier
+                                                {t('productVersions.modal.clickToSelect')}
                                             </p>
                                             <p className="text-gray-500 text-xs mt-1">
-                                                ZIP, RAR, 7Z, TAR, GZ (max 500MB)
+                                                {t('productVersions.modal.fileFormats')}
                                             </p>
                                         </>
                                     )}
@@ -191,7 +193,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-sm text-gray-400">
-                                Versions du jeu compatibles
+                                {t('productVersions.modal.compatibleVersions')}
                             </label>
                             <div className="flex gap-2">
                                 <button
@@ -199,7 +201,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                                     onClick={selectAllVersions}
                                     className="text-xs text-hyt-accent hover:underline"
                                 >
-                                    Tout sélectionner
+                                    {t('common.all')}
                                 </button>
                                 <span className="text-gray-600">|</span>
                                 <button
@@ -207,7 +209,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                                     onClick={clearAllVersions}
                                     className="text-xs text-gray-400 hover:underline"
                                 >
-                                    Effacer
+                                    {t('common.none')}
                                 </button>
                             </div>
                         </div>
@@ -218,7 +220,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                             </div>
                         ) : gameVersions.length === 0 ? (
                             <p className="text-gray-500 text-sm py-2">
-                                Aucune version de jeu disponible
+                                {t('productVersions.modal.noGameVersions')}
                             </p>
                         ) : (
                             <div className="max-h-40 overflow-y-auto border border-hyt-border rounded-lg p-2 space-y-1">
@@ -252,19 +254,19 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                             </div>
                         )}
                         <p className="text-xs text-gray-500 mt-1">
-                            {compatibleVersions.length} version(s) sélectionnée(s)
+                            {t('productVersions.modal.versionsSelected', { count: compatibleVersions.length })}
                         </p>
                     </div>
 
                     {/* Changelog */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Notes de version (changelog)
+                            {t('productVersions.modal.changelog')}
                         </label>
                         <textarea
                             value={changelog}
                             onChange={(e) => setChangelog(e.target.value)}
-                            placeholder="Décrivez les changements de cette version..."
+                            placeholder={t('productVersions.modal.changelogPlaceholder')}
                             rows={3}
                             className="input-field w-full resize-none"
                         />
@@ -284,9 +286,9 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                             {isLatest && <Check className="w-3 h-3 text-black" />}
                         </div>
                         <div>
-                            <p className="text-white font-medium">Version principale</p>
+                            <p className="text-white font-medium">{t('productVersions.modal.mainVersion')}</p>
                             <p className="text-gray-500 text-xs">
-                                Cette version sera téléchargée par défaut
+                                {t('productVersions.modal.mainVersionHint')}
                             </p>
                         </div>
                     </label>
@@ -294,7 +296,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                     {/* Boutons */}
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -306,7 +308,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
                             ) : (
                                 <Upload className="w-4 h-4" />
                             )}
-                            {editingVersion ? 'Mettre à jour' : 'Ajouter'}
+                            {editingVersion ? t('common.update') : t('common.add')}
                         </button>
                     </div>
                 </form>
@@ -317,6 +319,7 @@ function VersionModal({ isOpen, onClose, modelId, gameId, editingVersion, onSucc
 
 // Composant principal de gestion des versions
 export default function ProductVersionsManager({ modelId, gameId }) {
+    const { t } = useTranslation()
     const [versions, setVersions] = useState([])
     const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
@@ -346,25 +349,25 @@ export default function ProductVersionsManager({ modelId, gameId }) {
         setProcessing(versionId)
         try {
             await modelFileVersionsAPI.setLatest(modelId, versionId)
-            toast.success('Version définie comme principale')
+            toast.success(t('productVersions.success.setMain'))
             loadVersions()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('common.error'))
         } finally {
             setProcessing(null)
         }
     }
 
     const handleDelete = async (versionId) => {
-        if (!confirm('Supprimer cette version ? Cette action est irréversible.')) return
+        if (!confirm(t('productVersions.confirmDelete'))) return
 
         setProcessing(versionId)
         try {
             await modelFileVersionsAPI.delete(modelId, versionId)
-            toast.success('Version supprimée')
+            toast.success(t('productVersions.success.deleted'))
             loadVersions()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('common.error'))
         } finally {
             setProcessing(null)
         }
@@ -402,11 +405,11 @@ export default function ProductVersionsManager({ modelId, gameId }) {
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     <Layers className="w-5 h-5 text-hyt-accent" />
-                    Versions du fichier
+                    {t('productVersions.title')}
                 </h3>
                 <button onClick={openCreateModal} className="btn-primary flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Nouvelle version
+                    {t('productVersions.newVersion')}
                 </button>
             </div>
 
@@ -414,13 +417,13 @@ export default function ProductVersionsManager({ modelId, gameId }) {
             {versions.length === 0 ? (
                 <div className="bg-hyt-dark border border-hyt-border rounded-xl p-8 text-center">
                     <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucune version</p>
+                    <p className="text-white font-medium">{t('productVersions.empty.title')}</p>
                     <p className="text-gray-400 text-sm mt-1">
-                        Ajoutez la première version de votre fichier
+                        {t('productVersions.empty.description')}
                     </p>
                     <button onClick={openCreateModal} className="btn-primary mt-4">
                         <Plus className="w-4 h-4 inline mr-2" />
-                        Ajouter une version
+                        {t('productVersions.empty.addFirst')}
                     </button>
                 </div>
             ) : (
@@ -451,7 +454,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                         {version.is_latest && (
                                             <span className="px-2 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded-full flex items-center gap-1">
                                                 <Star className="w-3 h-3" />
-                                                Principale
+                                                {t('productVersions.main')}
                                             </span>
                                         )}
                                     </div>
@@ -466,7 +469,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Download className="w-3 h-3" />
-                                            {version.download_count} téléchargements
+                                            {version.download_count} {t('productVersions.downloads')}
                                         </span>
                                     </div>
                                 </div>
@@ -507,7 +510,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                             {/* Changelog */}
                                             {version.changelog && (
                                                 <div>
-                                                    <p className="text-sm text-gray-400 mb-1">Notes de version :</p>
+                                                    <p className="text-sm text-gray-400 mb-1">{t('productVersions.releaseNotes')} :</p>
                                                     <p className="text-gray-300 text-sm bg-hyt-card p-3 rounded-lg whitespace-pre-wrap">
                                                         {version.changelog}
                                                     </p>
@@ -517,7 +520,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                             {/* Versions compatibles détaillées */}
                                             {version.compatible_versions?.length > 0 && (
                                                 <div>
-                                                    <p className="text-sm text-gray-400 mb-2">Versions du jeu compatibles :</p>
+                                                    <p className="text-sm text-gray-400 mb-2">{t('productVersions.compatibleVersions')} :</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {version.compatible_versions.map(cv => (
                                                             <span
@@ -545,7 +548,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                                         ) : (
                                                             <Star className="w-4 h-4" />
                                                         )}
-                                                        Définir comme principale
+                                                        {t('productVersions.setAsMain')}
                                                     </button>
                                                 )}
                                                 <button
@@ -553,7 +556,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                                     className="btn-ghost text-sm flex items-center gap-1"
                                                 >
                                                     <Edit2 className="w-4 h-4" />
-                                                    Modifier
+                                                    {t('common.edit')}
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(version.id)}
@@ -565,7 +568,7 @@ export default function ProductVersionsManager({ modelId, gameId }) {
                                                     ) : (
                                                         <Trash2 className="w-4 h-4" />
                                                     )}
-                                                    Supprimer
+                                                    {t('common.delete')}
                                                 </button>
                                             </div>
                                         </div>

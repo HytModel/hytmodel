@@ -7,10 +7,12 @@ import {
 } from 'lucide-react'
 import { customOrdersAPI, gamesAPI, categoriesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function NewCustomRequest() {
     const { isAuthenticated } = useAuth()
+    const { t } = useTranslation()
     const navigate = useNavigate()
 
     const [loading, setLoading] = useState(false)
@@ -61,14 +63,14 @@ export default function NewCustomRequest() {
 
         const validFiles = files.filter(file => {
             if (file.size > maxSize) {
-                toast.error(`${file.name} est trop volumineux (max 50MB)`)
+                toast.error(t('newCustomRequest.errors.fileTooLarge', { name: file.name }))
                 return false
             }
             return true
         })
 
         if (attachments.length + validFiles.length > 5) {
-            toast.error('Maximum 5 fichiers autorisés')
+            toast.error(t('newCustomRequest.errors.maxFiles'))
             return
         }
 
@@ -83,12 +85,12 @@ export default function NewCustomRequest() {
         e.preventDefault()
 
         if (!form.title.trim() || !form.description.trim()) {
-            toast.error('Titre et description requis')
+            toast.error(t('newCustomRequest.errors.titleDescriptionRequired'))
             return
         }
 
         if (form.description.length < 50) {
-            toast.error('La description doit faire au moins 50 caractères')
+            toast.error(t('newCustomRequest.errors.descriptionMinLength'))
             return
         }
 
@@ -110,10 +112,10 @@ export default function NewCustomRequest() {
 
             const { data } = await customOrdersAPI.createRequest(formData)
 
-            toast.success('Demande envoyée ! Elle sera examinée par notre équipe.')
+            toast.success(t('newCustomRequest.success'))
             navigate(`/custom-orders/requests/${data.request.id}`)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la création')
+            toast.error(error.response?.data?.error || t('newCustomRequest.errors.createFailed'))
         } finally {
             setLoading(false)
         }
@@ -139,14 +141,14 @@ export default function NewCustomRequest() {
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour
+                        {t('common.back')}
                     </Link>
 
                     <h1 className="text-3xl font-display font-bold text-white mb-2">
-                        Nouvelle demande sur mesure
+                        {t('newCustomRequest.title')}
                     </h1>
                     <p className="text-gray-400">
-                        Décrivez votre projet pour recevoir des offres de nos créateurs
+                        {t('newCustomRequest.subtitle')}
                     </p>
                 </motion.div>
 
@@ -160,12 +162,12 @@ export default function NewCustomRequest() {
                     <div className="flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                         <div className="text-sm">
-                            <p className="text-blue-400 font-medium mb-1">À savoir</p>
+                            <p className="text-blue-400 font-medium mb-1">{t('newCustomRequest.info.title')}</p>
                             <ul className="text-gray-400 space-y-1">
-                                <li>• Votre demande sera examinée par notre équipe avant publication</li>
-                                <li>• Les créateurs affiliés pourront ensuite vous faire des offres</li>
-                                <li>• Paiement en 2 fois : 50% à l'acceptation, 50% à la livraison</li>
-                                <li>• En cas d'annulation, seuls 50% de l'acompte sont remboursés</li>
+                                <li>• {t('newCustomRequest.info.point1')}</li>
+                                <li>• {t('newCustomRequest.info.point2')}</li>
+                                <li>• {t('newCustomRequest.info.point3')}</li>
+                                <li>• {t('newCustomRequest.info.point4')}</li>
                             </ul>
                         </div>
                     </div>
@@ -182,14 +184,14 @@ export default function NewCustomRequest() {
                     {/* Titre */}
                     <div className="card">
                         <label className="block text-sm font-medium text-white mb-2">
-                            Titre de votre demande *
+                            {t('newCustomRequest.form.titleLabel')} *
                         </label>
                         <input
                             type="text"
                             name="title"
                             value={form.title}
                             onChange={handleChange}
-                            placeholder="Ex: Interface de menu FiveM moderne"
+                            placeholder={t('newCustomRequest.form.titlePlaceholder')}
                             className="input-field w-full"
                             maxLength={255}
                             required
@@ -199,18 +201,18 @@ export default function NewCustomRequest() {
                     {/* Description */}
                     <div className="card">
                         <label className="block text-sm font-medium text-white mb-2">
-                            Description détaillée *
+                            {t('newCustomRequest.form.descriptionLabel')} *
                         </label>
                         <textarea
                             name="description"
                             value={form.description}
                             onChange={handleChange}
-                            placeholder="Décrivez en détail ce que vous souhaitez : fonctionnalités, style visuel, références, etc."
+                            placeholder={t('newCustomRequest.form.descriptionPlaceholder')}
                             className="input-field w-full h-40 resize-none"
                             required
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                            {form.description.length}/50 caractères minimum
+                            {form.description.length}/50 {t('newCustomRequest.form.minCharacters')}
                         </p>
                     </div>
 
@@ -218,13 +220,13 @@ export default function NewCustomRequest() {
                     <div className="card">
                         <h3 className="font-medium text-white mb-4 flex items-center gap-2">
                             <Euro className="w-5 h-5 text-hyt-accent" />
-                            Budget et délai
+                            {t('newCustomRequest.form.budgetSection')}
                         </h3>
 
                         <div className="grid sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Budget minimum (€)
+                                    {t('newCustomRequest.form.budgetMin')}
                                 </label>
                                 <input
                                     type="number"
@@ -238,7 +240,7 @@ export default function NewCustomRequest() {
                             </div>
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Budget maximum (€)
+                                    {t('newCustomRequest.form.budgetMax')}
                                 </label>
                                 <input
                                     type="number"
@@ -252,7 +254,7 @@ export default function NewCustomRequest() {
                             </div>
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Date limite souhaitée
+                                    {t('newCustomRequest.form.deadline')}
                                 </label>
                                 <input
                                     type="date"
@@ -270,13 +272,13 @@ export default function NewCustomRequest() {
                     <div className="card">
                         <h3 className="font-medium text-white mb-4 flex items-center gap-2">
                             <FolderOpen className="w-5 h-5 text-hyt-accent" />
-                            Catégorie
+                            {t('newCustomRequest.form.categorySection')}
                         </h3>
 
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Jeu concerné
+                                    {t('newCustomRequest.form.game')}
                                 </label>
                                 <select
                                     name="game_id"
@@ -284,7 +286,7 @@ export default function NewCustomRequest() {
                                     onChange={handleChange}
                                     className="input-field w-full"
                                 >
-                                    <option value="">Sélectionner un jeu</option>
+                                    <option value="">{t('newCustomRequest.form.selectGame')}</option>
                                     {games.map(game => (
                                         <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
@@ -292,7 +294,7 @@ export default function NewCustomRequest() {
                             </div>
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Type de produit
+                                    {t('newCustomRequest.form.productType')}
                                 </label>
                                 <select
                                     name="category_id"
@@ -300,7 +302,7 @@ export default function NewCustomRequest() {
                                     onChange={handleChange}
                                     className="input-field w-full"
                                 >
-                                    <option value="">Sélectionner une catégorie</option>
+                                    <option value="">{t('newCustomRequest.form.selectCategory')}</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
@@ -313,10 +315,10 @@ export default function NewCustomRequest() {
                     <div className="card">
                         <h3 className="font-medium text-white mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5 text-hyt-accent" />
-                            Pièces jointes (optionnel)
+                            {t('newCustomRequest.form.attachments')} ({t('common.optional')})
                         </h3>
                         <p className="text-sm text-gray-400 mb-4">
-                            Ajoutez des images de référence, maquettes, ou tout document utile (max 5 fichiers, 50MB chacun)
+                            {t('newCustomRequest.form.attachmentsHint')}
                         </p>
 
                         <div className="space-y-3">
@@ -324,7 +326,7 @@ export default function NewCustomRequest() {
                             <label className="block border-2 border-dashed border-hyt-border rounded-xl p-6 text-center cursor-pointer hover:border-hyt-accent/50 transition-colors">
                                 <Upload className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                                 <p className="text-gray-400 text-sm">
-                                    Cliquez ou glissez des fichiers ici
+                                    {t('newCustomRequest.form.uploadHint')}
                                 </p>
                                 <p className="text-gray-500 text-xs mt-1">
                                     JPG, PNG, GIF, PDF, ZIP, RAR
@@ -373,7 +375,7 @@ export default function NewCustomRequest() {
                             to="/custom-orders"
                             className="btn-ghost flex-1 text-center"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </Link>
                         <button
                             type="submit"
@@ -385,7 +387,7 @@ export default function NewCustomRequest() {
                             ) : (
                                 <PenTool className="w-5 h-5" />
                             )}
-                            Envoyer ma demande
+                            {t('newCustomRequest.form.submit')}
                         </button>
                     </div>
                 </motion.form>

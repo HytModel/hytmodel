@@ -5,6 +5,7 @@ import {
     ExternalLink, Filter
 } from 'lucide-react'
 import { tagsAPI, categoriesAPI, gamesAPI, versionsAPI, dependenciesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 // ============ MODAL GÉNÉRIQUE ============
@@ -30,6 +31,7 @@ function Modal({ isOpen, onClose, title, children }) {
 
 // ============ GESTION DES DÉPENDANCES ============
 function DependenciesManager() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [dependencies, setDependencies] = useState([])
     const [selectedGame, setSelectedGame] = useState('')
@@ -64,7 +66,7 @@ function DependenciesManager() {
                 setSelectedGame(gamesList[0].id)
             }
         } catch (error) {
-            toast.error('Erreur lors du chargement des jeux')
+            toast.error(t('settings.errors.loadGames'))
         } finally {
             setLoading(false)
         }
@@ -82,7 +84,7 @@ function DependenciesManager() {
 
     const openCreateModal = () => {
         if (!selectedGame) {
-            toast.error('Sélectionnez un jeu d\'abord')
+            toast.error(t('settings.errors.selectGameFirst'))
             return
         }
         setEditingDep(null)
@@ -108,7 +110,7 @@ function DependenciesManager() {
         const file = e.target.files[0]
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                toast.error('Logo trop volumineux (max 2MB)')
+                toast.error(t('settings.errors.logoTooLarge'))
                 return
             }
             setLogoFile(file)
@@ -118,7 +120,7 @@ function DependenciesManager() {
 
     const handleSave = async () => {
         if (!formData.name.trim()) {
-            toast.error('Le nom est requis')
+            toast.error(t('settings.errors.nameRequired'))
             return
         }
 
@@ -135,29 +137,29 @@ function DependenciesManager() {
 
             if (editingDep) {
                 await dependenciesAPI.update(editingDep.id, fd)
-                toast.success('Dépendance modifiée')
+                toast.success(t('settings.success.dependencyModified'))
             } else {
                 await dependenciesAPI.create(fd)
-                toast.success('Dépendance créée')
+                toast.success(t('settings.success.dependencyCreated'))
             }
             setModalOpen(false)
             fetchDependencies(selectedGame)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('settings.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (dep) => {
-        if (!confirm(`Supprimer la dépendance "${dep.name}" ?`)) return
+        if (!confirm(t('settings.confirmDelete.dependency', { name: dep.name }))) return
 
         try {
             await dependenciesAPI.delete(dep.id)
-            toast.success('Dépendance supprimée')
+            toast.success(t('settings.success.dependencyDeleted'))
             fetchDependencies(selectedGame)
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('settings.errors.deleteFailed'))
         }
     }
 
@@ -166,10 +168,10 @@ function DependenciesManager() {
             const fd = new FormData()
             fd.append('isActive', !dep.is_active)
             await dependenciesAPI.update(dep.id, fd)
-            toast.success(dep.is_active ? 'Dépendance désactivée' : 'Dépendance activée')
+            toast.success(dep.is_active ? t('settings.success.dependencyDisabled') : t('settings.success.dependencyEnabled'))
             fetchDependencies(selectedGame)
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('settings.errors.generic'))
         }
     }
 
@@ -184,7 +186,7 @@ function DependenciesManager() {
             {/* Sélecteur de jeu */}
             <div className="bg-hyt-dark rounded-xl p-4 border border-hyt-border">
                 <label className="block text-sm text-gray-400 mb-2">
-                    Sélectionnez un jeu pour gérer ses dépendances
+                    {t('settings.dependencies.selectGame')}
                 </label>
                 <div className="flex gap-3">
                     <select
@@ -192,7 +194,7 @@ function DependenciesManager() {
                         onChange={(e) => setSelectedGame(e.target.value)}
                         className="input-field flex-1"
                     >
-                        <option value="">-- Choisir un jeu --</option>
+                        <option value="">{t('settings.chooseGame')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -203,7 +205,7 @@ function DependenciesManager() {
                         className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="w-4 h-4" />
-                        Nouvelle dépendance
+                        {t('settings.dependencies.new')}
                     </button>
                 </div>
             </div>
@@ -214,7 +216,7 @@ function DependenciesManager() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Rechercher une dépendance..."
+                        placeholder={t('settings.dependencies.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="input-field pl-10 w-full text-sm"
@@ -229,15 +231,15 @@ function DependenciesManager() {
             ) : !selectedGame ? (
                 <div className="text-center py-12 text-gray-400">
                     <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Sélectionnez un jeu pour voir ses dépendances</p>
+                    <p>{t('settings.dependencies.selectGameToView')}</p>
                 </div>
             ) : filteredDeps.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                     <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>{searchQuery ? 'Aucune dépendance trouvée' : `Aucune dépendance pour ${selectedGameName}`}</p>
+                    <p>{searchQuery ? t('settings.dependencies.noFound') : t('settings.dependencies.noneForGame', { game: selectedGameName })}</p>
                     <button onClick={openCreateModal} className="mt-4 btn-ghost">
                         <Plus className="w-4 h-4 inline mr-2" />
-                        Créer une dépendance
+                        {t('settings.dependencies.create')}
                     </button>
                 </div>
             ) : (
@@ -270,7 +272,7 @@ function DependenciesManager() {
                                     <span className="font-semibold text-white">{dep.name}</span>
                                     {!dep.is_active && (
                                         <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded">
-                                            Désactivée
+                                            {t('settings.dependencies.disabled')}
                                         </span>
                                     )}
                                 </div>
@@ -278,7 +280,7 @@ function DependenciesManager() {
                                     <p className="text-sm text-gray-400 mt-1 line-clamp-1">{dep.description}</p>
                                 )}
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Utilisée par {dep.usage_count || 0} produit(s)
+                                    {t('settings.dependencies.usedBy', { count: dep.usage_count || 0 })}
                                 </p>
                             </div>
 
@@ -290,7 +292,7 @@ function DependenciesManager() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-2 text-gray-400 hover:text-white transition-colors"
-                                        title="Site web"
+                                        title={t('settings.dependencies.website')}
                                     >
                                         <ExternalLink className="w-4 h-4" />
                                     </a>
@@ -302,7 +304,7 @@ function DependenciesManager() {
                                             ? 'text-gray-400 hover:text-yellow-500'
                                             : 'text-green-500 hover:text-green-400'
                                     }`}
-                                    title={dep.is_active ? 'Désactiver' : 'Activer'}
+                                    title={dep.is_active ? t('settings.actions.disable') : t('settings.actions.enable')}
                                 >
                                     {dep.is_active ? (
                                         <X className="w-4 h-4" />
@@ -313,14 +315,14 @@ function DependenciesManager() {
                                 <button
                                     onClick={() => openEditModal(dep)}
                                     className="p-2 text-gray-400 hover:text-hyt-accent transition-colors"
-                                    title="Modifier"
+                                    title={t('settings.actions.edit')}
                                 >
                                     <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(dep)}
                                     className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                    title="Supprimer"
+                                    title={t('settings.actions.delete')}
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
@@ -334,12 +336,12 @@ function DependenciesManager() {
             <Modal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editingDep ? 'Modifier la dépendance' : 'Nouvelle dépendance'}
+                title={editingDep ? t('settings.dependencies.editTitle') : t('settings.dependencies.newTitle')}
             >
                 <div className="space-y-4">
                     {/* Logo */}
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.dependencies.logoOptional')}</label>
                         <div className="flex items-center gap-4">
                             <div
                                 onClick={() => fileInputRef.current?.click()}
@@ -352,8 +354,8 @@ function DependenciesManager() {
                                 )}
                             </div>
                             <div className="text-sm text-gray-500">
-                                <p>Cliquez pour uploader</p>
-                                <p className="text-xs">PNG, JPG, SVG (max 2MB)</p>
+                                <p>{t('settings.clickToUpload')}</p>
+                                <p className="text-xs">{t('settings.imageFormats')}</p>
                             </div>
                         </div>
                         <input
@@ -367,12 +369,12 @@ function DependenciesManager() {
 
                     {/* Nom */}
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.name')} *</label>
                         <input
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="Ex: Fabric, Forge, OptiFine..."
+                            placeholder={t('settings.dependencies.namePlaceholder')}
                             className="input-field w-full"
                             autoFocus
                         />
@@ -380,11 +382,11 @@ function DependenciesManager() {
 
                     {/* Description */}
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Description</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.description')}</label>
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Courte description..."
+                            placeholder={t('settings.fields.shortDescription')}
                             rows={2}
                             className="input-field w-full resize-none"
                         />
@@ -392,7 +394,7 @@ function DependenciesManager() {
 
                     {/* Site web */}
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Site web</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.website')}</label>
                         <input
                             type="url"
                             value={formData.websiteUrl}
@@ -405,13 +407,13 @@ function DependenciesManager() {
                     {/* Jeu */}
                     <div className="bg-hyt-dark rounded-lg p-3">
                         <p className="text-sm text-gray-400">
-                            Jeu : <span className="text-white font-medium">{selectedGameName}</span>
+                            {t('settings.fields.game')} : <span className="text-white font-medium">{selectedGameName}</span>
                         </p>
                     </div>
 
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setModalOpen(false)} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -419,7 +421,7 @@ function DependenciesManager() {
                             className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {editingDep ? 'Modifier' : 'Créer'}
+                            {editingDep ? t('settings.actions.edit') : t('settings.actions.create')}
                         </button>
                     </div>
                 </div>
@@ -430,6 +432,7 @@ function DependenciesManager() {
 
 // ============ GESTION DES TAGS ============
 function TagsManager() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [tags, setTags] = useState([])
     const [selectedGame, setSelectedGame] = useState('')
@@ -461,7 +464,7 @@ function TagsManager() {
                 setSelectedGame(gamesList[0].id)
             }
         } catch (error) {
-            toast.error('Erreur lors du chargement des jeux')
+            toast.error(t('settings.errors.loadGames'))
         } finally {
             setLoading(false)
         }
@@ -479,7 +482,7 @@ function TagsManager() {
 
     const openCreateModal = () => {
         if (!selectedGame) {
-            toast.error('Sélectionnez un jeu d\'abord')
+            toast.error(t('settings.errors.selectGameFirst'))
             return
         }
         setEditingTag(null)
@@ -495,7 +498,7 @@ function TagsManager() {
 
     const handleSave = async () => {
         if (!tagName.trim()) {
-            toast.error('Le nom est requis')
+            toast.error(t('settings.errors.nameRequired'))
             return
         }
 
@@ -506,32 +509,32 @@ function TagsManager() {
                     name: tagName.trim(),
                     gameId: selectedGame
                 })
-                toast.success('Tag modifié')
+                toast.success(t('settings.success.tagModified'))
             } else {
                 await tagsAPI.create({
                     name: tagName.trim(),
                     gameId: selectedGame
                 })
-                toast.success('Tag créé')
+                toast.success(t('settings.success.tagCreated'))
             }
             setModalOpen(false)
             fetchTags(selectedGame)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('settings.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (tag) => {
-        if (!confirm(`Supprimer le tag "${tag.name}" ?`)) return
+        if (!confirm(t('settings.confirmDelete.tag', { name: tag.name }))) return
 
         try {
             await tagsAPI.delete(tag.id)
-            toast.success('Tag supprimé')
+            toast.success(t('settings.success.tagDeleted'))
             fetchTags(selectedGame)
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('settings.errors.deleteFailed'))
         }
     }
 
@@ -546,7 +549,7 @@ function TagsManager() {
             {/* Sélecteur de jeu */}
             <div className="bg-hyt-dark rounded-xl p-4 border border-hyt-border">
                 <label className="block text-sm text-gray-400 mb-2">
-                    Sélectionnez un jeu pour gérer ses tags
+                    {t('settings.tags.selectGame')}
                 </label>
                 <div className="flex gap-3">
                     <select
@@ -554,7 +557,7 @@ function TagsManager() {
                         onChange={(e) => setSelectedGame(e.target.value)}
                         className="input-field flex-1"
                     >
-                        <option value="">-- Choisir un jeu --</option>
+                        <option value="">{t('settings.chooseGame')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -565,7 +568,7 @@ function TagsManager() {
                         className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="w-4 h-4" />
-                        Nouveau tag
+                        {t('settings.tags.new')}
                     </button>
                 </div>
             </div>
@@ -576,7 +579,7 @@ function TagsManager() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Rechercher un tag..."
+                        placeholder={t('settings.tags.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="input-field pl-10 w-full text-sm"
@@ -591,25 +594,25 @@ function TagsManager() {
             ) : !selectedGame ? (
                 <div className="text-center py-12 text-gray-400">
                     <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Sélectionnez un jeu pour voir ses tags</p>
+                    <p>{t('settings.tags.selectGameToView')}</p>
                 </div>
             ) : filteredTags.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                     <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>{searchQuery ? 'Aucun tag trouvé' : `Aucun tag pour ${selectedGameName}`}</p>
+                    <p>{searchQuery ? t('settings.tags.noFound') : t('settings.tags.noneForGame', { game: selectedGameName })}</p>
                     {!searchQuery && (
                         <button
                             onClick={openCreateModal}
                             className="mt-4 text-hyt-accent hover:underline"
                         >
-                            Créer le premier tag
+                            {t('settings.tags.createFirst')}
                         </button>
                     )}
                 </div>
             ) : (
                 <div>
                     <p className="text-sm text-gray-500 mb-3">
-                        {filteredTags.length} tag{filteredTags.length > 1 ? 's' : ''} pour <span className="text-white">{selectedGameName}</span>
+                        {t('settings.tags.countForGame', { count: filteredTags.length, game: selectedGameName })}
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {filteredTags.map(tag => (
@@ -642,16 +645,16 @@ function TagsManager() {
             <Modal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editingTag ? 'Modifier le tag' : `Nouveau tag pour ${selectedGameName}`}
+                title={editingTag ? t('settings.tags.editTitle') : t('settings.tags.newTitleFor', { game: selectedGameName })}
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Nom du tag</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.tags.nameLabel')}</label>
                         <input
                             type="text"
                             value={tagName}
                             onChange={(e) => setTagName(e.target.value)}
-                            placeholder="Ex: HD, Animé, Optimisé..."
+                            placeholder={t('settings.tags.namePlaceholder')}
                             className="input-field w-full"
                             autoFocus
                         />
@@ -661,7 +664,7 @@ function TagsManager() {
                             onClick={() => setModalOpen(false)}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -669,7 +672,7 @@ function TagsManager() {
                             className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {editingTag ? 'Modifier' : 'Créer'}
+                            {editingTag ? t('settings.actions.edit') : t('settings.actions.create')}
                         </button>
                     </div>
                 </div>
@@ -680,6 +683,7 @@ function TagsManager() {
 
 // ============ GESTION DES CATÉGORIES ============
 function CategoriesManager() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [categories, setCategories] = useState([])
     const [selectedGame, setSelectedGame] = useState('')
@@ -712,7 +716,7 @@ function CategoriesManager() {
                 setSelectedGame(gamesList[0].id)
             }
         } catch (error) {
-            toast.error('Erreur lors du chargement des jeux')
+            toast.error(t('settings.errors.loadGames'))
         } finally {
             setLoading(false)
         }
@@ -739,7 +743,7 @@ function CategoriesManager() {
 
     const openCreateModal = () => {
         if (!selectedGame) {
-            toast.error('Sélectionnez un jeu d\'abord')
+            toast.error(t('settings.errors.selectGameFirst'))
             return
         }
         setEditingCategory(null)
@@ -764,7 +768,7 @@ function CategoriesManager() {
 
     const handleSave = async () => {
         if (!categoryName.trim()) {
-            toast.error('Le nom est requis')
+            toast.error(t('settings.errors.nameRequired'))
             return
         }
 
@@ -776,33 +780,33 @@ function CategoriesManager() {
                     slug: categorySlug.trim() || generateSlug(categoryName),
                     gameId: selectedGame
                 })
-                toast.success('Catégorie modifiée')
+                toast.success(t('settings.success.categoryModified'))
             } else {
                 await categoriesAPI.create({
                     name: categoryName.trim(),
                     slug: categorySlug.trim() || generateSlug(categoryName),
                     gameId: selectedGame
                 })
-                toast.success('Catégorie créée')
+                toast.success(t('settings.success.categoryCreated'))
             }
             setModalOpen(false)
             fetchCategories(selectedGame)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('settings.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (cat) => {
-        if (!confirm(`Supprimer la catégorie "${cat.name}" ?`)) return
+        if (!confirm(t('settings.confirmDelete.category', { name: cat.name }))) return
 
         try {
             await categoriesAPI.delete(cat.id)
-            toast.success('Catégorie supprimée')
+            toast.success(t('settings.success.categoryDeleted'))
             fetchCategories(selectedGame)
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('settings.errors.deleteFailed'))
         }
     }
 
@@ -813,7 +817,7 @@ function CategoriesManager() {
             {/* Sélecteur de jeu */}
             <div className="bg-hyt-dark rounded-xl p-4 border border-hyt-border">
                 <label className="block text-sm text-gray-400 mb-2">
-                    Sélectionnez un jeu pour gérer ses catégories
+                    {t('settings.categories.selectGame')}
                 </label>
                 <div className="flex gap-3">
                     <select
@@ -821,7 +825,7 @@ function CategoriesManager() {
                         onChange={(e) => setSelectedGame(e.target.value)}
                         className="input-field flex-1"
                     >
-                        <option value="">-- Choisir un jeu --</option>
+                        <option value="">{t('settings.chooseGame')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -832,7 +836,7 @@ function CategoriesManager() {
                         className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="w-4 h-4" />
-                        Nouvelle catégorie
+                        {t('settings.categories.new')}
                     </button>
                 </div>
             </div>
@@ -844,23 +848,23 @@ function CategoriesManager() {
             ) : !selectedGame ? (
                 <div className="text-center py-12 text-gray-400">
                     <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Sélectionnez un jeu pour voir ses catégories</p>
+                    <p>{t('settings.categories.selectGameToView')}</p>
                 </div>
             ) : categories.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                     <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucune catégorie pour {selectedGameName}</p>
+                    <p>{t('settings.categories.noneForGame', { game: selectedGameName })}</p>
                     <button
                         onClick={openCreateModal}
                         className="mt-4 text-hyt-accent hover:underline"
                     >
-                        Créer la première catégorie
+                        {t('settings.categories.createFirst')}
                     </button>
                 </div>
             ) : (
                 <div className="grid gap-3">
                     <p className="text-sm text-gray-500">
-                        {categories.length} catégorie{categories.length > 1 ? 's' : ''} pour <span className="text-white">{selectedGameName}</span>
+                        {t('settings.categories.countForGame', { count: categories.length, game: selectedGameName })}
                     </p>
                     {categories.map(cat => (
                         <div
@@ -898,22 +902,22 @@ function CategoriesManager() {
             <Modal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editingCategory ? 'Modifier la catégorie' : `Nouvelle catégorie pour ${selectedGameName}`}
+                title={editingCategory ? t('settings.categories.editTitle') : t('settings.categories.newTitleFor', { game: selectedGameName })}
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Nom</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.name')}</label>
                         <input
                             type="text"
                             value={categoryName}
                             onChange={(e) => handleNameChange(e.target.value)}
-                            placeholder="Ex: Véhicules, Bâtiments..."
+                            placeholder={t('settings.categories.namePlaceholder')}
                             className="input-field w-full"
                             autoFocus
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Slug (URL)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.slug')}</label>
                         <input
                             type="text"
                             value={categorySlug}
@@ -924,7 +928,7 @@ function CategoriesManager() {
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => setModalOpen(false)} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -932,7 +936,7 @@ function CategoriesManager() {
                             className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {editingCategory ? 'Modifier' : 'Créer'}
+                            {editingCategory ? t('settings.actions.edit') : t('settings.actions.create')}
                         </button>
                     </div>
                 </div>
@@ -943,6 +947,7 @@ function CategoriesManager() {
 
 // ============ GESTION DES VERSIONS ============
 function VersionsManager() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [versions, setVersions] = useState([])
     const [selectedGame, setSelectedGame] = useState('')
@@ -974,7 +979,7 @@ function VersionsManager() {
                 setSelectedGame(gamesList[0].id)
             }
         } catch (error) {
-            toast.error('Erreur lors du chargement des jeux')
+            toast.error(t('settings.errors.loadGames'))
         } finally {
             setLoading(false)
         }
@@ -992,7 +997,7 @@ function VersionsManager() {
 
     const openCreateModal = () => {
         if (!selectedGame) {
-            toast.error('Sélectionnez un jeu d\'abord')
+            toast.error(t('settings.errors.selectGameFirst'))
             return
         }
         setEditingVersion(null)
@@ -1008,7 +1013,7 @@ function VersionsManager() {
 
     const handleSave = async () => {
         if (!versionName.trim()) {
-            toast.error('La version est requise')
+            toast.error(t('settings.errors.versionRequired'))
             return
         }
 
@@ -1019,32 +1024,32 @@ function VersionsManager() {
                     version: versionName.trim(),
                     gameId: selectedGame
                 })
-                toast.success('Version modifiée')
+                toast.success(t('settings.success.versionModified'))
             } else {
                 await versionsAPI.create({
                     version: versionName.trim(),
                     gameId: selectedGame
                 })
-                toast.success('Version créée')
+                toast.success(t('settings.success.versionCreated'))
             }
             setModalOpen(false)
             fetchVersions(selectedGame)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('settings.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (version) => {
-        if (!confirm(`Supprimer la version "${version.version}" ?`)) return
+        if (!confirm(t('settings.confirmDelete.version', { name: version.version }))) return
 
         try {
             await versionsAPI.delete(version.id)
-            toast.success('Version supprimée')
+            toast.success(t('settings.success.versionDeleted'))
             fetchVersions(selectedGame)
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('settings.errors.deleteFailed'))
         }
     }
 
@@ -1070,7 +1075,7 @@ function VersionsManager() {
             {/* Sélecteur de jeu */}
             <div className="bg-hyt-dark rounded-xl p-4 border border-hyt-border">
                 <label className="block text-sm text-gray-400 mb-2">
-                    Sélectionnez un jeu pour gérer ses versions
+                    {t('settings.versions.selectGame')}
                 </label>
                 <div className="flex gap-3">
                     <select
@@ -1078,7 +1083,7 @@ function VersionsManager() {
                         onChange={(e) => setSelectedGame(e.target.value)}
                         className="input-field flex-1"
                     >
-                        <option value="">-- Choisir un jeu --</option>
+                        <option value="">{t('settings.chooseGame')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -1089,7 +1094,7 @@ function VersionsManager() {
                         className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="w-4 h-4" />
-                        Nouvelle version
+                        {t('settings.versions.new')}
                     </button>
                 </div>
             </div>
@@ -1100,7 +1105,7 @@ function VersionsManager() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Rechercher une version..."
+                        placeholder={t('settings.versions.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="input-field pl-10 w-full text-sm"
@@ -1115,25 +1120,25 @@ function VersionsManager() {
             ) : !selectedGame ? (
                 <div className="text-center py-12 text-gray-400">
                     <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Sélectionnez un jeu pour voir ses versions</p>
+                    <p>{t('settings.versions.selectGameToView')}</p>
                 </div>
             ) : sortedVersions.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                     <Layers className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>{searchQuery ? 'Aucune version trouvée' : `Aucune version pour ${selectedGameName}`}</p>
+                    <p>{searchQuery ? t('settings.versions.noFound') : t('settings.versions.noneForGame', { game: selectedGameName })}</p>
                     {!searchQuery && (
                         <button
                             onClick={openCreateModal}
                             className="mt-4 text-hyt-accent hover:underline"
                         >
-                            Créer la première version
+                            {t('settings.versions.createFirst')}
                         </button>
                     )}
                 </div>
             ) : (
                 <div>
                     <p className="text-sm text-gray-500 mb-3">
-                        {sortedVersions.length} version{sortedVersions.length > 1 ? 's' : ''} pour <span className="text-white">{selectedGameName}</span>
+                        {t('settings.versions.countForGame', { count: sortedVersions.length, game: selectedGameName })}
                     </p>
                     <div className="grid gap-2">
                         {sortedVersions.map(version => (
@@ -1170,21 +1175,21 @@ function VersionsManager() {
             <Modal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editingVersion ? 'Modifier la version' : `Nouvelle version pour ${selectedGameName}`}
+                title={editingVersion ? t('settings.versions.editTitle') : t('settings.versions.newTitleFor', { game: selectedGameName })}
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Version</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.versions.versionLabel')}</label>
                         <input
                             type="text"
                             value={versionName}
                             onChange={(e) => setVersionName(e.target.value)}
-                            placeholder="Ex: 1.20.4, b3258, ESX 1.9..."
+                            placeholder={t('settings.versions.versionPlaceholder')}
                             className="input-field w-full"
                             autoFocus
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            Entrez le numéro ou nom de la version du jeu
+                            {t('settings.versions.versionHint')}
                         </p>
                     </div>
                     <div className="flex gap-3">
@@ -1192,7 +1197,7 @@ function VersionsManager() {
                             onClick={() => setModalOpen(false)}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -1200,7 +1205,7 @@ function VersionsManager() {
                             className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {editingVersion ? 'Modifier' : 'Créer'}
+                            {editingVersion ? t('settings.actions.edit') : t('settings.actions.create')}
                         </button>
                     </div>
                 </div>
@@ -1211,6 +1216,7 @@ function VersionsManager() {
 
 // ============ GESTION DES JEUX ============
 function GamesManager() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [loading, setLoading] = useState(true)
     const [modalOpen, setModalOpen] = useState(false)
@@ -1232,7 +1238,7 @@ function GamesManager() {
             const { data } = await gamesAPI.getAll()
             setGames(data.games || data || [])
         } catch (error) {
-            toast.error('Erreur lors du chargement')
+            toast.error(t('settings.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -1294,7 +1300,7 @@ function GamesManager() {
 
     const handleSave = async () => {
         if (!gameName.trim()) {
-            toast.error('Le nom est requis')
+            toast.error(t('settings.errors.nameRequired'))
             return
         }
 
@@ -1308,29 +1314,29 @@ function GamesManager() {
 
             if (editingGame) {
                 await gamesAPI.update(editingGame.id, formData)
-                toast.success('Jeu modifié')
+                toast.success(t('settings.success.gameModified'))
             } else {
                 await gamesAPI.create(formData)
-                toast.success('Jeu créé')
+                toast.success(t('settings.success.gameCreated'))
             }
             setModalOpen(false)
             fetchGames()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('settings.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (game) => {
-        if (!confirm(`Supprimer le jeu "${game.name}" ? Cela peut affecter les produits associés.`)) return
+        if (!confirm(t('settings.confirmDelete.game', { name: game.name }))) return
 
         try {
             await gamesAPI.delete(game.id)
-            toast.success('Jeu supprimé')
+            toast.success(t('settings.success.gameDeleted'))
             fetchGames()
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('settings.errors.deleteFailed'))
         }
     }
 
@@ -1345,7 +1351,7 @@ function GamesManager() {
             <div className="flex justify-end">
                 <button onClick={openCreateModal} className="btn-primary flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Nouveau jeu
+                    {t('settings.games.new')}
                 </button>
             </div>
 
@@ -1355,7 +1361,7 @@ function GamesManager() {
                 </div>
             ) : games.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
-                    Aucun jeu créé
+                    {t('settings.games.noGames')}
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -1389,7 +1395,7 @@ function GamesManager() {
                                     )}
                                     {game.banner_url && (
                                         <span className="text-xs text-green-500 flex items-center gap-1">
-                                            <Check className="w-3 h-3" /> Bannière
+                                            <Check className="w-3 h-3" /> {t('settings.games.banner')}
                                         </span>
                                     )}
                                 </div>
@@ -1430,23 +1436,23 @@ function GamesManager() {
             <Modal
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                title={editingGame ? 'Modifier le jeu' : 'Nouveau jeu'}
+                title={editingGame ? t('settings.games.editTitle') : t('settings.games.newTitle')}
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Nom du jeu</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.games.nameLabel')}</label>
                         <input
                             type="text"
                             value={gameName}
                             onChange={(e) => handleNameChange(e.target.value)}
-                            placeholder="Ex: FiveM, Minecraft..."
+                            placeholder={t('settings.games.namePlaceholder')}
                             className="input-field w-full"
                             autoFocus
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Slug (URL)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('settings.fields.slug')}</label>
                         <input
                             type="text"
                             value={gameSlug}
@@ -1459,7 +1465,7 @@ function GamesManager() {
                     {/* Icon Upload */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Logo / Icône (carré, 200x200 recommandé)
+                            {t('settings.games.iconLabel')}
                         </label>
                         <div className="flex items-center gap-4">
                             <div className="w-20 h-20 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border flex items-center justify-center overflow-hidden">
@@ -1471,7 +1477,7 @@ function GamesManager() {
                             </div>
                             <label className="btn-ghost cursor-pointer flex items-center gap-2">
                                 <Upload className="w-4 h-4" />
-                                Choisir
+                                {t('settings.choose')}
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -1485,7 +1491,7 @@ function GamesManager() {
                     {/* Banner Upload */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Bannière (1920x400 recommandé)
+                            {t('settings.games.bannerLabel')}
                         </label>
                         <div className="space-y-2">
                             <div className="w-full h-24 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border flex items-center justify-center overflow-hidden">
@@ -1494,13 +1500,13 @@ function GamesManager() {
                                 ) : (
                                     <div className="text-center text-gray-500">
                                         <Image className="w-8 h-8 mx-auto mb-1" />
-                                        <span className="text-xs">Bannière</span>
+                                        <span className="text-xs">{t('settings.games.banner')}</span>
                                     </div>
                                 )}
                             </div>
                             <label className="btn-ghost cursor-pointer flex items-center justify-center gap-2 w-full">
                                 <Upload className="w-4 h-4" />
-                                Choisir une bannière
+                                {t('settings.games.chooseBanner')}
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -1513,7 +1519,7 @@ function GamesManager() {
 
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setModalOpen(false)} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={handleSave}
@@ -1521,7 +1527,7 @@ function GamesManager() {
                             className="btn-primary flex-1 flex items-center justify-center gap-2"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {editingGame ? 'Modifier' : 'Créer'}
+                            {editingGame ? t('settings.actions.edit') : t('settings.actions.create')}
                         </button>
                     </div>
                 </div>
@@ -1532,19 +1538,20 @@ function GamesManager() {
 
 // ============ COMPOSANT PRINCIPAL ============
 export default function AdminSettings() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('games')
 
     const tabs = [
-        { id: 'games', label: 'Jeux', icon: Gamepad2 },
-        { id: 'categories', label: 'Catégories', icon: FolderOpen },
-        { id: 'tags', label: 'Tags', icon: Tag },
-        { id: 'versions', label: 'Versions', icon: Layers },
-        { id: 'dependencies', label: 'Dépendances', icon: Link2 }
+        { id: 'games', label: t('settings.tabs.games'), icon: Gamepad2 },
+        { id: 'categories', label: t('settings.tabs.categories'), icon: FolderOpen },
+        { id: 'tags', label: t('settings.tabs.tags'), icon: Tag },
+        { id: 'versions', label: t('settings.tabs.versions'), icon: Layers },
+        { id: 'dependencies', label: t('settings.tabs.dependencies'), icon: Link2 }
     ]
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Paramètres</h2>
+            <h2 className="text-2xl font-bold text-white">{t('settings.title')}</h2>
 
             {/* Tabs */}
             <div className="flex gap-2 border-b border-hyt-border overflow-x-auto">

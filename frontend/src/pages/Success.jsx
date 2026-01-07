@@ -3,9 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCircle, Download, FileText, ArrowRight, Sparkles } from 'lucide-react'
 import { checkoutAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import { useCart } from '../context/CartContext'
 
 export default function Success() {
+    const { t } = useTranslation()
     const [searchParams] = useSearchParams()
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
@@ -54,10 +56,10 @@ export default function Success() {
                         transition={{ delay: 0.3 }}
                     >
                         <h1 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
-                            Paiement réussi !
+                            {t('success.title')}
                         </h1>
                         <p className="text-gray-400 text-lg">
-                            Merci pour votre achat. Vos modèles sont maintenant disponibles au téléchargement.
+                            {t('success.subtitle')}
                         </p>
                     </motion.div>
                 </div>
@@ -107,7 +109,7 @@ export default function Success() {
                 >
                     <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Download className="w-5 h-5 text-hyt-accent" />
-                        Vos achats récents
+                        {t('success.recentPurchases')}
                     </h2>
 
                     {loading ? (
@@ -134,14 +136,14 @@ export default function Success() {
                                         className="btn-primary py-2 px-4 text-sm flex items-center gap-2"
                                     >
                                         <Download className="w-4 h-4" />
-                                        Télécharger
+                                        {t('success.download')}
                                     </Link>
                                 </div>
                             ))}
                         </div>
                     ) : (
                         <p className="text-gray-400 text-center py-4">
-                            Aucun achat récent trouvé
+                            {t('success.noPurchases')}
                         </p>
                     )}
                 </motion.div>
@@ -158,20 +160,20 @@ export default function Success() {
                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                     >
                         <Download className="w-5 h-5" />
-                        Tous mes achats
+                        {t('success.allPurchases')}
                     </Link>
                     <Link
                         to="/invoices"
                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                     >
                         <FileText className="w-5 h-5" />
-                        Mes factures
+                        {t('success.invoices')}
                     </Link>
                     <Link
                         to="/models"
                         className="btn-primary flex-1 flex items-center justify-center gap-2"
                     >
-                        Continuer
+                        {t('success.continue')}
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                 </motion.div>

@@ -7,6 +7,7 @@ import {
     ExternalLink, LogOut, Monitor
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import { profileAPI } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -29,6 +30,7 @@ const GoogleIcon = () => (
 export default function Profile() {
     const navigate = useNavigate()
     const { user, refreshUser } = useAuth()
+    const { t } = useTranslation()
     const avatarInputRef = useRef(null)
 
     // États du profil
@@ -101,7 +103,7 @@ export default function Profile() {
             setConnectedAccounts(data.oauth_accounts || [])
         } catch (error) {
             console.error('Failed to load profile:', error)
-            toast.error('Erreur lors du chargement du profil')
+            toast.error(t('profile.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -112,7 +114,7 @@ export default function Profile() {
         if (!file) return
 
         if (file.size > 2 * 1024 * 1024) {
-            toast.error('L\'image ne doit pas dépasser 2 MB')
+            toast.error(t('profile.errors.avatarTooLarge'))
             return
         }
 
@@ -136,11 +138,11 @@ export default function Profile() {
             }
 
             await profileAPI.update(formData)
-            toast.success('Profil mis à jour')
+            toast.success(t('profile.success.updated'))
             setAvatarFile(null)
             refreshUser?.()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la sauvegarde')
+            toast.error(error.response?.data?.error || t('profile.errors.saveFailed'))
         } finally {
             setSaving(false)
         }
@@ -148,12 +150,12 @@ export default function Profile() {
 
     const handleChangePassword = async () => {
         if (passwords.new !== passwords.confirm) {
-            toast.error('Les mots de passe ne correspondent pas')
+            toast.error(t('profile.errors.passwordMismatch'))
             return
         }
 
         if (passwords.new.length < 8) {
-            toast.error('Le mot de passe doit contenir au moins 8 caractères')
+            toast.error(t('profile.errors.passwordTooShort'))
             return
         }
 
@@ -163,11 +165,11 @@ export default function Profile() {
                 currentPassword: passwords.current,
                 newPassword: passwords.new
             })
-            toast.success('Mot de passe modifié')
+            toast.success(t('profile.success.passwordChanged'))
             setPasswords({ current: '', new: '', confirm: '' })
             setShowChangePassword(false)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors du changement de mot de passe')
+            toast.error(error.response?.data?.error || t('profile.errors.passwordChangeFailed'))
         } finally {
             setSaving(false)
         }
@@ -181,13 +183,13 @@ export default function Profile() {
             setSecret2FA(data.secret)
             setShowSetup2FA(true)
         } catch (error) {
-            toast.error('Erreur lors de la configuration 2FA')
+            toast.error(t('profile.errors.setup2FAFailed'))
         }
     }
 
     const handleVerify2FA = async () => {
         if (verifyCode.length !== 6) {
-            toast.error('Entrez un code à 6 chiffres')
+            toast.error(t('profile.errors.invalid2FACode'))
             return
         }
 
@@ -198,44 +200,43 @@ export default function Profile() {
             setTwoFactorEnabled(true)
             setShowSetup2FA(false)
             setVerifyCode('')
-            toast.success('Double authentification activée')
+            toast.success(t('profile.success.twoFAEnabled'))
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Code invalide')
+            toast.error(error.response?.data?.error || t('profile.errors.invalidCode'))
         }
     }
 
     const handleDisable2FA = async () => {
-        if (!confirm('Êtes-vous sûr de vouloir désactiver la double authentification ?')) return
+        if (!confirm(t('profile.twoFA.confirmDisable'))) return
 
         try {
             await profileAPI.disable2FA()
             setTwoFactorEnabled(false)
-            toast.success('Double authentification désactivée')
+            toast.success(t('profile.success.twoFADisabled'))
         } catch (error) {
-            toast.error('Erreur lors de la désactivation')
+            toast.error(t('profile.errors.disable2FAFailed'))
         }
     }
 
     const copyBackupCodes = () => {
         navigator.clipboard.writeText(backupCodes.join('\n'))
-        toast.success('Codes copiés')
+        toast.success(t('profile.success.codesCopied'))
     }
 
     // OAuth Functions
     const handleConnectOAuth = (provider) => {
-        // Rediriger vers l'URL OAuth du backend
         window.location.href = `http://localhost:3001/api/auth/${provider}`
     }
 
     const handleDisconnectOAuth = async (provider) => {
-        if (!confirm(`Déconnecter votre compte ${provider} ?`)) return
+        if (!confirm(t('profile.connections.confirmDisconnect', { provider }))) return
 
         try {
             await profileAPI.disconnectOAuth(provider)
             setConnectedAccounts(prev => prev.filter(a => a.provider !== provider))
-            toast.success(`Compte ${provider} déconnecté`)
+            toast.success(t('profile.success.accountDisconnected', { provider }))
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la déconnexion')
+            toast.error(error.response?.data?.error || t('profile.errors.disconnectFailed'))
         }
     }
 
@@ -246,7 +247,7 @@ export default function Profile() {
             setSessions(data.sessions || [])
             setShowSessions(true)
         } catch (error) {
-            toast.error('Erreur lors du chargement des sessions')
+            toast.error(t('profile.errors.loadSessionsFailed'))
         }
     }
 
@@ -254,21 +255,21 @@ export default function Profile() {
         try {
             await profileAPI.revokeSession(sessionId)
             setSessions(prev => prev.filter(s => s.id !== sessionId))
-            toast.success('Session révoquée')
+            toast.success(t('profile.success.sessionRevoked'))
         } catch (error) {
-            toast.error('Erreur lors de la révocation')
+            toast.error(t('profile.errors.revokeFailed'))
         }
     }
 
     const handleRevokeAllSessions = async () => {
-        if (!confirm('Déconnecter toutes les autres sessions ?')) return
+        if (!confirm(t('profile.sessions.confirmRevokeAll'))) return
 
         try {
             await profileAPI.revokeAllSessions()
-            toast.success('Toutes les sessions ont été révoquées')
+            toast.success(t('profile.success.allSessionsRevoked'))
             loadSessions()
         } catch (error) {
-            toast.error('Erreur lors de la révocation')
+            toast.error(t('profile.errors.revokeFailed'))
         }
     }
 
@@ -284,7 +285,7 @@ export default function Profile() {
         <div className="min-h-screen pt-20">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <h1 className="font-display text-3xl font-bold text-white mb-8">
-                    Mon Profil
+                    {t('profile.title')}
                 </h1>
 
                 {/* Tabs */}
@@ -298,7 +299,7 @@ export default function Profile() {
                         }`}
                     >
                         <User className="w-4 h-4 inline mr-2" />
-                        Profil
+                        {t('profile.tabs.profile')}
                     </button>
                     <button
                         onClick={() => setActiveTab('security')}
@@ -309,7 +310,7 @@ export default function Profile() {
                         }`}
                     >
                         <Shield className="w-4 h-4 inline mr-2" />
-                        Sécurité
+                        {t('profile.tabs.security')}
                     </button>
                     <button
                         onClick={() => setActiveTab('connections')}
@@ -320,7 +321,7 @@ export default function Profile() {
                         }`}
                     >
                         <LinkIcon className="w-4 h-4 inline mr-2" />
-                        Connexions
+                        {t('profile.tabs.connections')}
                     </button>
                 </div>
 
@@ -329,7 +330,7 @@ export default function Profile() {
                     <div className="space-y-6">
                         {/* Avatar */}
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
-                            <h3 className="text-lg font-semibold text-white mb-4">Photo de profil</h3>
+                            <h3 className="text-lg font-semibold text-white mb-4">{t('profile.avatar.title')}</h3>
 
                             <div className="flex items-center gap-6">
                                 <div className="relative">
@@ -361,17 +362,17 @@ export default function Profile() {
                                 <div>
                                     <p className="text-white font-medium">{user?.username}</p>
                                     <p className="text-gray-500 text-sm">{user?.email}</p>
-                                    <p className="text-gray-600 text-xs mt-1">JPG, PNG ou GIF. Max 2 MB.</p>
+                                    <p className="text-gray-600 text-xs mt-1">{t('profile.avatar.hint')}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Informations */}
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
-                            <h3 className="text-lg font-semibold text-white">Informations</h3>
+                            <h3 className="text-lg font-semibold text-white">{t('profile.info.title')}</h3>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Nom d'affichage</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('profile.info.displayName')}</label>
                                 <input
                                     type="text"
                                     value={profile.display_name}
@@ -382,11 +383,11 @@ export default function Profile() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('profile.info.bio')}</label>
                                 <textarea
                                     value={profile.bio}
                                     onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
-                                    placeholder="Parlez de vous..."
+                                    placeholder={t('profile.info.bioPlaceholder')}
                                     rows={3}
                                     className="input-field w-full resize-none"
                                     maxLength={500}
@@ -395,7 +396,7 @@ export default function Profile() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Site web</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('profile.info.website')}</label>
                                 <input
                                     type="url"
                                     value={profile.website_url}
@@ -408,7 +409,7 @@ export default function Profile() {
 
                         {/* Réseaux sociaux */}
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
-                            <h3 className="text-lg font-semibold text-white">Réseaux sociaux</h3>
+                            <h3 className="text-lg font-semibold text-white">{t('profile.social.title')}</h3>
 
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
@@ -418,7 +419,7 @@ export default function Profile() {
                                     type="text"
                                     value={profile.social_discord}
                                     onChange={(e) => setProfile(p => ({ ...p, social_discord: e.target.value }))}
-                                    placeholder="username#0000 ou ID serveur"
+                                    placeholder={t('profile.social.discordPlaceholder')}
                                     className="input-field w-full"
                                 />
                             </div>
@@ -446,7 +447,7 @@ export default function Profile() {
                                     type="text"
                                     value={profile.social_youtube}
                                     onChange={(e) => setProfile(p => ({ ...p, social_youtube: e.target.value }))}
-                                    placeholder="URL de votre chaîne"
+                                    placeholder={t('profile.social.youtubePlaceholder')}
                                     className="input-field w-full"
                                 />
                             </div>
@@ -459,7 +460,7 @@ export default function Profile() {
                             className="btn-primary flex items-center gap-2"
                         >
                             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                            Sauvegarder
+                            {t('profile.save')}
                         </button>
                     </div>
                 )}
@@ -473,22 +474,22 @@ export default function Profile() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                         <Lock className="w-5 h-5" />
-                                        Mot de passe
+                                        {t('profile.password.title')}
                                     </h3>
-                                    <p className="text-sm text-gray-500">Modifier votre mot de passe</p>
+                                    <p className="text-sm text-gray-500">{t('profile.password.subtitle')}</p>
                                 </div>
                                 <button
                                     onClick={() => setShowChangePassword(!showChangePassword)}
                                     className="btn-secondary"
                                 >
-                                    Modifier
+                                    {t('common.edit')}
                                 </button>
                             </div>
 
                             {showChangePassword && (
                                 <div className="space-y-4 pt-4 border-t border-hyt-border">
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Mot de passe actuel</label>
+                                        <label className="block text-sm text-gray-400 mb-2">{t('profile.password.current')}</label>
                                         <div className="relative">
                                             <input
                                                 type={showPasswords.current ? 'text' : 'password'}
@@ -507,7 +508,7 @@ export default function Profile() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Nouveau mot de passe</label>
+                                        <label className="block text-sm text-gray-400 mb-2">{t('profile.password.new')}</label>
                                         <div className="relative">
                                             <input
                                                 type={showPasswords.new ? 'text' : 'password'}
@@ -526,7 +527,7 @@ export default function Profile() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Confirmer</label>
+                                        <label className="block text-sm text-gray-400 mb-2">{t('profile.password.confirm')}</label>
                                         <div className="relative">
                                             <input
                                                 type={showPasswords.confirm ? 'text' : 'password'}
@@ -549,7 +550,7 @@ export default function Profile() {
                                         disabled={saving || !passwords.current || !passwords.new || !passwords.confirm}
                                         className="btn-primary"
                                     >
-                                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Changer le mot de passe'}
+                                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t('profile.password.change')}
                                     </button>
                                 </div>
                             )}
@@ -561,12 +562,12 @@ export default function Profile() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                         <Smartphone className="w-5 h-5" />
-                                        Double authentification (2FA)
+                                        {t('profile.twoFA.title')}
                                     </h3>
                                     <p className="text-sm text-gray-500">
                                         {twoFactorEnabled
-                                            ? 'Votre compte est protégé par 2FA'
-                                            : 'Ajoutez une couche de sécurité supplémentaire'
+                                            ? t('profile.twoFA.enabled')
+                                            : t('profile.twoFA.disabled')
                                         }
                                     </p>
                                 </div>
@@ -574,15 +575,15 @@ export default function Profile() {
                                     <div className="flex items-center gap-2">
                                         <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm flex items-center gap-1">
                                             <Check className="w-4 h-4" />
-                                            Activé
+                                            {t('profile.twoFA.active')}
                                         </span>
                                         <button onClick={handleDisable2FA} className="btn-ghost text-red-400 hover:text-red-500">
-                                            Désactiver
+                                            {t('profile.twoFA.disable')}
                                         </button>
                                     </div>
                                 ) : (
                                     <button onClick={handleSetup2FA} className="btn-primary">
-                                        Activer
+                                        {t('profile.twoFA.enable')}
                                     </button>
                                 )}
                             </div>
@@ -590,23 +591,23 @@ export default function Profile() {
                             {/* Setup 2FA Modal */}
                             {showSetup2FA && (
                                 <div className="mt-4 p-4 bg-hyt-dark rounded-lg border border-hyt-border">
-                                    <h4 className="font-medium text-white mb-4">Configuration de la 2FA</h4>
+                                    <h4 className="font-medium text-white mb-4">{t('profile.twoFA.setup.title')}</h4>
 
                                     <div className="flex flex-col md:flex-row gap-6">
                                         <div className="flex-shrink-0">
-                                            <p className="text-sm text-gray-400 mb-2">1. Scannez ce QR code avec votre app d'authentification</p>
+                                            <p className="text-sm text-gray-400 mb-2">{t('profile.twoFA.setup.step1')}</p>
                                             {qrCode && (
                                                 <div className="bg-white p-3 rounded-lg inline-block">
                                                     <img src={qrCode} alt="QR Code 2FA" className="w-40 h-40" />
                                                 </div>
                                             )}
                                             <p className="text-xs text-gray-500 mt-2">
-                                                Ou entrez ce code : <code className="bg-hyt-darker px-2 py-1 rounded text-hyt-accent">{secret2FA}</code>
+                                                {t('profile.twoFA.setup.orEnterCode')} <code className="bg-hyt-darker px-2 py-1 rounded text-hyt-accent">{secret2FA}</code>
                                             </p>
                                         </div>
 
                                         <div className="flex-1">
-                                            <p className="text-sm text-gray-400 mb-2">2. Entrez le code de vérification</p>
+                                            <p className="text-sm text-gray-400 mb-2">{t('profile.twoFA.setup.step2')}</p>
                                             <input
                                                 type="text"
                                                 value={verifyCode}
@@ -617,14 +618,14 @@ export default function Profile() {
                                             />
                                             <div className="flex gap-2 mt-4">
                                                 <button onClick={() => setShowSetup2FA(false)} className="btn-ghost flex-1">
-                                                    Annuler
+                                                    {t('common.cancel')}
                                                 </button>
                                                 <button
                                                     onClick={handleVerify2FA}
                                                     disabled={verifyCode.length !== 6}
                                                     className="btn-primary flex-1"
                                                 >
-                                                    Vérifier
+                                                    {t('profile.twoFA.setup.verify')}
                                                 </button>
                                             </div>
                                         </div>
@@ -638,11 +639,11 @@ export default function Profile() {
                                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 max-w-md w-full">
                                         <div className="flex items-center gap-2 text-yellow-500 mb-4">
                                             <AlertTriangle className="w-6 h-6" />
-                                            <h3 className="font-bold text-lg">Codes de secours</h3>
+                                            <h3 className="font-bold text-lg">{t('profile.twoFA.backup.title')}</h3>
                                         </div>
 
                                         <p className="text-gray-400 text-sm mb-4">
-                                            Conservez ces codes en lieu sûr. Ils vous permettront de vous connecter si vous perdez l'accès à votre application d'authentification.
+                                            {t('profile.twoFA.backup.description')}
                                         </p>
 
                                         <div className="bg-hyt-dark rounded-lg p-4 mb-4">
@@ -656,10 +657,10 @@ export default function Profile() {
                                         <div className="flex gap-2">
                                             <button onClick={copyBackupCodes} className="btn-secondary flex-1 flex items-center justify-center gap-2">
                                                 <Copy className="w-4 h-4" />
-                                                Copier
+                                                {t('profile.twoFA.backup.copy')}
                                             </button>
                                             <button onClick={() => setShowBackupCodes(false)} className="btn-primary flex-1">
-                                                J'ai sauvegardé mes codes
+                                                {t('profile.twoFA.backup.saved')}
                                             </button>
                                         </div>
                                     </div>
@@ -673,12 +674,12 @@ export default function Profile() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                         <Monitor className="w-5 h-5" />
-                                        Sessions actives
+                                        {t('profile.sessions.title')}
                                     </h3>
-                                    <p className="text-sm text-gray-500">Gérez vos connexions actives</p>
+                                    <p className="text-sm text-gray-500">{t('profile.sessions.subtitle')}</p>
                                 </div>
                                 <button onClick={loadSessions} className="btn-secondary">
-                                    Voir les sessions
+                                    {t('profile.sessions.view')}
                                 </button>
                             </div>
 
@@ -687,13 +688,13 @@ export default function Profile() {
                                     {sessions.map(session => (
                                         <div key={session.id} className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
                                             <div>
-                                                <p className="text-white text-sm">{session.device_info || 'Appareil inconnu'}</p>
+                                                <p className="text-white text-sm">{session.device_info || t('profile.sessions.unknownDevice')}</p>
                                                 <p className="text-gray-500 text-xs">
-                                                    {session.ip_address} • Dernière activité: {new Date(session.last_active).toLocaleDateString('fr-FR')}
+                                                    {session.ip_address} • {t('profile.sessions.lastActive')}: {new Date(session.last_active).toLocaleDateString('fr-FR')}
                                                 </p>
                                             </div>
                                             {session.is_current ? (
-                                                <span className="text-green-400 text-xs">Session actuelle</span>
+                                                <span className="text-green-400 text-xs">{t('profile.sessions.current')}</span>
                                             ) : (
                                                 <button
                                                     onClick={() => handleRevokeSession(session.id)}
@@ -709,7 +710,7 @@ export default function Profile() {
                                         onClick={handleRevokeAllSessions}
                                         className="text-red-400 hover:text-red-500 text-sm"
                                     >
-                                        Déconnecter toutes les autres sessions
+                                        {t('profile.sessions.revokeAll')}
                                     </button>
                                 </div>
                             )}
@@ -722,9 +723,9 @@ export default function Profile() {
                     <div className="space-y-6">
                         {/* Comptes liés */}
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
-                            <h3 className="text-lg font-semibold text-white mb-4">Comptes liés</h3>
+                            <h3 className="text-lg font-semibold text-white mb-4">{t('profile.connections.title')}</h3>
                             <p className="text-sm text-gray-500 mb-6">
-                                Connectez vos comptes pour vous connecter plus rapidement
+                                {t('profile.connections.subtitle')}
                             </p>
 
                             <div className="space-y-4">
@@ -741,7 +742,7 @@ export default function Profile() {
                                                     {connectedAccounts.find(a => a.provider === 'discord')?.provider_username}
                                                 </p>
                                             ) : (
-                                                <p className="text-sm text-gray-500">Non connecté</p>
+                                                <p className="text-sm text-gray-500">{t('profile.connections.notConnected')}</p>
                                             )}
                                         </div>
                                     </div>
@@ -750,14 +751,14 @@ export default function Profile() {
                                             onClick={() => handleDisconnectOAuth('discord')}
                                             className="text-red-400 hover:text-red-500"
                                         >
-                                            Déconnecter
+                                            {t('profile.connections.disconnect')}
                                         </button>
                                     ) : (
                                         <button
                                             onClick={() => handleConnectOAuth('discord')}
                                             className="btn-secondary"
                                         >
-                                            Connecter
+                                            {t('profile.connections.connect')}
                                         </button>
                                     )}
                                 </div>
@@ -775,7 +776,7 @@ export default function Profile() {
                                                     {connectedAccounts.find(a => a.provider === 'google')?.provider_email}
                                                 </p>
                                             ) : (
-                                                <p className="text-sm text-gray-500">Non connecté</p>
+                                                <p className="text-sm text-gray-500">{t('profile.connections.notConnected')}</p>
                                             )}
                                         </div>
                                     </div>
@@ -784,14 +785,14 @@ export default function Profile() {
                                             onClick={() => handleDisconnectOAuth('google')}
                                             className="text-red-400 hover:text-red-500"
                                         >
-                                            Déconnecter
+                                            {t('profile.connections.disconnect')}
                                         </button>
                                     ) : (
                                         <button
                                             onClick={() => handleConnectOAuth('google')}
                                             className="btn-secondary"
                                         >
-                                            Connecter
+                                            {t('profile.connections.connect')}
                                         </button>
                                     )}
                                 </div>

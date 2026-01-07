@@ -9,11 +9,13 @@ import {
 } from 'lucide-react'
 import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, modelFileVersionsAPI, dependenciesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
 
 // ============ COMPOSANT GESTION DES VERSIONS DE FICHIERS ============
 function FileVersionsManager({ modelId, gameId }) {
+    const { t } = useTranslation()
     const [versions, setVersions] = useState([])
     const [gameVersions, setGameVersions] = useState([])
     const [loading, setLoading] = useState(true)
@@ -74,12 +76,12 @@ function FileVersionsManager({ modelId, gameId }) {
         e.preventDefault()
 
         if (!versionNumber.trim()) {
-            toast.error('Numéro de version requis')
+            toast.error(t('editProduct.fileVersions.errors.versionRequired'))
             return
         }
 
         if (!editingVersion && !file) {
-            toast.error('Fichier requis')
+            toast.error(t('editProduct.fileVersions.errors.fileRequired'))
             return
         }
 
@@ -91,7 +93,7 @@ function FileVersionsManager({ modelId, gameId }) {
                     compatibleVersions,
                     isLatest
                 })
-                toast.success('Version mise à jour')
+                toast.success(t('editProduct.fileVersions.success.updated'))
             } else {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -101,13 +103,13 @@ function FileVersionsManager({ modelId, gameId }) {
                 formData.append('isLatest', isLatest)
 
                 await modelFileVersionsAPI.create(modelId, formData)
-                toast.success('Version ajoutée')
+                toast.success(t('editProduct.fileVersions.success.added'))
             }
 
             setShowModal(false)
             loadData()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('common.error'))
         } finally {
             setUploading(false)
         }
@@ -117,25 +119,25 @@ function FileVersionsManager({ modelId, gameId }) {
         setProcessing(versionId)
         try {
             await modelFileVersionsAPI.setLatest(modelId, versionId)
-            toast.success('Version principale mise à jour')
+            toast.success(t('editProduct.fileVersions.success.mainUpdated'))
             loadData()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('common.error'))
         } finally {
             setProcessing(null)
         }
     }
 
     const handleDelete = async (versionId) => {
-        if (!confirm('Supprimer cette version ? Cette action est irréversible.')) return
+        if (!confirm(t('editProduct.fileVersions.confirmDelete'))) return
 
         setProcessing(versionId)
         try {
             await modelFileVersionsAPI.delete(modelId, versionId)
-            toast.success('Version supprimée')
+            toast.success(t('editProduct.fileVersions.success.deleted'))
             loadData()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('common.error'))
         } finally {
             setProcessing(null)
         }
@@ -172,10 +174,10 @@ function FileVersionsManager({ modelId, gameId }) {
                 <div>
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Layers className="w-5 h-5 text-hyt-accent" />
-                        Versions du fichier
+                        {t('editProduct.fileVersions.title')}
                     </h3>
                     <p className="text-sm text-gray-400">
-                        Gérez les différentes versions de votre ressource
+                        {t('editProduct.fileVersions.subtitle')}
                     </p>
                 </div>
                 <button
@@ -184,7 +186,7 @@ function FileVersionsManager({ modelId, gameId }) {
                     className="btn-primary flex items-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
-                    Nouvelle version
+                    {t('editProduct.fileVersions.newVersion')}
                 </button>
             </div>
 
@@ -192,9 +194,9 @@ function FileVersionsManager({ modelId, gameId }) {
             {versions.length === 0 ? (
                 <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-8 text-center">
                     <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucune version</p>
+                    <p className="text-white font-medium">{t('editProduct.fileVersions.empty.title')}</p>
                     <p className="text-gray-400 text-sm mt-1">
-                        Ajoutez votre première version de fichier
+                        {t('editProduct.fileVersions.empty.description')}
                     </p>
                     <button
                         type="button"
@@ -202,7 +204,7 @@ function FileVersionsManager({ modelId, gameId }) {
                         className="btn-primary mt-4"
                     >
                         <Plus className="w-4 h-4 inline mr-2" />
-                        Ajouter une version
+                        {t('editProduct.fileVersions.addVersion')}
                     </button>
                 </div>
             ) : (
@@ -233,7 +235,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                         {version.is_latest && (
                                             <span className="px-2 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded-full flex items-center gap-1">
                                                 <Star className="w-3 h-3" />
-                                                Principale
+                                                {t('editProduct.fileVersions.main')}
                                             </span>
                                         )}
                                     </div>
@@ -249,7 +251,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                             </span>
                                         )}
                                         <span className="text-gray-500">
-                                            {version.download_count || 0} téléchargements
+                                            {version.download_count || 0} {t('editProduct.fileVersions.downloads')}
                                         </span>
                                     </div>
                                 </div>
@@ -283,7 +285,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                     {/* Changelog */}
                                     {version.changelog && (
                                         <div>
-                                            <p className="text-sm text-gray-400 mb-1">Notes de version :</p>
+                                            <p className="text-sm text-gray-400 mb-1">{t('editProduct.fileVersions.releaseNotes')} :</p>
                                             <p className="text-gray-300 text-sm bg-hyt-card p-3 rounded-lg whitespace-pre-wrap">
                                                 {version.changelog}
                                             </p>
@@ -293,7 +295,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                     {/* Versions compatibles */}
                                     {version.compatible_versions?.length > 0 && (
                                         <div>
-                                            <p className="text-sm text-gray-400 mb-2">Compatible avec :</p>
+                                            <p className="text-sm text-gray-400 mb-2">{t('editProduct.fileVersions.compatibleWith')} :</p>
                                             <div className="flex flex-wrap gap-2">
                                                 {version.compatible_versions.map(cv => (
                                                     <span
@@ -321,7 +323,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                                 ) : (
                                                     <Star className="w-4 h-4" />
                                                 )}
-                                                Définir comme principale
+                                                {t('editProduct.fileVersions.setAsMain')}
                                             </button>
                                         )}
                                         <button
@@ -329,11 +331,11 @@ function FileVersionsManager({ modelId, gameId }) {
                                             onClick={() => openEditModal(version)}
                                             className="btn-ghost text-sm"
                                         >
-                                            Modifier
+                                            {t('common.edit')}
                                         </button>
                                         {version.is_latest ? (
                                             <span className="text-xs text-gray-500 italic px-2">
-                                                Version principale non supprimable
+                                                {t('editProduct.fileVersions.mainNotDeletable')}
                                             </span>
                                         ) : (
                                             <button
@@ -342,7 +344,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                                 disabled={processing === version.id}
                                                 className="btn-ghost text-sm text-red-500 hover:bg-red-500/10 disabled:opacity-50"
                                             >
-                                                Supprimer
+                                                {t('common.delete')}
                                             </button>
                                         )}
                                     </div>
@@ -360,7 +362,7 @@ function FileVersionsManager({ modelId, gameId }) {
                         <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Package className="w-5 h-5 text-hyt-accent" />
-                                {editingVersion ? 'Modifier la version' : 'Nouvelle version'}
+                                {editingVersion ? t('editProduct.fileVersions.modal.editTitle') : t('editProduct.fileVersions.modal.createTitle')}
                             </h3>
                             <button
                                 type="button"
@@ -375,13 +377,13 @@ function FileVersionsManager({ modelId, gameId }) {
                             {/* Numéro de version */}
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Numéro de version *
+                                    {t('editProduct.fileVersions.modal.versionNumber')} *
                                 </label>
                                 <input
                                     type="text"
                                     value={versionNumber}
                                     onChange={(e) => setVersionNumber(e.target.value)}
-                                    placeholder="Ex: 1.0.0, 2.1.3..."
+                                    placeholder={t('editProduct.fileVersions.modal.versionPlaceholder')}
                                     className="input-field w-full"
                                     disabled={!!editingVersion}
                                 />
@@ -391,7 +393,7 @@ function FileVersionsManager({ modelId, gameId }) {
                             {!editingVersion && (
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-2">
-                                        Fichier *
+                                        {t('editProduct.fileVersions.modal.file')} *
                                     </label>
                                     <div className="border-2 border-dashed border-hyt-border rounded-xl p-6 text-center hover:border-hyt-accent/50 transition-colors">
                                         <input
@@ -413,8 +415,8 @@ function FileVersionsManager({ modelId, gameId }) {
                                             ) : (
                                                 <>
                                                     <Upload className="w-8 h-8 mx-auto text-gray-500 mb-2" />
-                                                    <p className="text-gray-400">Cliquez pour sélectionner</p>
-                                                    <p className="text-gray-500 text-xs mt-1">ZIP, RAR, 7Z (max 500MB)</p>
+                                                    <p className="text-gray-400">{t('editProduct.fileVersions.modal.clickToSelect')}</p>
+                                                    <p className="text-gray-500 text-xs mt-1">{t('editProduct.fileVersions.modal.fileFormats')}</p>
                                                 </>
                                             )}
                                         </label>
@@ -427,7 +429,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className="text-sm text-gray-400">
-                                            Versions du jeu compatibles
+                                            {t('editProduct.fileVersions.modal.compatibleVersions')}
                                         </label>
                                         <div className="flex gap-2 text-xs">
                                             <button
@@ -435,7 +437,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                                 onClick={() => setCompatibleVersions(gameVersions.map(v => v.id))}
                                                 className="text-hyt-accent hover:underline"
                                             >
-                                                Tout
+                                                {t('common.all')}
                                             </button>
                                             <span className="text-gray-600">|</span>
                                             <button
@@ -443,7 +445,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                                 onClick={() => setCompatibleVersions([])}
                                                 className="text-gray-400 hover:underline"
                                             >
-                                                Aucun
+                                                {t('common.none')}
                                             </button>
                                         </div>
                                     </div>
@@ -482,12 +484,12 @@ function FileVersionsManager({ modelId, gameId }) {
                             {/* Changelog */}
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Notes de version (changelog)
+                                    {t('editProduct.fileVersions.modal.changelog')}
                                 </label>
                                 <textarea
                                     value={changelog}
                                     onChange={(e) => setChangelog(e.target.value)}
-                                    placeholder="Décrivez les changements de cette version..."
+                                    placeholder={t('editProduct.fileVersions.modal.changelogPlaceholder')}
                                     rows={3}
                                     className="input-field w-full resize-none"
                                 />
@@ -500,8 +502,8 @@ function FileVersionsManager({ modelId, gameId }) {
                                         <Check className="w-3 h-3 text-black" />
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium">Version principale</p>
-                                        <p className="text-gray-500 text-xs">Impossible de retirer le statut principal. Définissez d'abord une autre version comme principale.</p>
+                                        <p className="text-white font-medium">{t('editProduct.fileVersions.modal.mainVersion')}</p>
+                                        <p className="text-gray-500 text-xs">{t('editProduct.fileVersions.modal.mainVersionHint')}</p>
                                     </div>
                                 </div>
                             ) : (
@@ -518,8 +520,8 @@ function FileVersionsManager({ modelId, gameId }) {
                                         {isLatest && <Check className="w-3 h-3 text-black" />}
                                     </div>
                                     <div>
-                                        <p className="text-white font-medium">Version principale</p>
-                                        <p className="text-gray-500 text-xs">Cette version sera téléchargée par défaut</p>
+                                        <p className="text-white font-medium">{t('editProduct.fileVersions.modal.mainVersion')}</p>
+                                        <p className="text-gray-500 text-xs">{t('editProduct.fileVersions.modal.mainVersionDescription')}</p>
                                     </div>
                                 </label>
                             )}
@@ -531,7 +533,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                     onClick={() => setShowModal(false)}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="button"
@@ -544,7 +546,7 @@ function FileVersionsManager({ modelId, gameId }) {
                                     ) : (
                                         <Upload className="w-4 h-4" />
                                     )}
-                                    {editingVersion ? 'Mettre à jour' : 'Ajouter'}
+                                    {editingVersion ? t('common.update') : t('common.add')}
                                 </button>
                             </div>
                         </div>
@@ -557,18 +559,19 @@ function FileVersionsManager({ modelId, gameId }) {
 
 // ============ COMPOSANT GESTION DES DÉPENDANCES ============
 function DependenciesManager({ modelId, gameId, gameName }) {
+    const { t } = useTranslation()
     const [dependencies, setDependencies] = useState([])
     const [availableDeps, setAvailableDeps] = useState([])
-    const [availableProducts, setAvailableProducts] = useState([]) // Liste des produits pour dropdown
+    const [availableProducts, setAvailableProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [activeTab, setActiveTab] = useState('predefined')
 
     const [selectedDep, setSelectedDep] = useState(null)
-    const [depSearchQuery, setDepSearchQuery] = useState('') // Recherche dépendances prédéfinies
+    const [depSearchQuery, setDepSearchQuery] = useState('')
     const [selectedProduct, setSelectedProduct] = useState(null)
-    const [productVersions, setProductVersions] = useState([]) // Versions du produit sélectionné
-    const [selectedVersion, setSelectedVersion] = useState(null) // Version sélectionnée
+    const [productVersions, setProductVersions] = useState([])
+    const [selectedVersion, setSelectedVersion] = useState(null)
     const [loadingVersions, setLoadingVersions] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState([])
@@ -592,7 +595,6 @@ function DependenciesManager({ modelId, gameId, gameName }) {
         }
     }, [gameId])
 
-    // Charger les versions quand un produit est sélectionné
     useEffect(() => {
         if (selectedProduct) {
             loadProductVersions(selectedProduct)
@@ -615,10 +617,8 @@ function DependenciesManager({ modelId, gameId, gameName }) {
     }
 
     const loadAvailableDeps = async () => {
-        console.log('Loading deps for gameId:', gameId) // DEBUG
         try {
             const { data } = await dependenciesAPI.getAll(gameId)
-            console.log('Deps loaded:', data) // DEBUG
             setAvailableDeps(data.dependencies || [])
         } catch (error) {
             console.error('Failed to load available deps:', error)
@@ -630,7 +630,6 @@ function DependenciesManager({ modelId, gameId, gameName }) {
         try {
             const { data } = await modelFileVersionsAPI.getByModel(productId)
             setProductVersions(data.versions || data || [])
-            // Sélectionner la dernière version par défaut (null = dernière)
             setSelectedVersion(null)
         } catch (error) {
             console.error('Failed to load product versions:', error)
@@ -686,7 +685,6 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                     note: note || null
                 })
             } else if (activeTab === 'product' && selectedProduct) {
-                // Construire versionInfo avec la version sélectionnée
                 let finalVersionInfo = versionInfo
                 if (selectedVersion) {
                     const version = productVersions.find(v => v.id === selectedVersion)
@@ -694,13 +692,12 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                         finalVersionInfo = version.version_name || `v${version.version_number}`
                     }
                 } else if (productVersions.length > 0) {
-                    // "Dernière version" sélectionnée
-                    finalVersionInfo = versionInfo || 'Dernière version'
+                    finalVersionInfo = versionInfo || t('editProduct.dependencies.latestVersion')
                 }
 
                 await dependenciesAPI.addToModel(modelId, {
                     productDependencyId: selectedProduct,
-                    productVersionId: selectedVersion || null, // ID de la version spécifique
+                    productVersionId: selectedVersion || null,
                     versionInfo: finalVersionInfo || null,
                     isRequired,
                     note: note || null
@@ -711,33 +708,33 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                 formData.append('gameId', gameId)
                 if (proposalLogo) formData.append('logo', proposalLogo)
                 await dependenciesAPI.propose(formData)
-                toast.success('Proposition envoyée !')
+                toast.success(t('editProduct.dependencies.success.proposed'))
                 closeModal()
                 return
             } else {
-                toast.error('Sélectionnez une dépendance')
+                toast.error(t('editProduct.dependencies.errors.selectDependency'))
                 setAdding(false)
                 return
             }
 
-            toast.success('Dépendance ajoutée')
+            toast.success(t('editProduct.dependencies.success.added'))
             closeModal()
             loadDependencies()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('common.error'))
         } finally {
             setAdding(false)
         }
     }
 
     const handleRemoveDependency = async (linkId) => {
-        if (!confirm('Supprimer cette dépendance ?')) return
+        if (!confirm(t('editProduct.dependencies.confirmDelete'))) return
         try {
             await dependenciesAPI.removeFromModel(modelId, linkId)
-            toast.success('Dépendance supprimée')
+            toast.success(t('editProduct.dependencies.success.deleted'))
             loadDependencies()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('common.error'))
         }
     }
 
@@ -766,11 +763,9 @@ function DependenciesManager({ modelId, gameId, gameName }) {
         )
     }
 
-    // Filtrer les dépendances et produits déjà ajoutés
     const existingDepIds = dependencies.filter(d => d.dep_id).map(d => d.dep_id)
     const existingProductIds = dependencies.filter(d => d.product_id).map(d => d.product_id)
 
-    // Filtrer les dépendances prédéfinies (exclure déjà ajoutées + recherche)
     const filteredAvailableDeps = availableDeps
         .filter(d => !existingDepIds.includes(d.id))
         .filter(d => !depSearchQuery || d.name.toLowerCase().includes(depSearchQuery.toLowerCase()))
@@ -783,13 +778,13 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                 <div>
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Link2 className="w-5 h-5 text-hyt-accent" />
-                        Dépendances
+                        {t('editProduct.dependencies.title')}
                     </h3>
-                    <p className="text-sm text-gray-400">Produits ou ressources requis pour votre produit</p>
+                    <p className="text-sm text-gray-400">{t('editProduct.dependencies.subtitle')}</p>
                 </div>
                 <button type="button" onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Ajouter
+                    {t('common.add')}
                 </button>
             </div>
 
@@ -797,14 +792,14 @@ function DependenciesManager({ modelId, gameId, gameName }) {
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                 <p className="text-sm text-blue-400 flex items-center gap-2">
                     <Gamepad2 className="w-4 h-4" />
-                    Les dépendances sont liées au jeu <span className="font-semibold text-white">{gameName || 'sélectionné'}</span>
+                    {t('editProduct.dependencies.gameLinked')} <span className="font-semibold text-white">{gameName || t('editProduct.dependencies.selected')}</span>
                 </p>
             </div>
 
             {dependencies.length === 0 ? (
                 <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-6 text-center">
                     <Link2 className="w-10 h-10 text-gray-500 mx-auto mb-3" />
-                    <p className="text-gray-400">Aucune dépendance</p>
+                    <p className="text-gray-400">{t('editProduct.dependencies.empty')}</p>
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -823,12 +818,12 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-medium text-white">{dep.dep_name || dep.product_title}</span>
                                     <span className={`px-2 py-0.5 text-xs rounded ${dep.is_required ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                                        {dep.is_required ? 'Requis' : 'Recommandé'}
+                                        {dep.is_required ? t('editProduct.dependencies.required') : t('editProduct.dependencies.recommended')}
                                     </span>
-                                    {dep.product_id && <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">Produit du site</span>}
+                                    {dep.product_id && <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">{t('editProduct.dependencies.siteProduct')}</span>}
                                 </div>
-                                {dep.version_info && <p className="text-sm text-gray-400">Version: {dep.version_info}</p>}
-                                {dep.product_creator && <p className="text-xs text-gray-500">par {dep.product_creator}</p>}
+                                {dep.version_info && <p className="text-sm text-gray-400">{t('editProduct.dependencies.version')}: {dep.version_info}</p>}
+                                {dep.product_creator && <p className="text-xs text-gray-500">{t('common.by')} {dep.product_creator}</p>}
                             </div>
                             <div className="flex items-center gap-2">
                                 {dep.product_id && (
@@ -851,7 +846,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                         <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Link2 className="w-5 h-5 text-hyt-accent" />
-                                Ajouter une dépendance
+                                {t('editProduct.dependencies.modal.title')}
                             </h3>
                             <button type="button" onClick={closeModal} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
                         </div>
@@ -860,7 +855,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                         <div className="px-4 pt-4">
                             <div className="bg-hyt-dark rounded-lg p-3 flex items-center gap-2">
                                 <Gamepad2 className="w-4 h-4 text-hyt-accent" />
-                                <span className="text-sm text-gray-400">Jeu :</span>
+                                <span className="text-sm text-gray-400">{t('editProduct.dependencies.modal.game')} :</span>
                                 <span className="text-sm font-medium text-white">{gameName}</span>
                             </div>
                         </div>
@@ -868,28 +863,28 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                         <div className="flex border-b border-hyt-border mt-4">
                             <button type="button" onClick={() => { setActiveTab('predefined'); setSelectedDep(null); setSelectedProduct(null) }}
                                     className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'predefined' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
-                                Prédéfinies
+                                {t('editProduct.dependencies.tabs.predefined')}
                             </button>
                             <button type="button" onClick={() => { setActiveTab('product'); setSelectedDep(null); setSelectedProduct(null) }}
                                     className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'product' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
-                                Produit du site
+                                {t('editProduct.dependencies.tabs.siteProduct')}
                             </button>
                             <button type="button" onClick={() => { setActiveTab('propose'); setSelectedDep(null); setSelectedProduct(null) }}
                                     className={`flex-1 px-4 py-3 text-sm font-medium ${activeTab === 'propose' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'}`}>
-                                Proposer
+                                {t('editProduct.dependencies.tabs.propose')}
                             </button>
                         </div>
 
                         <div className="p-4 space-y-4">
                             {activeTab === 'predefined' && (
                                 <div className="space-y-3">
-                                    <label className="block text-sm text-gray-400">Sélectionner une dépendance</label>
+                                    <label className="block text-sm text-gray-400">{t('editProduct.dependencies.modal.selectDependency')}</label>
 
                                     {filteredAvailableDeps.length === 0 && availableDeps.length === 0 ? (
                                         <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
                                             <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                            <p>Aucune dépendance disponible pour ce jeu</p>
-                                            <p className="text-sm mt-1">Proposez-en une dans l'onglet "Proposer"</p>
+                                            <p>{t('editProduct.dependencies.modal.noDependencies')}</p>
+                                            <p className="text-sm mt-1">{t('editProduct.dependencies.modal.proposeHint')}</p>
                                         </div>
                                     ) : (
                                         <>
@@ -900,7 +895,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                     type="text"
                                                     value={depSearchQuery}
                                                     onChange={(e) => setDepSearchQuery(e.target.value)}
-                                                    placeholder="Rechercher une dépendance..."
+                                                    placeholder={t('editProduct.dependencies.modal.searchDependency')}
                                                     className="input-field w-full pl-10"
                                                 />
                                                 {depSearchQuery && (
@@ -914,11 +909,11 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                 )}
                                             </div>
 
-                                            {/* Liste des dépendances avec icônes */}
+                                            {/* Liste des dépendances */}
                                             <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
                                                 {filteredAvailableDeps.length === 0 ? (
                                                     <div className="text-center py-4 text-gray-500">
-                                                        <p>Aucune dépendance trouvée pour "{depSearchQuery}"</p>
+                                                        <p>{t('editProduct.dependencies.modal.noResults')} "{depSearchQuery}"</p>
                                                     </div>
                                                 ) : (
                                                     filteredAvailableDeps.map(dep => (
@@ -932,28 +927,19 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                                     : 'border-transparent hover:border-hyt-border hover:bg-hyt-dark'
                                                             }`}
                                                         >
-                                                            {/* Logo */}
                                                             <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
                                                                 {dep.logo_url ? (
-                                                                    <img
-                                                                        src={`http://localhost:3001${dep.logo_url}`}
-                                                                        alt={dep.name}
-                                                                        className="w-full h-full object-contain p-1"
-                                                                    />
+                                                                    <img src={`http://localhost:3001${dep.logo_url}`} alt={dep.name} className="w-full h-full object-contain p-1" />
                                                                 ) : (
                                                                     <Link2 className="w-5 h-5 text-gray-500" />
                                                                 )}
                                                             </div>
-
-                                                            {/* Info */}
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="font-medium text-white truncate">{dep.name}</p>
                                                                 {dep.description && (
                                                                     <p className="text-xs text-gray-500 truncate">{dep.description}</p>
                                                                 )}
                                                             </div>
-
-                                                            {/* Check */}
                                                             {selectedDep === dep.id && (
                                                                 <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
                                                                     <Check className="w-4 h-4 text-black" />
@@ -998,12 +984,12 @@ function DependenciesManager({ modelId, gameId, gameName }) {
 
                             {activeTab === 'product' && (
                                 <div className="space-y-3">
-                                    <label className="block text-sm text-gray-400">Sélectionner un produit du site</label>
+                                    <label className="block text-sm text-gray-400">{t('editProduct.dependencies.modal.selectProduct')}</label>
 
                                     {filteredAvailableProducts.length === 0 && availableProducts.length === 0 ? (
                                         <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
                                             <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                            <p>Aucun autre produit disponible pour ce jeu</p>
+                                            <p>{t('editProduct.dependencies.modal.noProducts')}</p>
                                         </div>
                                     ) : !selectedProduct ? (
                                         <>
@@ -1014,7 +1000,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                     type="text"
                                                     value={searchQuery}
                                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                                    placeholder="Rechercher un produit..."
+                                                    placeholder={t('editProduct.dependencies.modal.searchProduct')}
                                                     className="input-field w-full pl-10"
                                                 />
                                                 {searchQuery && (
@@ -1028,7 +1014,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                 )}
                                             </div>
 
-                                            {/* Liste des produits avec images */}
+                                            {/* Liste des produits */}
                                             <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
                                                 {(() => {
                                                     const filtered = filteredAvailableProducts.filter(p =>
@@ -1039,7 +1025,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                     if (filtered.length === 0) {
                                                         return (
                                                             <div className="text-center py-4 text-gray-500">
-                                                                <p>Aucun produit trouvé {searchQuery && `pour "${searchQuery}"`}</p>
+                                                                <p>{t('editProduct.dependencies.modal.noProductResults')} {searchQuery && `"${searchQuery}"`}</p>
                                                             </div>
                                                         )
                                                     }
@@ -1051,26 +1037,19 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                             onClick={() => setSelectedProduct(product.id)}
                                                             className="w-full flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-hyt-border hover:bg-hyt-dark text-left transition-all"
                                                         >
-                                                            {/* Thumbnail */}
                                                             <div className="w-12 h-12 rounded-lg bg-hyt-card overflow-hidden flex-shrink-0">
                                                                 {product.thumbnail_url ? (
-                                                                    <img
-                                                                        src={`http://localhost:3001${product.thumbnail_url}`}
-                                                                        alt={product.title}
-                                                                        className="w-full h-full object-cover"
-                                                                    />
+                                                                    <img src={`http://localhost:3001${product.thumbnail_url}`} alt={product.title} className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <div className="w-full h-full flex items-center justify-center">
                                                                         <Package className="w-5 h-5 text-gray-500" />
                                                                     </div>
                                                                 )}
                                                             </div>
-
-                                                            {/* Info */}
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="font-medium text-white truncate">{product.title}</p>
                                                                 <p className="text-xs text-gray-500">
-                                                                    par {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
+                                                                    {t('common.by')} {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
                                                                 </p>
                                                             </div>
                                                         </button>
@@ -1079,13 +1058,12 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                             </div>
                                         </>
                                     ) : (
-                                        /* Produit sélectionné - Afficher versions */
                                         <div className="space-y-4">
                                             {/* Aperçu produit sélectionné */}
                                             <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
                                                 {(() => {
                                                     const product = filteredAvailableProducts.find(p => p.id === selectedProduct) || availableProducts.find(p => p.id === selectedProduct)
-                                                    if (!product) return <span className="text-white">Produit sélectionné</span>
+                                                    if (!product) return <span className="text-white">{t('editProduct.dependencies.modal.productSelected')}</span>
                                                     return (
                                                         <>
                                                             <div className="w-14 h-14 rounded-lg bg-hyt-dark overflow-hidden flex-shrink-0">
@@ -1099,7 +1077,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                             </div>
                                                             <div className="flex-1">
                                                                 <p className="font-medium text-white">{product.title}</p>
-                                                                <p className="text-sm text-gray-400">par {product.creator_username}</p>
+                                                                <p className="text-sm text-gray-400">{t('common.by')} {product.creator_username}</p>
                                                                 <p className="text-xs text-hyt-accent">{parseFloat(product.price).toFixed(2)}€</p>
                                                             </div>
                                                             <button type="button" onClick={() => { setSelectedProduct(null); setSelectedVersion(null); }} className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg">
@@ -1114,23 +1092,23 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                             <div>
                                                 <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
                                                     <Layers className="w-4 h-4" />
-                                                    Sélectionner une version
+                                                    {t('editProduct.dependencies.modal.selectVersion')}
                                                 </label>
 
                                                 {loadingVersions ? (
                                                     <div className="flex items-center justify-center gap-2 text-gray-500 py-6 bg-hyt-dark rounded-lg">
                                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                                        <span>Chargement des versions...</span>
+                                                        <span>{t('editProduct.dependencies.modal.loadingVersions')}</span>
                                                     </div>
                                                 ) : productVersions.length === 0 ? (
                                                     <div className="text-center py-4 bg-hyt-dark rounded-lg">
                                                         <Layers className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                                                        <p className="text-gray-400">Aucune version disponible</p>
-                                                        <p className="text-xs text-gray-500 mt-1">La dernière version sera utilisée par défaut</p>
+                                                        <p className="text-gray-400">{t('editProduct.dependencies.modal.noVersions')}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{t('editProduct.dependencies.modal.latestDefault')}</p>
                                                     </div>
                                                 ) : (
                                                     <div className="max-h-48 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
-                                                        {/* Option: Dernière version (par défaut) */}
+                                                        {/* Option: Dernière version */}
                                                         <button
                                                             type="button"
                                                             onClick={() => setSelectedVersion(null)}
@@ -1144,8 +1122,8 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                                 <Layers className="w-5 h-5 text-green-400" />
                                                             </div>
                                                             <div className="flex-1">
-                                                                <p className="font-medium text-white">Dernière version</p>
-                                                                <p className="text-xs text-gray-500">Toujours à jour automatiquement</p>
+                                                                <p className="font-medium text-white">{t('editProduct.dependencies.latestVersion')}</p>
+                                                                <p className="text-xs text-gray-500">{t('editProduct.dependencies.modal.autoUpdate')}</p>
                                                             </div>
                                                             {selectedVersion === null && (
                                                                 <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
@@ -1180,7 +1158,7 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                                                                         </p>
                                                                         {index === 0 && (
                                                                             <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
-                                                                                Actuelle
+                                                                                {t('editProduct.dependencies.modal.current')}
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -1207,14 +1185,14 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                             {activeTab === 'propose' && (
                                 <>
                                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                                        <p className="text-sm text-blue-400">Proposez une nouvelle dépendance. Elle sera examinée par notre équipe.</p>
+                                        <p className="text-sm text-blue-400">{t('editProduct.dependencies.modal.proposeInfo')}</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Nom *</label>
-                                        <input type="text" value={proposalName} onChange={(e) => setProposalName(e.target.value)} placeholder="Ex: Fabric, Forge..." className="input-field w-full" />
+                                        <label className="block text-sm text-gray-400 mb-2">{t('editProduct.dependencies.modal.name')} *</label>
+                                        <input type="text" value={proposalName} onChange={(e) => setProposalName(e.target.value)} placeholder={t('editProduct.dependencies.modal.namePlaceholder')} className="input-field w-full" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                        <label className="block text-sm text-gray-400 mb-2">{t('editProduct.dependencies.modal.logo')}</label>
                                         <input type="file" accept="image/*" onChange={(e) => setProposalLogo(e.target.files[0])} className="input-field w-full" />
                                     </div>
                                 </>
@@ -1223,30 +1201,30 @@ function DependenciesManager({ modelId, gameId, gameName }) {
                             {activeTab !== 'propose' && (selectedDep || selectedProduct) && (
                                 <>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Version requise (optionnel)</label>
-                                        <input type="text" value={versionInfo} onChange={(e) => setVersionInfo(e.target.value)} placeholder="Ex: 1.20+..." className="input-field w-full" />
+                                        <label className="block text-sm text-gray-400 mb-2">{t('editProduct.dependencies.modal.requiredVersion')}</label>
+                                        <input type="text" value={versionInfo} onChange={(e) => setVersionInfo(e.target.value)} placeholder={t('editProduct.dependencies.modal.versionPlaceholder')} className="input-field w-full" />
                                     </div>
                                     <div className="flex gap-3">
                                         <button type="button" onClick={() => setIsRequired(true)} className={`flex-1 p-3 rounded-lg border ${isRequired ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-hyt-border text-gray-400'}`}>
-                                            <p className="font-medium">Requis</p>
+                                            <p className="font-medium">{t('editProduct.dependencies.required')}</p>
                                         </button>
                                         <button type="button" onClick={() => setIsRequired(false)} className={`flex-1 p-3 rounded-lg border ${!isRequired ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-hyt-border text-gray-400'}`}>
-                                            <p className="font-medium">Recommandé</p>
+                                            <p className="font-medium">{t('editProduct.dependencies.recommended')}</p>
                                         </button>
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-2">Note (optionnel)</label>
-                                        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Info supplémentaire..." className="input-field w-full" />
+                                        <label className="block text-sm text-gray-400 mb-2">{t('editProduct.dependencies.modal.note')}</label>
+                                        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('editProduct.dependencies.modal.notePlaceholder')} className="input-field w-full" />
                                     </div>
                                 </>
                             )}
 
                             <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={closeModal} className="btn-ghost flex-1">Annuler</button>
+                                <button type="button" onClick={closeModal} className="btn-ghost flex-1">{t('common.cancel')}</button>
                                 <button type="button" onClick={handleAddDependency} disabled={adding || (activeTab === 'predefined' && !selectedDep) || (activeTab === 'product' && !selectedProduct) || (activeTab === 'propose' && !proposalName)}
                                         className="btn-primary flex-1 flex items-center justify-center gap-2">
                                     {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    {activeTab === 'propose' ? 'Proposer' : 'Ajouter'}
+                                    {activeTab === 'propose' ? t('editProduct.dependencies.modal.propose') : t('common.add')}
                                 </button>
                             </div>
                         </div>
@@ -1262,6 +1240,7 @@ export default function EditProduct() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { t } = useTranslation()
     const imageInputRef = useRef(null)
 
     const [loading, setLoading] = useState(true)
@@ -1311,9 +1290,8 @@ export default function EditProduct() {
             const { data } = await modelsAPI.getById(id)
             const model = data.model || data
 
-            // Vérifier que l'utilisateur est le propriétaire
             if (model.creator_id !== user?.id) {
-                toast.error('Vous n\'êtes pas autorisé à modifier ce produit')
+                toast.error(t('editProduct.errors.unauthorized'))
                 navigate('/dashboard/models')
                 return
             }
@@ -1328,11 +1306,10 @@ export default function EditProduct() {
             setSelectedVersions(model.versions?.map(v => v.id) || [])
             setYoutubeUrl(model.youtube_url || '')
 
-            // Charger les images existantes
             await fetchExistingImages()
         } catch (error) {
             console.error('Failed to fetch product:', error)
-            toast.error('Produit non trouvé')
+            toast.error(t('editProduct.errors.notFound'))
             navigate('/dashboard/models')
         } finally {
             setLoading(false)
@@ -1374,7 +1351,6 @@ export default function EditProduct() {
         try {
             const { data } = await tagsAPI.getAll()
             const allTagsList = data.tags || data || []
-            // Filtrer: tags du jeu sélectionné + tags globaux (sans game_id)
             const filteredTags = allTagsList.filter(tag =>
                 !tag.game_id || tag.game_id === gameId
             )
@@ -1384,13 +1360,12 @@ export default function EditProduct() {
         }
     }
 
-    // Image handling avec validation de taille
     const handleImageSelect = (e) => {
         const files = Array.from(e.target.files)
         const totalImages = existingImages.length - imagesToDelete.length + newImages.length + files.length
 
         if (totalImages > 10) {
-            toast.error('Maximum 10 images autorisées')
+            toast.error(t('editProduct.images.errors.maxImages'))
             return
         }
 
@@ -1398,26 +1373,24 @@ export default function EditProduct() {
             const validImages = []
 
             for (const file of files) {
-                // Vérifier le poids (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
-                    toast.error(`${file.name} est trop lourd (max 5MB)`)
+                    toast.error(t('editProduct.images.errors.tooLarge', { name: file.name }))
                     continue
                 }
 
-                // Vérifier les dimensions
                 const isValid = await new Promise((resolve) => {
                     const img = new window.Image()
                     img.onload = () => {
                         URL.revokeObjectURL(img.src)
                         if (img.width < 400 || img.height < 400) {
-                            toast.error(`${file.name} est trop petit (minimum 400x400 pixels)`)
+                            toast.error(t('editProduct.images.errors.tooSmall', { name: file.name }))
                             resolve(false)
                         } else {
                             resolve(true)
                         }
                     }
                     img.onerror = () => {
-                        toast.error(`${file.name} n'est pas une image valide`)
+                        toast.error(t('editProduct.images.errors.invalid', { name: file.name }))
                         resolve(false)
                     }
                     img.src = URL.createObjectURL(file)
@@ -1456,13 +1429,12 @@ export default function EditProduct() {
         try {
             await modelImagesAPI.setPrimary(imageId)
             await fetchExistingImages()
-            toast.success('Image principale mise à jour')
+            toast.success(t('editProduct.images.success.primaryUpdated'))
         } catch (error) {
-            toast.error('Erreur lors de la mise à jour')
+            toast.error(t('editProduct.images.errors.updateFailed'))
         }
     }
 
-    // YouTube URL validation
     const getYoutubeVideoId = (url) => {
         if (!url) return null
         const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
@@ -1474,34 +1446,32 @@ export default function EditProduct() {
         return !url || getYoutubeVideoId(url) !== null
     }
 
-    // Submit
     const handleSubmit = async (e) => {
         e.preventDefault()
 
         if (!title.trim()) {
-            toast.error('Veuillez entrer un titre')
+            toast.error(t('editProduct.errors.titleRequired'))
             return
         }
 
         if (!price || parseFloat(price) < 5) {
-            toast.error('Le prix minimum est de 5€')
+            toast.error(t('editProduct.errors.minPrice'))
             return
         }
 
         if (!gameId) {
-            toast.error('Veuillez sélectionner un jeu')
+            toast.error(t('editProduct.errors.gameRequired'))
             return
         }
 
         if (youtubeUrl && !isValidYoutubeUrl(youtubeUrl)) {
-            toast.error('URL YouTube invalide')
+            toast.error(t('editProduct.errors.invalidYoutube'))
             return
         }
 
         setSaving(true)
 
         try {
-            // 1. Mettre à jour le produit
             await modelsAPI.update(id, {
                 title: title.trim(),
                 description: description.trim(),
@@ -1513,7 +1483,6 @@ export default function EditProduct() {
                 youtubeUrl: youtubeUrl || null
             })
 
-            // 2. Supprimer les images marquées pour suppression
             for (const imageId of imagesToDelete) {
                 try {
                     await modelImagesAPI.delete(imageId)
@@ -1522,7 +1491,6 @@ export default function EditProduct() {
                 }
             }
 
-            // 3. Upload des nouvelles images
             if (newImages.length > 0) {
                 setUploadingImages(true)
                 const imageFormData = new FormData()
@@ -1532,11 +1500,11 @@ export default function EditProduct() {
                 await modelImagesAPI.upload(id, imageFormData)
             }
 
-            toast.success('Produit mis à jour ! Il sera visible après validation.')
+            toast.success(t('editProduct.success.updated'))
             navigate('/dashboard/models')
         } catch (error) {
             console.error('Update failed:', error)
-            toast.error(error.response?.data?.error || 'Erreur lors de la mise à jour')
+            toast.error(error.response?.data?.error || t('editProduct.errors.updateFailed'))
         } finally {
             setSaving(false)
             setUploadingImages(false)
@@ -1563,13 +1531,13 @@ export default function EditProduct() {
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour à mes produits
+                        {t('editProduct.backToProducts')}
                     </Link>
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
-                        Modifier le produit
+                        {t('editProduct.title')}
                     </h1>
                     <p className="text-gray-400">
-                        Modifiez les informations de votre produit
+                        {t('editProduct.subtitle')}
                     </p>
                 </div>
 
@@ -1583,20 +1551,18 @@ export default function EditProduct() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <Image className="w-5 h-5" />
-                            Images du produit
+                            {t('editProduct.images.title')}
                             <span className="text-sm text-gray-400 font-normal">
                                 ({totalImagesCount}/10)
                             </span>
                         </h3>
 
                         <p className="text-gray-400 text-sm mb-2">
-                            Cliquez sur une image pour la définir comme image principale.
+                            {t('editProduct.images.clickToSetPrimary')}
                         </p>
                         <div className="bg-hyt-dark/50 border border-hyt-border rounded-lg p-3 mb-4">
                             <p className="text-xs text-gray-500">
-                                <span className="text-hyt-accent font-medium">📐 Recommandations :</span> Format carré ou 4:3,
-                                dimensions idéales <span className="text-white">1200x1200 px</span> ou <span className="text-white">1200x900 px</span>.
-                                Minimum 400x400 px, maximum 5 MB par image.
+                                <span className="text-hyt-accent font-medium">📐 {t('editProduct.images.recommendations')} :</span> {t('editProduct.images.formatHint')}
                             </p>
                         </div>
 
@@ -1622,15 +1588,13 @@ export default function EditProduct() {
                                             className="w-full h-full object-cover"
                                         />
 
-                                        {/* Badge principale */}
                                         {img.is_primary && !isDeleted && (
                                             <div className="absolute top-2 left-2 px-2 py-1 bg-hyt-accent text-black text-xs font-bold rounded">
                                                 <Star className="w-3 h-3 inline mr-1" />
-                                                Principale
+                                                {t('editProduct.images.primary')}
                                             </div>
                                         )}
 
-                                        {/* Badge supprimé */}
                                         {isDeleted && (
                                             <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                                                 <button
@@ -1638,12 +1602,11 @@ export default function EditProduct() {
                                                     onClick={(e) => { e.stopPropagation(); restoreExistingImage(img.id) }}
                                                     className="px-3 py-1 bg-white text-black text-xs font-bold rounded"
                                                 >
-                                                    Restaurer
+                                                    {t('editProduct.images.restore')}
                                                 </button>
                                             </div>
                                         )}
 
-                                        {/* Bouton supprimer */}
                                         {!isDeleted && (
                                             <button
                                                 type="button"
@@ -1669,12 +1632,10 @@ export default function EditProduct() {
                                         className="w-full h-full object-cover"
                                     />
 
-                                    {/* Badge nouvelle */}
                                     <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">
-                                        Nouvelle
+                                        {t('editProduct.images.new')}
                                     </div>
 
-                                    {/* Bouton supprimer */}
                                     <button
                                         type="button"
                                         onClick={() => removeNewImage(index)}
@@ -1693,7 +1654,7 @@ export default function EditProduct() {
                                     className="aspect-square rounded-lg border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex flex-col items-center justify-center gap-2 transition-colors"
                                 >
                                     <Plus className="w-8 h-8 text-gray-500" />
-                                    <span className="text-xs text-gray-500">Ajouter</span>
+                                    <span className="text-xs text-gray-500">{t('common.add')}</span>
                                 </button>
                             )}
                         </div>
@@ -1712,27 +1673,27 @@ export default function EditProduct() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <FileText className="w-5 h-5" />
-                            Informations
+                            {t('editProduct.info.title')}
                         </h3>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Titre *</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('editProduct.info.productTitle')} *</label>
                             <input
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Ex: Pack de textures HD"
+                                placeholder={t('editProduct.info.titlePlaceholder')}
                                 className="input-field w-full"
                                 required
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Description</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('editProduct.info.description')}</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Décrivez votre produit..."
+                                placeholder={t('editProduct.info.descriptionPlaceholder')}
                                 rows={4}
                                 className="input-field w-full resize-none"
                             />
@@ -1741,7 +1702,7 @@ export default function EditProduct() {
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
                                 <DollarSign className="w-4 h-4 inline mr-1" />
-                                Prix (€) * <span className="text-xs text-gray-500">(minimum 5€)</span>
+                                {t('editProduct.info.price')} * <span className="text-xs text-gray-500">({t('editProduct.info.minPrice')})</span>
                             </label>
                             <input
                                 type="number"
@@ -1760,8 +1721,8 @@ export default function EditProduct() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <Youtube className="w-5 h-5 text-red-500" />
-                            Vidéo YouTube
-                            <span className="text-sm text-gray-400 font-normal">(optionnel)</span>
+                            {t('editProduct.youtube.title')}
+                            <span className="text-sm text-gray-400 font-normal">({t('common.optional')})</span>
                         </h3>
 
                         <input
@@ -1779,13 +1740,13 @@ export default function EditProduct() {
                         {youtubeUrl && !isValidYoutubeUrl(youtubeUrl) && (
                             <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
                                 <AlertCircle className="w-4 h-4" />
-                                URL YouTube invalide
+                                {t('editProduct.youtube.invalid')}
                             </p>
                         )}
 
                         {youtubeUrl && isValidYoutubeUrl(youtubeUrl) && getYoutubeVideoId(youtubeUrl) && (
                             <div className="mt-4">
-                                <p className="text-sm text-gray-400 mb-2">Aperçu :</p>
+                                <p className="text-sm text-gray-400 mb-2">{t('editProduct.youtube.preview')} :</p>
                                 <div className="aspect-video rounded-lg overflow-hidden bg-black">
                                     <iframe
                                         src={`https://www.youtube.com/embed/${getYoutubeVideoId(youtubeUrl)}`}
@@ -1801,19 +1762,19 @@ export default function EditProduct() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Gamepad2 className="w-5 h-5" />
-                            Jeu & Catégorie
+                            {t('editProduct.gameCategory.title')}
                         </h3>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('editProduct.gameCategory.game')} *</label>
                                 <select
                                     value={gameId}
                                     onChange={(e) => setGameId(e.target.value)}
                                     className="input-field w-full"
                                     required
                                 >
-                                    <option value="">Sélectionner un jeu</option>
+                                    <option value="">{t('editProduct.gameCategory.selectGame')}</option>
                                     {games.map(game => (
                                         <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
@@ -1822,13 +1783,13 @@ export default function EditProduct() {
 
                             {categories.length > 0 && (
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
+                                    <label className="block text-sm text-gray-400 mb-2">{t('editProduct.gameCategory.category')}</label>
                                     <select
                                         value={categoryId}
                                         onChange={(e) => setCategoryId(e.target.value)}
                                         className="input-field w-full"
                                     >
-                                        <option value="">Sélectionner une catégorie</option>
+                                        <option value="">{t('editProduct.gameCategory.selectCategory')}</option>
                                         {categories.map(cat => (
                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                         ))}
@@ -1840,7 +1801,7 @@ export default function EditProduct() {
                         {versions.length > 0 && (
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Versions compatibles
+                                    {t('editProduct.gameCategory.compatibleVersions')}
                                 </label>
                                 <div className="flex flex-wrap gap-2">
                                     {versions.map(version => (
@@ -1868,12 +1829,12 @@ export default function EditProduct() {
                         )}
                     </div>
 
-                    {/* Tags - afficher seulement si un jeu est sélectionné */}
+                    {/* Tags */}
                     {gameId && allTags.length > 0 && (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
                                 <Tag className="w-5 h-5" />
-                                Tags
+                                {t('editProduct.tags.title')}
                             </h3>
 
                             <div className="flex flex-wrap gap-2">
@@ -1901,7 +1862,7 @@ export default function EditProduct() {
                         </div>
                     )}
 
-                    {/* Dépendances - afficher seulement si un jeu est sélectionné */}
+                    {/* Dépendances */}
                     {gameId && (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <DependenciesManager modelId={id} gameId={gameId} gameName={games.find(g => g.id === gameId)?.name} />
@@ -1913,10 +1874,9 @@ export default function EditProduct() {
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                             <div>
-                                <h4 className="font-medium text-orange-500">Revalidation requise</h4>
+                                <h4 className="font-medium text-orange-500">{t('editProduct.revalidation.title')}</h4>
                                 <p className="text-sm text-orange-400/80 mt-1">
-                                    Toute modification de votre produit nécessitera une nouvelle validation par notre équipe.
-                                    Votre produit sera temporairement masqué jusqu'à son approbation.
+                                    {t('editProduct.revalidation.description')}
                                 </p>
                             </div>
                         </div>
@@ -1929,7 +1889,7 @@ export default function EditProduct() {
                             onClick={() => navigate('/dashboard/models')}
                             className="btn-ghost"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
 
                         <button
@@ -1940,12 +1900,12 @@ export default function EditProduct() {
                             {saving ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                    {uploadingImages ? 'Upload des images...' : 'Enregistrement...'}
+                                    {uploadingImages ? t('editProduct.saving.images') : t('editProduct.saving.saving')}
                                 </>
                             ) : (
                                 <>
                                     <Save className="w-5 h-5" />
-                                    Enregistrer et soumettre
+                                    {t('editProduct.saveAndSubmit')}
                                 </>
                             )}
                         </button>

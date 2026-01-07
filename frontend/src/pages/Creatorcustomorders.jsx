@@ -7,6 +7,7 @@ import {
     DollarSign, Package, AlertCircle
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 // Fonction pour l'URL des images
@@ -18,11 +19,12 @@ const getImageUrl = (url) => {
 
 // Badge de statut pour les demandes
 function RequestStatusBadge({ status }) {
+    const { t } = useTranslation()
     const config = {
-        APPROVED: { color: 'bg-green-500/20 text-green-400', icon: CheckCircle, label: 'Disponible' },
-        ASSIGNED: { color: 'bg-blue-500/20 text-blue-400', icon: User, label: 'Assignée' },
-        IN_PROGRESS: { color: 'bg-purple-500/20 text-purple-400', icon: Clock, label: 'En cours' },
-        COMPLETED: { color: 'bg-gray-500/20 text-gray-400', icon: CheckCircle, label: 'Terminée' },
+        APPROVED: { color: 'bg-green-500/20 text-green-400', icon: CheckCircle, label: t('creatorCustomOrders.requestStatus.available') },
+        ASSIGNED: { color: 'bg-blue-500/20 text-blue-400', icon: User, label: t('creatorCustomOrders.requestStatus.assigned') },
+        IN_PROGRESS: { color: 'bg-purple-500/20 text-purple-400', icon: Clock, label: t('creatorCustomOrders.requestStatus.inProgress') },
+        COMPLETED: { color: 'bg-gray-500/20 text-gray-400', icon: CheckCircle, label: t('creatorCustomOrders.requestStatus.completed') },
     }
     const c = config[status] || config.APPROVED
     const Icon = c.icon
@@ -37,13 +39,14 @@ function RequestStatusBadge({ status }) {
 
 // Badge de statut pour les commandes
 function OrderStatusBadge({ status }) {
+    const { t } = useTranslation()
     const config = {
-        AWAITING_PAYMENT: { color: 'bg-yellow-500/20 text-yellow-400', label: 'Attente paiement' },
-        IN_PROGRESS: { color: 'bg-blue-500/20 text-blue-400', label: 'En cours' },
-        AWAITING_FINAL_PAYMENT: { color: 'bg-orange-500/20 text-orange-400', label: 'Attente solde' },
-        COMPLETED: { color: 'bg-green-500/20 text-green-400', label: 'Terminée' },
-        CANCELLED: { color: 'bg-red-500/20 text-red-400', label: 'Annulée' },
-        DISPUTED: { color: 'bg-red-500/20 text-red-400', label: 'Litige' },
+        AWAITING_PAYMENT: { color: 'bg-yellow-500/20 text-yellow-400', label: t('creatorCustomOrders.orderStatus.awaitingPayment') },
+        IN_PROGRESS: { color: 'bg-blue-500/20 text-blue-400', label: t('creatorCustomOrders.orderStatus.inProgress') },
+        AWAITING_FINAL_PAYMENT: { color: 'bg-orange-500/20 text-orange-400', label: t('creatorCustomOrders.orderStatus.awaitingFinal') },
+        COMPLETED: { color: 'bg-green-500/20 text-green-400', label: t('creatorCustomOrders.orderStatus.completed') },
+        CANCELLED: { color: 'bg-red-500/20 text-red-400', label: t('creatorCustomOrders.orderStatus.cancelled') },
+        DISPUTED: { color: 'bg-red-500/20 text-red-400', label: t('creatorCustomOrders.orderStatus.disputed') },
     }
     const c = config[status] || { color: 'bg-gray-500/20 text-gray-400', label: status }
 
@@ -56,6 +59,7 @@ function OrderStatusBadge({ status }) {
 
 // Modal pour faire une offre
 function MakeOfferModal({ request, onClose, onSuccess }) {
+    const { t } = useTranslation()
     const [price, setPrice] = useState('')
     const [estimatedDays, setEstimatedDays] = useState('')
     const [message, setMessage] = useState('')
@@ -65,31 +69,31 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
         e.preventDefault()
 
         if (!price || parseFloat(price) < 5) {
-            toast.error('Prix minimum: 5€')
+            toast.error(t('creatorCustomOrders.offerModal.errors.minPrice'))
             return
         }
         if (!estimatedDays || parseInt(estimatedDays) < 1) {
-            toast.error('Délai minimum: 1 jour')
+            toast.error(t('creatorCustomOrders.offerModal.errors.minDays'))
             return
         }
         if (!message.trim() || message.length < 20) {
-            toast.error('Message trop court (min 20 caractères)')
+            toast.error(t('creatorCustomOrders.offerModal.errors.messageTooShort'))
             return
         }
 
         setLoading(true)
         try {
             await customOrdersAPI.makeOffer({
-                request_id: request.id,      // avec underscore !
+                request_id: request.id,
                 price: Math.round(parseFloat(price)),
-                estimated_days: parseInt(estimatedDays),  // avec underscore !
+                estimated_days: parseInt(estimatedDays),
                 message: message.trim()
             })
-            toast.success('Offre envoyée !')
+            toast.success(t('creatorCustomOrders.offerModal.success'))
             onSuccess()
             onClose()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'envoi')
+            toast.error(error.response?.data?.error || t('creatorCustomOrders.offerModal.errors.sendFailed'))
         } finally {
             setLoading(false)
         }
@@ -101,24 +105,24 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                 <div className="p-6 border-b border-hyt-border">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Send className="w-5 h-5 text-hyt-accent" />
-                        Faire une offre
+                        {t('creatorCustomOrders.offerModal.title')}
                     </h3>
                     <p className="text-gray-400 text-sm mt-1">
-                        Pour: {request.title}
+                        {t('creatorCustomOrders.offerModal.for')}: {request.title}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Budget du client */}
                     <div className="bg-hyt-dark rounded-lg p-4">
-                        <p className="text-sm text-gray-400">Budget du client</p>
+                        <p className="text-sm text-gray-400">{t('creatorCustomOrders.offerModal.clientBudget')}</p>
                         <p className="text-2xl font-bold text-white">
                             {request.budget_min && request.budget_max ? (
                                 `${(request.budget_min / 100).toFixed(0)}€ - ${(request.budget_max / 100).toFixed(0)}€`
                             ) : request.budget_max ? (
                                 `Max ${(request.budget_max / 100).toFixed(0)}€`
                             ) : (
-                                'Non spécifié'
+                                t('creatorCustomOrders.offerModal.notSpecified')
                             )}
                         </p>
                     </div>
@@ -126,7 +130,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                     {/* Prix proposé */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Votre prix (€) *
+                            {t('creatorCustomOrders.offerModal.yourPrice')} *
                         </label>
                         <div className="relative">
                             <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -142,14 +146,14 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                             />
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            Le client paiera 50% à la commande, 50% à la livraison
+                            {t('creatorCustomOrders.offerModal.paymentInfo')}
                         </p>
                     </div>
 
                     {/* Délai estimé */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Délai estimé (jours) *
+                            {t('creatorCustomOrders.offerModal.estimatedDays')} *
                         </label>
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -166,7 +170,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                         </div>
                         {request.deadline && (
                             <p className="text-xs text-orange-400 mt-1">
-                                ⚠️ Deadline client: {new Date(request.deadline).toLocaleDateString('fr-FR')}
+                                ⚠️ {t('creatorCustomOrders.offerModal.clientDeadline')}: {new Date(request.deadline).toLocaleDateString('fr-FR')}
                             </p>
                         )}
                     </div>
@@ -174,18 +178,18 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                     {/* Message */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Message au client *
+                            {t('creatorCustomOrders.offerModal.messageLabel')} *
                         </label>
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Présentez votre approche, vos compétences, posez des questions si nécessaire..."
+                            placeholder={t('creatorCustomOrders.offerModal.messagePlaceholder')}
                             rows={5}
                             className="input-field w-full resize-none"
                             required
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            {message.length}/20 caractères minimum
+                            {t('creatorCustomOrders.offerModal.minChars', { count: message.length })}
                         </p>
                     </div>
 
@@ -196,7 +200,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                             onClick={onClose}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -208,7 +212,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
                             ) : (
                                 <Send className="w-4 h-4" />
                             )}
-                            Envoyer l'offre
+                            {t('creatorCustomOrders.offerModal.send')}
                         </button>
                     </div>
                 </form>
@@ -219,6 +223,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
 
 // Carte de demande disponible
 function AvailableRequestCard({ request, onMakeOffer, onContact }) {
+    const { t } = useTranslation()
     const [expanded, setExpanded] = useState(false)
 
     // Déterminer le statut de l'interaction du créateur avec cette demande
@@ -247,17 +252,17 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                             {/* Badge statut interaction */}
                             {hasConversation && conversationStatus === 'OPEN' && (
                                 <span className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded-full">
-                                    En discussion
+                                    {t('creatorCustomOrders.badges.inDiscussion')}
                                 </span>
                             )}
                             {hasOffer && offerStatus === 'PENDING' && (
                                 <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full">
-                                    Offre envoyée
+                                    {t('creatorCustomOrders.badges.offerSent')}
                                 </span>
                             )}
                             {hasOffer && offerStatus === 'ACCEPTED' && (
                                 <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full">
-                                    ✓ Acceptée
+                                    ✓ {t('creatorCustomOrders.badges.accepted')}
                                 </span>
                             )}
                         </div>
@@ -293,14 +298,14 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
 
                         {/* Budget */}
                         <div className="text-right">
-                            <p className="text-xs text-gray-500">Budget</p>
+                            <p className="text-xs text-gray-500">{t('creatorCustomOrders.budget')}</p>
                             <p className="font-bold text-hyt-accent">
                                 {request.budget_min && request.budget_max ? (
                                     `${Number(request.budget_min).toFixed(0)}€ - ${Number(request.budget_max).toFixed(0)}€`
                                 ) : request.budget_max ? (
                                     `Max ${Number(request.budget_max).toFixed(0)}€`
                                 ) : (
-                                    'À définir'
+                                    t('creatorCustomOrders.toDefine')
                                 )}
                             </p>
                         </div>
@@ -319,7 +324,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                 <div className="px-4 pb-4 border-t border-hyt-border pt-4 space-y-4">
                     {/* Description */}
                     <div>
-                        <p className="text-sm text-gray-400 mb-1">Description</p>
+                        <p className="text-sm text-gray-400 mb-1">{t('creatorCustomOrders.description')}</p>
                         <p className="text-white whitespace-pre-wrap">{request.description}</p>
                     </div>
 
@@ -328,7 +333,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                         <div className="flex items-center gap-2 text-orange-400">
                             <Clock className="w-4 h-4" />
                             <span className="text-sm">
-                                Deadline: {new Date(request.deadline).toLocaleDateString('fr-FR')}
+                                {t('creatorCustomOrders.deadline')}: {new Date(request.deadline).toLocaleDateString('fr-FR')}
                             </span>
                         </div>
                     )}
@@ -336,7 +341,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                     {/* Pièces jointes */}
                     {request.attachments?.length > 0 && (
                         <div>
-                            <p className="text-sm text-gray-400 mb-2">Pièces jointes</p>
+                            <p className="text-sm text-gray-400 mb-2">{t('creatorCustomOrders.attachments')}</p>
                             <div className="flex flex-wrap gap-2">
                                 {request.attachments.map((file, i) => (
                                     <a
@@ -347,7 +352,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                                         className="flex items-center gap-1 px-3 py-1 bg-hyt-dark rounded-lg text-sm text-gray-300 hover:text-white"
                                     >
                                         <FileText className="w-4 h-4" />
-                                        Fichier {i + 1}
+                                        {t('creatorCustomOrders.file')} {i + 1}
                                         <ExternalLink className="w-3 h-3" />
                                     </a>
                                 ))}
@@ -358,7 +363,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                     {/* Info offres */}
                     <div className="flex items-center justify-between pt-2">
                         <p className="text-sm text-gray-400">
-                            {request.offers_count || 0} offre(s) reçue(s)
+                            {t('creatorCustomOrders.offersReceived', { count: request.offers_count || 0 })}
                         </p>
 
                         <div className="flex gap-2">
@@ -370,7 +375,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                                 className={`btn-ghost flex items-center gap-2 ${request.unread_messages > 0 ? 'text-hyt-accent' : ''}`}
                             >
                                 <MessageSquare className="w-4 h-4" />
-                                {request.my_conversation_id ? 'Messages' : 'Contacter'}
+                                {request.my_conversation_id ? t('creatorCustomOrders.messages') : t('creatorCustomOrders.contact')}
                                 {request.unread_messages > 0 && (
                                     <span className="bg-hyt-accent text-black text-xs font-bold px-1.5 py-0.5 rounded-full">
                                         {request.unread_messages}
@@ -386,12 +391,12 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                                     className="btn-primary flex items-center gap-2"
                                 >
                                     <Send className="w-4 h-4" />
-                                    Faire une offre
+                                    {t('creatorCustomOrders.makeOffer')}
                                 </button>
                             )}
                             {request.my_offer_id && (
                                 <span className="px-3 py-2 bg-green-500/20 text-green-400 text-sm rounded-lg">
-                                    ✓ Offre envoyée
+                                    ✓ {t('creatorCustomOrders.offerSent')}
                                 </span>
                             )}
                         </div>
@@ -404,6 +409,7 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
 
 // Carte de négociation en cours
 function NegotiationCard({ conversation, onClick }) {
+    const { t } = useTranslation()
     const getImageUrl = (url) => {
         if (!url) return null
         if (url.startsWith('http')) return url
@@ -443,7 +449,7 @@ function NegotiationCard({ conversation, onClick }) {
                     </div>
 
                     <p className="text-sm text-gray-400">
-                        Client : {conversation.client_username}
+                        {t('creatorCustomOrders.client')} : {conversation.client_username}
                     </p>
 
                     <div className="flex items-center gap-4 mt-2 text-sm">
@@ -466,15 +472,15 @@ function NegotiationCard({ conversation, onClick }) {
                 <div className="text-right">
                     {conversation.offer_status === 'PENDING' ? (
                         <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                            Offre: {Number(conversation.offer_price).toFixed(2)}€
+                            {t('creatorCustomOrders.offer')}: {Number(conversation.offer_price).toFixed(2)}€
                         </div>
                     ) : conversation.offer_id ? (
                         <div className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-full text-sm">
-                            Offre refusée
+                            {t('creatorCustomOrders.offerRejected')}
                         </div>
                     ) : (
                         <div className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm">
-                            En discussion
+                            {t('creatorCustomOrders.badges.inDiscussion')}
                         </div>
                     )}
                     <p className="text-xs text-gray-500 mt-1">
@@ -488,6 +494,7 @@ function NegotiationCard({ conversation, onClick }) {
 
 // Carte de commande en cours
 function ActiveOrderCard({ order, onDeliver }) {
+    const { t } = useTranslation()
     const [expanded, setExpanded] = useState(false)
     const [delivering, setDelivering] = useState(false)
     const [deliveryMessage, setDeliveryMessage] = useState('')
@@ -495,17 +502,17 @@ function ActiveOrderCard({ order, onDeliver }) {
 
     const handleDeliver = async () => {
         if (!deliveryMessage.trim()) {
-            toast.error('Ajoutez un message de livraison')
+            toast.error(t('creatorCustomOrders.delivery.messageRequired'))
             return
         }
 
         setDelivering(true)
         try {
             await customOrdersAPI.deliverOrder(order.id, { message: deliveryMessage })
-            toast.success('Livraison envoyée ! En attente du paiement final.')
+            toast.success(t('creatorCustomOrders.delivery.success'))
             onDeliver()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('creatorCustomOrders.delivery.error'))
         } finally {
             setDelivering(false)
         }
@@ -539,7 +546,7 @@ function ActiveOrderCard({ order, onDeliver }) {
 
                     <div className="flex items-center gap-4">
                         <div className="text-right">
-                            <p className="text-xs text-gray-500">Montant</p>
+                            <p className="text-xs text-gray-500">{t('creatorCustomOrders.amount')}</p>
                             <p className="font-bold text-green-500">
                                 {Number(order.total_price).toFixed(2)}€
                             </p>
@@ -560,15 +567,15 @@ function ActiveOrderCard({ order, onDeliver }) {
                     {/* Statut paiement */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-hyt-dark rounded-lg p-3">
-                            <p className="text-xs text-gray-500 mb-1">Acompte (50%)</p>
+                            <p className="text-xs text-gray-500 mb-1">{t('creatorCustomOrders.payment.deposit')}</p>
                             <p className={`font-semibold ${order.first_payment_paid ? 'text-green-400' : 'text-yellow-400'}`}>
-                                {order.first_payment_paid ? '✓ Payé' : 'En attente'}
+                                {order.first_payment_paid ? t('creatorCustomOrders.payment.paid') : t('creatorCustomOrders.payment.pending')}
                             </p>
                         </div>
                         <div className="bg-hyt-dark rounded-lg p-3">
-                            <p className="text-xs text-gray-500 mb-1">Solde (50%)</p>
+                            <p className="text-xs text-gray-500 mb-1">{t('creatorCustomOrders.payment.balance')}</p>
                             <p className={`font-semibold ${order.second_payment_paid ? 'text-green-400' : 'text-gray-400'}`}>
-                                {order.second_payment_paid ? '✓ Payé' : 'Après livraison'}
+                                {order.second_payment_paid ? t('creatorCustomOrders.payment.paid') : t('creatorCustomOrders.payment.afterDelivery')}
                             </p>
                         </div>
                     </div>
@@ -581,14 +588,14 @@ function ActiveOrderCard({ order, onDeliver }) {
                                 className="btn-ghost flex-1 flex items-center justify-center gap-2"
                             >
                                 <MessageSquare className="w-4 h-4" />
-                                Messages
+                                {t('creatorCustomOrders.messages')}
                             </Link>
                             <button
                                 onClick={() => setShowDeliverForm(true)}
                                 className="btn-primary flex-1 flex items-center justify-center gap-2"
                             >
                                 <Package className="w-4 h-4" />
-                                Livrer
+                                {t('creatorCustomOrders.deliver')}
                             </button>
                         </div>
                     )}
@@ -599,7 +606,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                                 className="btn-ghost flex-1 flex items-center justify-center gap-2"
                             >
                                 <MessageSquare className="w-4 h-4" />
-                                Messages
+                                {t('creatorCustomOrders.messages')}
                             </Link>
                             {order.status === 'IN_PROGRESS' && (
                                 <button
@@ -610,7 +617,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                                     className="btn-primary flex-1 flex items-center justify-center gap-2"
                                 >
                                     <Package className="w-4 h-4" />
-                                    Livrer
+                                    {t('creatorCustomOrders.deliver')}
                                 </button>
                             )}
                         </div>
@@ -622,7 +629,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                             <textarea
                                 value={deliveryMessage}
                                 onChange={(e) => setDeliveryMessage(e.target.value)}
-                                placeholder="Message de livraison, instructions, liens de téléchargement..."
+                                placeholder={t('creatorCustomOrders.delivery.placeholder')}
                                 rows={4}
                                 className="input-field w-full resize-none"
                             />
@@ -631,7 +638,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                                     onClick={() => setShowDeliverForm(false)}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleDeliver}
@@ -643,7 +650,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                                     ) : (
                                         <CheckCircle className="w-4 h-4" />
                                     )}
-                                    Confirmer la livraison
+                                    {t('creatorCustomOrders.delivery.confirm')}
                                 </button>
                             </div>
                         </div>
@@ -652,16 +659,16 @@ function ActiveOrderCard({ order, onDeliver }) {
                     {order.status === 'AWAITING_FINAL_PAYMENT' && (
                         <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 text-center">
                             <Clock className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-                            <p className="text-orange-400 font-medium">En attente du paiement final</p>
-                            <p className="text-orange-400/70 text-sm">Le client doit payer le solde pour finaliser</p>
+                            <p className="text-orange-400 font-medium">{t('creatorCustomOrders.awaitingFinalPayment.title')}</p>
+                            <p className="text-orange-400/70 text-sm">{t('creatorCustomOrders.awaitingFinalPayment.description')}</p>
                         </div>
                     )}
 
                     {order.status === 'COMPLETED' && (
                         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
                             <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                            <p className="text-green-400 font-medium">Commande terminée !</p>
-                            <p className="text-green-400/70 text-sm">Le paiement a été versé sur votre compte</p>
+                            <p className="text-green-400 font-medium">{t('creatorCustomOrders.orderCompleted.title')}</p>
+                            <p className="text-green-400/70 text-sm">{t('creatorCustomOrders.orderCompleted.description')}</p>
                         </div>
                     )}
                 </div>
@@ -673,9 +680,10 @@ function ActiveOrderCard({ order, onDeliver }) {
 // Composant principal
 export default function CreatorCustomOrders() {
     const navigate = useNavigate()
-    const [activeTab, setActiveTab] = useState('requests') // requests, negotiations, orders
+    const { t } = useTranslation()
+    const [activeTab, setActiveTab] = useState('requests')
     const [requests, setRequests] = useState([])
-    const [activeConversations, setActiveConversations] = useState([]) // Négociations en cours
+    const [activeConversations, setActiveConversations] = useState([])
     const [orders, setOrders] = useState([])
     const [conversations, setConversations] = useState([])
     const [loading, setLoading] = useState(true)
@@ -748,7 +756,7 @@ export default function CreatorCustomOrders() {
             })
             navigate(`/custom-orders/conversation/${data.conversation.id}`)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la création de la conversation')
+            toast.error(error.response?.data?.error || t('creatorCustomOrders.errors.conversationFailed'))
         }
     }
 
@@ -771,7 +779,7 @@ export default function CreatorCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.availableRequests}</p>
-                            <p className="text-xs text-gray-400">Demandes disponibles</p>
+                            <p className="text-xs text-gray-400">{t('creatorCustomOrders.stats.availableRequests')}</p>
                         </div>
                     </div>
                 </div>
@@ -782,7 +790,7 @@ export default function CreatorCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.activeOrders}</p>
-                            <p className="text-xs text-gray-400">En cours</p>
+                            <p className="text-xs text-gray-400">{t('creatorCustomOrders.stats.inProgress')}</p>
                         </div>
                     </div>
                 </div>
@@ -793,7 +801,7 @@ export default function CreatorCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.completedOrders}</p>
-                            <p className="text-xs text-gray-400">Terminées</p>
+                            <p className="text-xs text-gray-400">{t('creatorCustomOrders.stats.completed')}</p>
                         </div>
                     </div>
                 </div>
@@ -806,7 +814,7 @@ export default function CreatorCustomOrders() {
                             <p className="text-2xl font-bold text-green-500">
                                 {(stats.totalEarned / 100).toFixed(0)}€
                             </p>
-                            <p className="text-xs text-gray-400">Revenus sur mesure</p>
+                            <p className="text-xs text-gray-400">{t('creatorCustomOrders.stats.customRevenue')}</p>
                         </div>
                     </div>
                 </div>
@@ -818,7 +826,7 @@ export default function CreatorCustomOrders() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-hyt-accent">{stats.unreadMessages}</p>
-                                <p className="text-xs text-gray-400">Messages non lus</p>
+                                <p className="text-xs text-gray-400">{t('creatorCustomOrders.stats.unreadMessages')}</p>
                             </div>
                         </div>
                     </div>
@@ -833,7 +841,7 @@ export default function CreatorCustomOrders() {
                         activeTab === 'requests' ? 'text-hyt-accent' : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Demandes disponibles
+                    {t('creatorCustomOrders.tabs.availableRequests')}
                     {stats.availableRequests > 0 && (
                         <span className="ml-2 px-2 py-0.5 bg-hyt-accent text-black text-xs font-bold rounded-full">
                             {stats.availableRequests}
@@ -849,7 +857,7 @@ export default function CreatorCustomOrders() {
                         activeTab === 'negotiations' ? 'text-hyt-accent' : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Négociations
+                    {t('creatorCustomOrders.tabs.negotiations')}
                     {stats.activeNegotiations > 0 && (
                         <span className="ml-2 px-2 py-0.5 bg-purple-500 text-white text-xs font-bold rounded-full">
                             {stats.activeNegotiations}
@@ -870,7 +878,7 @@ export default function CreatorCustomOrders() {
                         activeTab === 'orders' ? 'text-hyt-accent' : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Mes commandes
+                    {t('creatorCustomOrders.tabs.myOrders')}
                     {stats.activeOrders > 0 && (
                         <span className="ml-2 px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
                             {stats.activeOrders}
@@ -888,9 +896,9 @@ export default function CreatorCustomOrders() {
                     {requests.length === 0 ? (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                             <PenTool className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                            <p className="text-white font-medium">Aucune demande disponible</p>
+                            <p className="text-white font-medium">{t('creatorCustomOrders.empty.noRequests')}</p>
                             <p className="text-gray-400 text-sm mt-1">
-                                Les nouvelles demandes apparaîtront ici
+                                {t('creatorCustomOrders.empty.requestsWillAppear')}
                             </p>
                         </div>
                     ) : (
@@ -909,9 +917,9 @@ export default function CreatorCustomOrders() {
                     {activeConversations.length === 0 ? (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                             <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                            <p className="text-white font-medium">Aucune négociation en cours</p>
+                            <p className="text-white font-medium">{t('creatorCustomOrders.empty.noNegotiations')}</p>
                             <p className="text-gray-400 text-sm mt-1">
-                                Contactez des clients pour commencer à négocier
+                                {t('creatorCustomOrders.empty.contactClients')}
                             </p>
                         </div>
                     ) : (
@@ -929,9 +937,9 @@ export default function CreatorCustomOrders() {
                     {orders.length === 0 ? (
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                             <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                            <p className="text-white font-medium">Aucune commande</p>
+                            <p className="text-white font-medium">{t('creatorCustomOrders.empty.noOrders')}</p>
                             <p className="text-gray-400 text-sm mt-1">
-                                Vos commandes sur mesure apparaîtront ici
+                                {t('creatorCustomOrders.empty.ordersWillAppear')}
                             </p>
                         </div>
                     ) : (

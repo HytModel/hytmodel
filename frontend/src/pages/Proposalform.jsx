@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Tag, FolderOpen, Layers, Loader2, Check, X, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { feedbackAPI, gamesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function ProposalForm() {
+    const { t } = useTranslation()
     const [games, setGames] = useState([])
     const [proposals, setProposals] = useState([])
     const [loading, setLoading] = useState(true)
@@ -39,7 +41,7 @@ export default function ProposalForm() {
         e.preventDefault()
 
         if (!gameId || !name.trim()) {
-            toast.error('Veuillez remplir tous les champs requis')
+            toast.error(t('proposalForm.errors.fillRequired'))
             return
         }
 
@@ -51,13 +53,13 @@ export default function ProposalForm() {
                 name: name.trim(),
                 description: description.trim() || null
             })
-            toast.success('Proposition envoyée !')
+            toast.success(t('proposalForm.success'))
             setShowForm(false)
             setName('')
             setDescription('')
             fetchData()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'envoi')
+            toast.error(error.response?.data?.error || t('proposalForm.errors.submitFailed'))
         } finally {
             setSubmitting(false)
         }
@@ -72,12 +74,12 @@ export default function ProposalForm() {
         }
     }
 
-    const getTypeLabel = (t) => {
-        switch (t) {
-            case 'CATEGORY': return 'Catégorie'
-            case 'TAG': return 'Tag'
-            case 'VERSION': return 'Version'
-            default: return t
+    const getTypeLabel = (proposalType) => {
+        switch (proposalType) {
+            case 'CATEGORY': return t('proposalForm.types.category')
+            case 'TAG': return t('proposalForm.types.tag')
+            case 'VERSION': return t('proposalForm.types.version')
+            default: return proposalType
         }
     }
 
@@ -87,21 +89,21 @@ export default function ProposalForm() {
                 return (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-500 text-xs font-medium rounded-full">
                         <Clock className="w-3 h-3" />
-                        En attente
+                        {t('proposalForm.status.pending')}
                     </span>
                 )
             case 'APPROVED':
                 return (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-500 text-xs font-medium rounded-full">
                         <CheckCircle className="w-3 h-3" />
-                        Approuvée
+                        {t('proposalForm.status.approved')}
                     </span>
                 )
             case 'REJECTED':
                 return (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-500 text-xs font-medium rounded-full">
                         <XCircle className="w-3 h-3" />
-                        Refusée
+                        {t('proposalForm.status.rejected')}
                     </span>
                 )
             default:
@@ -122,9 +124,9 @@ export default function ProposalForm() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold text-white">Proposer un ajout</h3>
+                    <h3 className="text-lg font-semibold text-white">{t('proposalForm.title')}</h3>
                     <p className="text-gray-400 text-sm">
-                        Proposez de nouvelles catégories, tags ou versions de jeu
+                        {t('proposalForm.subtitle')}
                     </p>
                 </div>
                 {!showForm && (
@@ -133,7 +135,7 @@ export default function ProposalForm() {
                         className="btn-primary flex items-center gap-2"
                     >
                         <Plus className="w-4 h-4" />
-                        Nouvelle proposition
+                        {t('proposalForm.newProposal')}
                     </button>
                 )}
             </div>
@@ -144,28 +146,28 @@ export default function ProposalForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Type */}
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Type *</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('proposalForm.form.type')} *</label>
                             <select
                                 value={type}
                                 onChange={(e) => setType(e.target.value)}
                                 className="input-field w-full"
                             >
-                                <option value="TAG">Tag</option>
-                                <option value="CATEGORY">Catégorie</option>
-                                <option value="VERSION">Version de jeu</option>
+                                <option value="TAG">{t('proposalForm.types.tag')}</option>
+                                <option value="CATEGORY">{t('proposalForm.types.category')}</option>
+                                <option value="VERSION">{t('proposalForm.types.gameVersion')}</option>
                             </select>
                         </div>
 
                         {/* Jeu */}
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Jeu concerné *</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('proposalForm.form.game')} *</label>
                             <select
                                 value={gameId}
                                 onChange={(e) => setGameId(e.target.value)}
                                 className="input-field w-full"
                                 required
                             >
-                                <option value="">-- Choisir un jeu --</option>
+                                <option value="">{t('proposalForm.form.selectGame')}</option>
                                 {games.map(game => (
                                     <option key={game.id} value={game.id}>{game.name}</option>
                                 ))}
@@ -176,7 +178,7 @@ export default function ProposalForm() {
                     {/* Nom */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            {type === 'VERSION' ? 'Numéro de version *' : 'Nom *'}
+                            {type === 'VERSION' ? t('proposalForm.form.versionNumber') : t('proposalForm.form.name')} *
                         </label>
                         <input
                             type="text"
@@ -184,10 +186,10 @@ export default function ProposalForm() {
                             onChange={(e) => setName(e.target.value)}
                             placeholder={
                                 type === 'VERSION'
-                                    ? 'Ex: 1.20.4, b3258...'
+                                    ? t('proposalForm.form.versionPlaceholder')
                                     : type === 'TAG'
-                                        ? 'Ex: HD, Optimisé, Animé...'
-                                        : 'Ex: Véhicules, Bâtiments...'
+                                        ? t('proposalForm.form.tagPlaceholder')
+                                        : t('proposalForm.form.categoryPlaceholder')
                             }
                             className="input-field w-full"
                             required
@@ -197,12 +199,12 @@ export default function ProposalForm() {
                     {/* Description */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Justification (optionnel)
+                            {t('proposalForm.form.justification')} ({t('common.optional')})
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Expliquez pourquoi cet ajout serait utile..."
+                            placeholder={t('proposalForm.form.justificationPlaceholder')}
                             className="input-field w-full h-24 resize-none"
                         />
                     </div>
@@ -214,7 +216,7 @@ export default function ProposalForm() {
                             onClick={() => setShowForm(false)}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -226,7 +228,7 @@ export default function ProposalForm() {
                             ) : (
                                 <Check className="w-4 h-4" />
                             )}
-                            Envoyer la proposition
+                            {t('proposalForm.form.submit')}
                         </button>
                     </div>
                 </form>
@@ -235,7 +237,7 @@ export default function ProposalForm() {
             {/* Liste des propositions */}
             {proposals.length > 0 && (
                 <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-400">Mes propositions</h4>
+                    <h4 className="text-sm font-medium text-gray-400">{t('proposalForm.myProposals')}</h4>
                     {proposals.map((proposal) => {
                         const Icon = getTypeIcon(proposal.type)
                         return (
@@ -256,7 +258,7 @@ export default function ProposalForm() {
                                                 </span>
                                             </div>
                                             <p className="text-gray-400 text-sm">
-                                                Pour : {proposal.game_name}
+                                                {t('proposalForm.forGame')}: {proposal.game_name}
                                             </p>
                                             {proposal.description && (
                                                 <p className="text-gray-500 text-sm mt-1">
@@ -265,7 +267,7 @@ export default function ProposalForm() {
                                             )}
                                             {proposal.status === 'REJECTED' && proposal.rejection_reason && (
                                                 <p className="text-red-400 text-sm mt-2">
-                                                    Raison : {proposal.rejection_reason}
+                                                    {t('proposalForm.rejectionReason')}: {proposal.rejection_reason}
                                                 </p>
                                             )}
                                         </div>
@@ -281,7 +283,7 @@ export default function ProposalForm() {
             {proposals.length === 0 && !showForm && (
                 <div className="text-center py-8 text-gray-400">
                     <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Vous n'avez pas encore fait de proposition</p>
+                    <p>{t('proposalForm.empty')}</p>
                 </div>
             )}
         </div>

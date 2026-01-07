@@ -5,9 +5,11 @@ import {
     AlertTriangle, Gift, ShoppingBag, Loader2
 } from 'lucide-react'
 import { bundlesAPI, modelsAPI } from '../services/api.js'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function BundleManager() {
+    const { t } = useTranslation()
     const [bundles, setBundles] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -40,7 +42,7 @@ export default function BundleManager() {
             setBundles(data.bundles || [])
         } catch (error) {
             console.error('Failed to load bundles:', error)
-            toast.error('Erreur lors du chargement des bundles')
+            toast.error(t('bundles.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -92,7 +94,7 @@ export default function BundleManager() {
         e.preventDefault()
 
         if (formData.product_ids.length < 2) {
-            toast.error('Sélectionnez au moins 2 produits')
+            toast.error(t('bundles.errors.minProducts'))
             return
         }
 
@@ -108,7 +110,7 @@ export default function BundleManager() {
         }
 
         if (finalPrice < 5) {
-            toast.error(`Le prix final (${finalPrice.toFixed(2)}€) est inférieur au minimum de 5€`)
+            toast.error(t('bundles.errors.minPrice', { price: finalPrice.toFixed(2) }))
             return
         }
 
@@ -116,39 +118,39 @@ export default function BundleManager() {
         try {
             if (editingBundle) {
                 await bundlesAPI.update(editingBundle.id, formData)
-                toast.success('Bundle modifié')
+                toast.success(t('bundles.success.updated'))
             } else {
                 await bundlesAPI.create(formData)
-                toast.success('Bundle créé')
+                toast.success(t('bundles.success.created'))
             }
             setShowModal(false)
             loadBundles()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('bundles.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (bundleId) => {
-        if (!confirm('Supprimer ce bundle ?')) return
+        if (!confirm(t('bundles.confirmDelete'))) return
 
         try {
             await bundlesAPI.delete(bundleId)
-            toast.success('Bundle supprimé')
+            toast.success(t('bundles.success.deleted'))
             loadBundles()
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('bundles.errors.deleteFailed'))
         }
     }
 
     const handleToggleActive = async (bundle) => {
         try {
             await bundlesAPI.update(bundle.id, { is_active: !bundle.is_active })
-            toast.success(bundle.is_active ? 'Bundle désactivé' : 'Bundle activé')
+            toast.success(bundle.is_active ? t('bundles.success.deactivated') : t('bundles.success.activated'))
             loadBundles()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('bundles.errors.generic'))
         }
     }
 
@@ -202,15 +204,15 @@ export default function BundleManager() {
                 <div>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <Gift className="w-6 h-6 text-hyt-accent" />
-                        Mes Bundles
+                        {t('bundles.title')}
                     </h2>
                     <p className="text-gray-400 text-sm mt-1">
-                        Créez des offres groupées pour augmenter vos ventes
+                        {t('bundles.subtitle')}
                     </p>
                 </div>
                 <button onClick={openCreateModal} className="btn-primary flex items-center gap-2">
                     <Plus className="w-5 h-5" />
-                    Créer un bundle
+                    {t('bundles.createBundle')}
                 </button>
             </div>
 
@@ -218,12 +220,12 @@ export default function BundleManager() {
             {bundles.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Gift className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-white mb-2">Aucun bundle</h3>
+                    <h3 className="text-xl font-semibold text-white mb-2">{t('bundles.empty.title')}</h3>
                     <p className="text-gray-400 mb-6">
-                        Créez votre premier bundle pour proposer des offres groupées à vos clients
+                        {t('bundles.empty.description')}
                     </p>
                     <button onClick={openCreateModal} className="btn-primary">
-                        Créer mon premier bundle
+                        {t('bundles.empty.cta')}
                     </button>
                 </div>
             ) : (
@@ -236,11 +238,11 @@ export default function BundleManager() {
                                         <h3 className="text-lg font-semibold text-white">{bundle.title}</h3>
                                         {bundle.is_active ? (
                                             <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
-                                                Actif
+                                                {t('bundles.status.active')}
                                             </span>
                                         ) : (
                                             <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded-full">
-                                                Inactif
+                                                {t('bundles.status.inactive')}
                                             </span>
                                         )}
                                     </div>
@@ -283,7 +285,7 @@ export default function BundleManager() {
                                             }
                                         </div>
                                         <div className="text-sm text-gray-500">
-                                            {bundle.item_count} produits • {bundle.sales_count || 0} ventes
+                                            {t('bundles.stats', { products: bundle.item_count, sales: bundle.sales_count || 0 })}
                                         </div>
                                     </div>
                                 </div>
@@ -293,21 +295,21 @@ export default function BundleManager() {
                                     <button
                                         onClick={() => handleToggleActive(bundle)}
                                         className="p-2 text-gray-400 hover:text-white transition-colors"
-                                        title={bundle.is_active ? 'Désactiver' : 'Activer'}
+                                        title={bundle.is_active ? t('bundles.actions.deactivate') : t('bundles.actions.activate')}
                                     >
                                         {bundle.is_active ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                     <button
                                         onClick={() => openEditModal(bundle)}
                                         className="p-2 text-gray-400 hover:text-hyt-accent transition-colors"
-                                        title="Modifier"
+                                        title={t('bundles.actions.edit')}
                                     >
                                         <Edit2 className="w-5 h-5" />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(bundle.id)}
                                         className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                        title="Supprimer"
+                                        title={t('bundles.actions.delete')}
                                     >
                                         <Trash2 className="w-5 h-5" />
                                     </button>
@@ -324,7 +326,7 @@ export default function BundleManager() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b border-hyt-border">
                             <h3 className="text-xl font-bold text-white">
-                                {editingBundle ? 'Modifier le bundle' : 'Créer un bundle'}
+                                {editingBundle ? t('bundles.modal.editTitle') : t('bundles.modal.createTitle')}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
                                 <X className="w-6 h-6" />
@@ -335,13 +337,13 @@ export default function BundleManager() {
                             {/* Titre */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Titre du bundle *
+                                    {t('bundles.form.titleLabel')} *
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                    placeholder="Ex: Pack Complet Véhicules"
+                                    placeholder={t('bundles.form.titlePlaceholder')}
                                     className="input-field w-full"
                                     required
                                 />
@@ -350,12 +352,12 @@ export default function BundleManager() {
                             {/* Description */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Description
+                                    {t('bundles.form.descriptionLabel')}
                                 </label>
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="Décrivez votre bundle..."
+                                    placeholder={t('bundles.form.descriptionPlaceholder')}
                                     className="input-field w-full resize-none"
                                     rows={3}
                                 />
@@ -365,7 +367,7 @@ export default function BundleManager() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">
-                                        Type de remise *
+                                        {t('bundles.form.discountTypeLabel')} *
                                     </label>
                                     <div className="flex gap-2">
                                         <button
@@ -378,7 +380,7 @@ export default function BundleManager() {
                                             }`}
                                         >
                                             <Percent className="w-5 h-5" />
-                                            Pourcentage
+                                            {t('bundles.form.discountPercent')}
                                         </button>
                                         <button
                                             type="button"
@@ -390,14 +392,14 @@ export default function BundleManager() {
                                             }`}
                                         >
                                             <DollarSign className="w-5 h-5" />
-                                            Montant fixe
+                                            {t('bundles.form.discountFixed')}
                                         </button>
                                     </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">
-                                        Valeur de la remise *
+                                        {t('bundles.form.discountValueLabel')} *
                                     </label>
                                     <div className="relative">
                                         <input
@@ -420,7 +422,7 @@ export default function BundleManager() {
                             {/* Sélection des produits */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Produits inclus * (minimum 2)
+                                    {t('bundles.form.productsLabel')} *
                                 </label>
 
                                 <div className="relative mb-3">
@@ -429,7 +431,7 @@ export default function BundleManager() {
                                         type="text"
                                         value={productSearch}
                                         onChange={(e) => setProductSearch(e.target.value)}
-                                        placeholder="Rechercher un produit..."
+                                        placeholder={t('bundles.form.searchPlaceholder')}
                                         className="input-field w-full pl-10"
                                     />
                                 </div>
@@ -441,7 +443,7 @@ export default function BundleManager() {
                                         </div>
                                     ) : filteredProducts.length === 0 ? (
                                         <div className="p-4 text-center text-gray-500">
-                                            Aucun produit approuvé trouvé
+                                            {t('bundles.form.noProducts')}
                                         </div>
                                     ) : (
                                         filteredProducts.map(product => (
@@ -483,7 +485,7 @@ export default function BundleManager() {
                                 </div>
 
                                 <p className="text-sm text-gray-500 mt-2">
-                                    {formData.product_ids.length} produit(s) sélectionné(s)
+                                    {t('bundles.form.selectedCount', { count: formData.product_ids.length })}
                                 </p>
                             </div>
 
@@ -492,15 +494,15 @@ export default function BundleManager() {
                                 <div className={`p-4 rounded-lg border ${prices.isValid ? 'border-green-500/30 bg-green-500/10' : 'border-red-500/30 bg-red-500/10'}`}>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-gray-400 text-sm">Prix original</p>
+                                            <p className="text-gray-400 text-sm">{t('bundles.preview.originalPrice')}</p>
                                             <p className="text-lg text-white line-through">{prices.original.toFixed(2)}€</p>
                                         </div>
                                         <div>
-                                            <p className="text-gray-400 text-sm">Économie</p>
+                                            <p className="text-gray-400 text-sm">{t('bundles.preview.savings')}</p>
                                             <p className="text-lg text-green-400">-{prices.savings.toFixed(2)}€</p>
                                         </div>
                                         <div>
-                                            <p className="text-gray-400 text-sm">Prix final</p>
+                                            <p className="text-gray-400 text-sm">{t('bundles.preview.finalPrice')}</p>
                                             <p className={`text-2xl font-bold ${prices.isValid ? 'text-hyt-accent' : 'text-red-500'}`}>
                                                 {prices.final.toFixed(2)}€
                                             </p>
@@ -510,7 +512,7 @@ export default function BundleManager() {
                                     {!prices.isValid && (
                                         <div className="flex items-center gap-2 mt-3 text-red-400 text-sm">
                                             <AlertTriangle className="w-4 h-4" />
-                                            Le prix minimum est de 5€. Réduisez la remise.
+                                            {t('bundles.preview.minPriceWarning')}
                                         </div>
                                     )}
                                 </div>
@@ -521,7 +523,7 @@ export default function BundleManager() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">
                                         <Calendar className="w-4 h-4 inline mr-1" />
-                                        Date de début (optionnel)
+                                        {t('bundles.form.startDate')}
                                     </label>
                                     <input
                                         type="date"
@@ -533,7 +535,7 @@ export default function BundleManager() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">
                                         <Calendar className="w-4 h-4 inline mr-1" />
-                                        Date de fin (optionnel)
+                                        {t('bundles.form.endDate')}
                                     </label>
                                     <input
                                         type="date"
@@ -551,7 +553,7 @@ export default function BundleManager() {
                                     onClick={() => setShowModal(false)}
                                     className="btn-secondary flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -563,7 +565,7 @@ export default function BundleManager() {
                                     ) : (
                                         <>
                                             <Gift className="w-5 h-5" />
-                                            {editingBundle ? 'Modifier' : 'Créer le bundle'}
+                                            {editingBundle ? t('bundles.form.update') : t('bundles.form.create')}
                                         </>
                                     )}
                                 </button>

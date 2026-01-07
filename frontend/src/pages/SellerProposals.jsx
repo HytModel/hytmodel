@@ -6,21 +6,17 @@ import {
     Send, AlertCircle, ChevronDown
 } from 'lucide-react'
 import { proposalsAPI, gamesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
-
-// Types de proposition
-const PROPOSAL_TYPES = [
-    { value: 'CATEGORY', label: 'Catégorie', icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/20', description: 'Une nouvelle catégorie de produits' },
-    { value: 'TAG', label: 'Tag', icon: Tag, color: 'text-green-500', bg: 'bg-green-500/20', description: 'Un tag pour filtrer les produits', needsGame: true },
-    { value: 'VERSION', label: 'Version', icon: Package, color: 'text-purple-500', bg: 'bg-purple-500/20', description: 'Une version/framework de jeu', needsGame: true }
-]
 
 // Badge de statut
 function StatusBadge({ status }) {
+    const { t } = useTranslation()
+
     const config = {
-        PENDING: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/20', label: 'En attente' },
-        APPROVED: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/20', label: 'Approuvée' },
-        REJECTED: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/20', label: 'Refusée' }
+        PENDING: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/20', label: t('sellerProposals.status.pending') },
+        APPROVED: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/20', label: t('sellerProposals.status.approved') },
+        REJECTED: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/20', label: t('sellerProposals.status.rejected') }
     }
     const { icon: Icon, color, bg, label } = config[status] || config.PENDING
 
@@ -34,25 +30,32 @@ function StatusBadge({ status }) {
 
 // Modal de création
 function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
+    const { t } = useTranslation()
     const [type, setType] = useState('')
     const [gameId, setGameId] = useState('')
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [loading, setLoading] = useState(false)
 
-    const selectedType = PROPOSAL_TYPES.find(t => t.value === type)
+    const PROPOSAL_TYPES = [
+        { value: 'CATEGORY', label: t('sellerProposals.types.category'), icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/20', description: t('sellerProposals.types.categoryDesc') },
+        { value: 'TAG', label: t('sellerProposals.types.tag'), icon: Tag, color: 'text-green-500', bg: 'bg-green-500/20', description: t('sellerProposals.types.tagDesc'), needsGame: true },
+        { value: 'VERSION', label: t('sellerProposals.types.version'), icon: Package, color: 'text-purple-500', bg: 'bg-purple-500/20', description: t('sellerProposals.types.versionDesc'), needsGame: true }
+    ]
+
+    const selectedType = PROPOSAL_TYPES.find(pt => pt.value === type)
     const needsGame = selectedType?.needsGame
 
     const handleSubmit = async (e) => {
         e.preventDefault()
 
         if (!type || !name.trim()) {
-            toast.error('Veuillez remplir tous les champs obligatoires')
+            toast.error(t('sellerProposals.errors.fillRequired'))
             return
         }
 
         if (needsGame && !gameId) {
-            toast.error('Veuillez sélectionner un jeu')
+            toast.error(t('sellerProposals.errors.selectGame'))
             return
         }
 
@@ -64,7 +67,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                 name: name.trim(),
                 description: description.trim() || null
             })
-            toast.success('Proposition envoyée !')
+            toast.success(t('sellerProposals.success.sent'))
             onCreated()
             onClose()
             // Reset form
@@ -73,7 +76,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
             setName('')
             setDescription('')
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'envoi')
+            toast.error(error.response?.data?.error || t('sellerProposals.errors.sendFailed'))
         } finally {
             setLoading(false)
         }
@@ -92,7 +95,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Lightbulb className="w-6 h-6 text-yellow-500" />
-                        Proposer un ajout
+                        {t('sellerProposals.modal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -103,26 +106,26 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                     {/* Type de proposition */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Type de proposition *
+                            {t('sellerProposals.modal.proposalType')} *
                         </label>
                         <div className="grid grid-cols-3 gap-2">
-                            {PROPOSAL_TYPES.map((t) => (
+                            {PROPOSAL_TYPES.map((propType) => (
                                 <button
-                                    key={t.value}
+                                    key={propType.value}
                                     type="button"
                                     onClick={() => {
-                                        setType(t.value)
-                                        if (!t.needsGame) setGameId('')
+                                        setType(propType.value)
+                                        if (!propType.needsGame) setGameId('')
                                     }}
                                     className={`p-3 rounded-lg border transition-all ${
-                                        type === t.value
-                                            ? `${t.bg} border-current ${t.color}`
+                                        type === propType.value
+                                            ? `${propType.bg} border-current ${propType.color}`
                                             : 'border-hyt-border hover:border-gray-500'
                                     }`}
                                 >
-                                    <t.icon className={`w-5 h-5 mx-auto mb-1 ${type === t.value ? t.color : 'text-gray-400'}`} />
-                                    <span className={`text-sm ${type === t.value ? 'text-white' : 'text-gray-400'}`}>
-                                        {t.label}
+                                    <propType.icon className={`w-5 h-5 mx-auto mb-1 ${type === propType.value ? propType.color : 'text-gray-400'}`} />
+                                    <span className={`text-sm ${type === propType.value ? 'text-white' : 'text-gray-400'}`}>
+                                        {propType.label}
                                     </span>
                                 </button>
                             ))}
@@ -137,7 +140,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
                                 <Gamepad2 className="w-4 h-4 inline mr-1" />
-                                Jeu concerné *
+                                {t('sellerProposals.modal.game')} *
                             </label>
                             <select
                                 value={gameId}
@@ -145,7 +148,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                                 className="input-field w-full"
                                 required
                             >
-                                <option value="">Sélectionner un jeu...</option>
+                                <option value="">{t('sellerProposals.modal.selectGame')}</option>
                                 {games.map(game => (
                                     <option key={game.id} value={game.id}>{game.name}</option>
                                 ))}
@@ -156,17 +159,17 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                     {/* Nom */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Nom proposé *
+                            {t('sellerProposals.modal.proposedName')} *
                         </label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder={
-                                type === 'CATEGORY' ? 'Ex: Intérieurs, Accessoires...' :
-                                    type === 'TAG' ? 'Ex: Drift, Tuning, Luxe...' :
-                                        type === 'VERSION' ? 'Ex: ox_inventory, ESX Legacy...' :
-                                            'Entrez un nom...'
+                                type === 'CATEGORY' ? t('sellerProposals.modal.placeholders.category') :
+                                    type === 'TAG' ? t('sellerProposals.modal.placeholders.tag') :
+                                        type === 'VERSION' ? t('sellerProposals.modal.placeholders.version') :
+                                            t('sellerProposals.modal.placeholders.default')
                             }
                             className="input-field w-full"
                             required
@@ -177,17 +180,17 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                     {/* Description */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Justification (optionnel)
+                            {t('sellerProposals.modal.justification')} ({t('common.optional')})
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Expliquez pourquoi cet ajout serait utile..."
+                            placeholder={t('sellerProposals.modal.justificationPlaceholder')}
                             rows={3}
                             className="input-field w-full resize-none"
                             maxLength={500}
                         />
-                        <p className="text-xs text-gray-500 mt-1">{description.length}/500 caractères</p>
+                        <p className="text-xs text-gray-500 mt-1">{description.length}/500 {t('sellerProposals.modal.characters')}</p>
                     </div>
 
                     {/* Info */}
@@ -195,7 +198,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                         <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
                             <p className="text-blue-400 text-sm">
-                                Votre proposition sera examinée par notre équipe. Vous serez notifié de la décision.
+                                {t('sellerProposals.modal.info')}
                             </p>
                         </div>
                     </div>
@@ -207,7 +210,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                             onClick={onClose}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -219,7 +222,7 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
                             ) : (
                                 <Send className="w-4 h-4" />
                             )}
-                            Envoyer
+                            {t('sellerProposals.modal.send')}
                         </button>
                     </div>
                 </form>
@@ -230,12 +233,19 @@ function CreateProposalModal({ isOpen, onClose, onCreated, games }) {
 
 // Composant principal
 export default function SellerProposals() {
+    const { t } = useTranslation()
     const [proposals, setProposals] = useState([])
     const [games, setGames] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
-    const [filter, setFilter] = useState('all') // all, PENDING, APPROVED, REJECTED
+    const [filter, setFilter] = useState('all')
     const [deleting, setDeleting] = useState(null)
+
+    const PROPOSAL_TYPES = [
+        { value: 'CATEGORY', label: t('sellerProposals.types.category'), icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/20' },
+        { value: 'TAG', label: t('sellerProposals.types.tag'), icon: Tag, color: 'text-green-500', bg: 'bg-green-500/20' },
+        { value: 'VERSION', label: t('sellerProposals.types.version'), icon: Package, color: 'text-purple-500', bg: 'bg-purple-500/20' }
+    ]
 
     useEffect(() => {
         loadData()
@@ -258,15 +268,15 @@ export default function SellerProposals() {
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Supprimer cette proposition ?')) return
+        if (!confirm(t('sellerProposals.confirmDelete'))) return
 
         setDeleting(id)
         try {
             await proposalsAPI.delete(id)
-            toast.success('Proposition supprimée')
+            toast.success(t('sellerProposals.success.deleted'))
             loadData()
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('sellerProposals.errors.deleteFailed'))
         } finally {
             setDeleting(null)
         }
@@ -298,10 +308,10 @@ export default function SellerProposals() {
                 <div>
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Lightbulb className="w-6 h-6 text-yellow-500" />
-                        Mes propositions
+                        {t('sellerProposals.title')}
                     </h2>
                     <p className="text-gray-400 text-sm">
-                        Proposez de nouvelles catégories, tags ou versions
+                        {t('sellerProposals.subtitle')}
                     </p>
                 </div>
                 <button
@@ -309,7 +319,7 @@ export default function SellerProposals() {
                     className="btn-primary flex items-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
-                    Nouvelle proposition
+                    {t('sellerProposals.newProposal')}
                 </button>
             </div>
 
@@ -317,30 +327,30 @@ export default function SellerProposals() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-hyt-card border border-hyt-border rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-white">{stats.total}</p>
-                    <p className="text-gray-400 text-sm">Total</p>
+                    <p className="text-gray-400 text-sm">{t('sellerProposals.stats.total')}</p>
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
-                    <p className="text-yellow-500/70 text-sm">En attente</p>
+                    <p className="text-yellow-500/70 text-sm">{t('sellerProposals.stats.pending')}</p>
                 </div>
                 <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-green-500">{stats.approved}</p>
-                    <p className="text-green-500/70 text-sm">Approuvées</p>
+                    <p className="text-green-500/70 text-sm">{t('sellerProposals.stats.approved')}</p>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-red-500">{stats.rejected}</p>
-                    <p className="text-red-500/70 text-sm">Refusées</p>
+                    <p className="text-red-500/70 text-sm">{t('sellerProposals.stats.rejected')}</p>
                 </div>
             </div>
 
             {/* Filtres */}
             <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-sm">Filtrer:</span>
+                <span className="text-gray-400 text-sm">{t('sellerProposals.filter')}:</span>
                 {[
-                    { value: 'all', label: 'Toutes' },
-                    { value: 'PENDING', label: 'En attente' },
-                    { value: 'APPROVED', label: 'Approuvées' },
-                    { value: 'REJECTED', label: 'Refusées' }
+                    { value: 'all', label: t('sellerProposals.filters.all') },
+                    { value: 'PENDING', label: t('sellerProposals.filters.pending') },
+                    { value: 'APPROVED', label: t('sellerProposals.filters.approved') },
+                    { value: 'REJECTED', label: t('sellerProposals.filters.rejected') }
                 ].map(f => (
                     <button
                         key={f.value}
@@ -361,10 +371,10 @@ export default function SellerProposals() {
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Lightbulb className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                     <p className="text-white font-medium">
-                        {filter === 'all' ? 'Aucune proposition' : 'Aucune proposition avec ce statut'}
+                        {filter === 'all' ? t('sellerProposals.empty.title') : t('sellerProposals.empty.noStatus')}
                     </p>
                     <p className="text-gray-400 text-sm mt-1">
-                        {filter === 'all' && 'Proposez de nouvelles catégories, tags ou versions pour enrichir la plateforme !'}
+                        {filter === 'all' && t('sellerProposals.empty.description')}
                     </p>
                     {filter === 'all' && (
                         <button
@@ -372,7 +382,7 @@ export default function SellerProposals() {
                             className="btn-primary mt-4"
                         >
                             <Plus className="w-4 h-4 inline mr-2" />
-                            Faire une proposition
+                            {t('sellerProposals.empty.makeProposal')}
                         </button>
                     )}
                 </div>
@@ -380,7 +390,7 @@ export default function SellerProposals() {
                 <div className="space-y-3">
                     <AnimatePresence>
                         {filteredProposals.map((proposal) => {
-                            const typeConfig = PROPOSAL_TYPES.find(t => t.value === proposal.proposal_type)
+                            const typeConfig = PROPOSAL_TYPES.find(pt => pt.value === proposal.proposal_type)
                             const TypeIcon = typeConfig?.icon || Tag
 
                             return (
@@ -425,13 +435,13 @@ export default function SellerProposals() {
                                             {proposal.rejection_reason && (
                                                 <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
                                                     <p className="text-red-400 text-sm">
-                                                        <strong>Raison du refus:</strong> {proposal.rejection_reason}
+                                                        <strong>{t('sellerProposals.rejectionReason')}:</strong> {proposal.rejection_reason}
                                                     </p>
                                                 </div>
                                             )}
 
                                             <p className="text-gray-500 text-xs mt-2">
-                                                Proposé le {new Date(proposal.created_at).toLocaleDateString('fr-FR', {
+                                                {t('sellerProposals.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR', {
                                                 day: 'numeric',
                                                 month: 'long',
                                                 year: 'numeric'
@@ -445,7 +455,7 @@ export default function SellerProposals() {
                                                 onClick={() => handleDelete(proposal.id)}
                                                 disabled={deleting === proposal.id}
                                                 className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                title="Supprimer"
+                                                title={t('common.delete')}
                                             >
                                                 {deleting === proposal.id ? (
                                                     <Loader2 className="w-4 h-4 animate-spin" />

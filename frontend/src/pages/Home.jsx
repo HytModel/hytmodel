@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Sparkles, Shield, Zap, Users, TrendingUp, Box, Gamepad2, ChevronRight } from 'lucide-react'
 import { modelsAPI, gamesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import ModelCard from '../components/ModelCard'
 import Loading from '../components/Loading'
 
@@ -13,6 +14,7 @@ const getImageUrl = (url) => {
 }
 
 export default function Home() {
+    const { t } = useTranslation()
     const [models, setModels] = useState([])
     const [games, setGames] = useState([])
     const [loading, setLoading] = useState(true)
@@ -45,31 +47,31 @@ export default function Home() {
     const features = [
         {
             icon: Shield,
-            title: 'Qualité vérifiée',
-            description: 'Chaque produit est vérifié par notre équipe avant publication.'
+            title: t('home.features.quality.title'),
+            description: t('home.features.quality.description')
         },
         {
             icon: Zap,
-            title: 'Téléchargement instantané',
-            description: 'Accédez à vos achats immédiatement après paiement.'
+            title: t('home.features.instant.title'),
+            description: t('home.features.instant.description')
         },
         {
             icon: Users,
-            title: 'Communauté active',
-            description: 'Rejoignez des milliers de créateurs et acheteurs.'
+            title: t('home.features.community.title'),
+            description: t('home.features.community.description')
         },
         {
             icon: TrendingUp,
-            title: 'Revenus justes',
-            description: 'Les créateurs gardent jusqu\'à 90% des ventes.'
+            title: t('home.features.revenue.title'),
+            description: t('home.features.revenue.description')
         }
     ]
 
     const stats = [
-        { value: '10K+', label: 'Produits' },
-        { value: '5K+', label: 'Créateurs' },
-        { value: '50K+', label: 'Ventes' },
-        { value: '4.9', label: 'Note moyenne' }
+        { value: '10K+', label: t('home.stats.products') },
+        { value: '5K+', label: t('home.stats.creators') },
+        { value: '50K+', label: t('home.stats.sales') },
+        { value: '4.9', label: t('home.stats.rating') }
     ]
 
     return (
@@ -86,27 +88,26 @@ export default function Home() {
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-hyt-card border border-hyt-border">
                         <Sparkles className="w-4 h-4 text-hyt-accent" />
-                        <span className="text-sm text-gray-400">La marketplace gaming de référence</span>
+                        <span className="text-sm text-gray-400">{t('home.hero.badge')}</span>
                     </div>
 
                     <h1 className="font-display text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-                        Trouvez le produit
+                        {t('home.hero.title')}
                         <br />
-                        <span className="gradient-text">parfait pour votre projet</span>
+                        <span className="gradient-text">{t('home.hero.titleHighlight')}</span>
                     </h1>
 
                     <p className="max-w-2xl mx-auto text-xl text-gray-400 mb-10">
-                        Des milliers de ressources premium créées par des artistes talentueux.
-                        Modèles 3D, textures, plugins, maps et plus encore.
+                        {t('home.hero.description')}
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/models" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
-                            Explorer les produits
+                            {t('home.hero.exploreButton')}
                             <ArrowRight className="w-5 h-5" />
                         </Link>
                         <Link to="/become-creator" className="btn-secondary text-lg px-8 py-4">
-                            Devenir créateur
+                            {t('home.hero.creatorButton')}
                         </Link>
                     </div>
 
@@ -131,12 +132,12 @@ export default function Home() {
                         <div className="flex items-center justify-between mb-10">
                             <div>
                                 <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">
-                                    Nos univers de jeux
+                                    {t('home.games.title')}
                                 </h2>
-                                <p className="text-gray-400">Explorez les produits par jeu</p>
+                                <p className="text-gray-400">{t('home.games.subtitle')}</p>
                             </div>
                             <Link to="/models" className="btn-ghost flex items-center gap-2">
-                                Voir tous les produits
+                                {t('home.games.viewAll')}
                                 <ArrowRight className="w-4 h-4" />
                             </Link>
                         </div>
@@ -188,7 +189,7 @@ export default function Home() {
                                                     {game.name}
                                                 </h3>
                                                 <p className="text-gray-400 text-sm flex items-center gap-1">
-                                                    Explorer les produits
+                                                    {t('home.games.explore')}
                                                     <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                                 </p>
                                             </div>
@@ -207,12 +208,12 @@ export default function Home() {
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">
-                                Produits populaires
+                                {t('home.popular.title')}
                             </h2>
-                            <p className="text-gray-400">Découvrez les créations les plus appréciées</p>
+                            <p className="text-gray-400">{t('home.popular.subtitle')}</p>
                         </div>
                         <Link to="/models" className="btn-ghost flex items-center gap-2">
-                            Voir tout
+                            {t('home.popular.viewAll')}
                             <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>
@@ -228,7 +229,7 @@ export default function Home() {
                     ) : (
                         <div className="text-center py-12">
                             <Box className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-                            <p className="text-gray-400">Aucun produit disponible pour le moment</p>
+                            <p className="text-gray-400">{t('home.popular.empty')}</p>
                         </div>
                     )}
                 </div>
@@ -239,10 +240,10 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
                         <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-                            Pourquoi choisir HytModel ?
+                            {t('home.whyUs.title')}
                         </h2>
                         <p className="text-gray-400 max-w-2xl mx-auto">
-                            Une plateforme pensée pour les créateurs et les acheteurs
+                            {t('home.whyUs.subtitle')}
                         </p>
                     </div>
 
@@ -267,17 +268,17 @@ export default function Home() {
             <section className="py-20">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-6">
-                        Prêt à commencer ?
+                        {t('home.cta.title')}
                     </h2>
                     <p className="text-xl text-gray-400 mb-8">
-                        Rejoignez notre communauté de créateurs et d'acheteurs dès aujourd'hui.
+                        {t('home.cta.description')}
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link to="/register" className="btn-primary text-lg px-8 py-4">
-                            Créer un compte gratuit
+                            {t('home.cta.registerButton')}
                         </Link>
                         <Link to="/models" className="btn-ghost text-lg px-8 py-4">
-                            Explorer sans compte
+                            {t('home.cta.exploreButton')}
                         </Link>
                     </div>
                 </div>

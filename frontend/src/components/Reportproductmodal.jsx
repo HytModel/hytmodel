@@ -1,29 +1,31 @@
 import React, { useState } from 'react'
 import { AlertTriangle, X, Loader2, Bug, AlertCircle, Copyright, Ban, HelpCircle, FileText } from 'lucide-react'
 import { feedbackAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
-// Raisons disponibles AVANT achat (éléments visibles)
-const PRE_PURCHASE_REASONS = [
-    { value: 'COPYRIGHT', label: 'Vol de contenu', icon: Copyright, description: 'Le produit utilise du contenu volé ou protégé' },
-    { value: 'MISLEADING', label: 'Description trompeuse', icon: FileText, description: 'Le titre ou la description est mensonger' },
-    { value: 'INAPPROPRIATE', label: 'Contenu inapproprié', icon: Ban, description: 'Images ou texte offensant/inapproprié' },
-]
-
-// Raisons disponibles APRÈS achat (éléments téléchargés)
-const POST_PURCHASE_REASONS = [
-    { value: 'BUG', label: 'Bug / Erreur technique', icon: Bug, description: 'Le produit ne fonctionne pas correctement' },
-    { value: 'ERROR', label: 'Fichiers manquants / corrompus', icon: AlertCircle, description: 'Des fichiers sont absents ou endommagés' },
-    { value: 'MISLEADING', label: 'Description trompeuse', icon: FileText, description: 'Le produit ne correspond pas à la description' },
-    { value: 'COPYRIGHT', label: 'Vol de contenu', icon: Copyright, description: 'Le produit utilise du contenu volé ou protégé' },
-    { value: 'INAPPROPRIATE', label: 'Contenu inapproprié', icon: Ban, description: 'Le produit contient du contenu offensant' },
-    { value: 'OTHER', label: 'Autre raison', icon: HelpCircle, description: 'Précisez dans la description' },
-]
-
 export default function ReportProductModal({ isOpen, onClose, modelId, modelTitle, hasPurchased = false }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [description, setDescription] = useState('')
     const [submitting, setSubmitting] = useState(false)
+
+    // Raisons disponibles AVANT achat (éléments visibles)
+    const PRE_PURCHASE_REASONS = [
+        { value: 'COPYRIGHT', label: t('report.reasons.copyright'), icon: Copyright, description: t('report.reasons.copyrightDesc') },
+        { value: 'MISLEADING', label: t('report.reasons.misleading'), icon: FileText, description: t('report.reasons.misleadingDesc') },
+        { value: 'INAPPROPRIATE', label: t('report.reasons.inappropriate'), icon: Ban, description: t('report.reasons.inappropriateDesc') },
+    ]
+
+    // Raisons disponibles APRÈS achat (éléments téléchargés)
+    const POST_PURCHASE_REASONS = [
+        { value: 'BUG', label: t('report.reasons.bug'), icon: Bug, description: t('report.reasons.bugDesc') },
+        { value: 'ERROR', label: t('report.reasons.error'), icon: AlertCircle, description: t('report.reasons.errorDesc') },
+        { value: 'MISLEADING', label: t('report.reasons.misleading'), icon: FileText, description: t('report.reasons.misleadingDescPost') },
+        { value: 'COPYRIGHT', label: t('report.reasons.copyright'), icon: Copyright, description: t('report.reasons.copyrightDescPost') },
+        { value: 'INAPPROPRIATE', label: t('report.reasons.inappropriate'), icon: Ban, description: t('report.reasons.inappropriateDescPost') },
+        { value: 'OTHER', label: t('report.reasons.other'), icon: HelpCircle, description: t('report.reasons.otherDesc') },
+    ]
 
     // Sélectionner les raisons selon si l'utilisateur a acheté ou non
     const availableReasons = hasPurchased ? POST_PURCHASE_REASONS : PRE_PURCHASE_REASONS
@@ -32,12 +34,12 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
         e.preventDefault()
 
         if (!reason) {
-            toast.error('Veuillez sélectionner une raison')
+            toast.error(t('report.errors.noReason'))
             return
         }
 
         if ((reason === 'OTHER' || !hasPurchased) && !description.trim()) {
-            toast.error('Veuillez décrire le problème')
+            toast.error(t('report.errors.noDescription'))
             return
         }
 
@@ -48,12 +50,12 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                 reason,
                 description: description.trim() || null
             })
-            toast.success('Signalement envoyé ! Le staff et le vendeur ont été notifiés.')
+            toast.success(t('report.success'))
             onClose()
             setReason('')
             setDescription('')
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors du signalement')
+            toast.error(error.response?.data?.error || t('report.errors.generic'))
         } finally {
             setSubmitting(false)
         }
@@ -71,7 +73,7 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                             <AlertTriangle className="w-5 h-5 text-red-500" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-white">Signaler un problème</h3>
+                            <h3 className="text-lg font-semibold text-white">{t('report.title')}</h3>
                             <p className="text-gray-400 text-sm truncate max-w-[250px]">{modelTitle}</p>
                         </div>
                     </div>
@@ -86,15 +88,14 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                     {!hasPurchased && (
                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                             <p className="text-blue-400">
-                                <strong>Note :</strong> Vous n'avez pas encore acheté ce produit.
-                                Seuls les signalements concernant les éléments visibles sont disponibles.
+                                <strong>{t('report.note')} :</strong> {t('report.notPurchasedInfo')}
                             </p>
                         </div>
                     )}
 
                     {/* Raisons */}
                     <div>
-                        <label className="block text-sm text-gray-400 mb-3">Type de problème *</label>
+                        <label className="block text-sm text-gray-400 mb-3">{t('report.problemType')} *</label>
                         <div className="space-y-2">
                             {availableReasons.map((r) => (
                                 <label
@@ -136,25 +137,24 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                     {/* Description */}
                     <div>
                         <label className="block text-sm text-gray-400 mb-2">
-                            Description du problème {(reason === 'OTHER' || !hasPurchased) ? '*' : '(optionnel)'}
+                            {t('report.descriptionLabel')} {(reason === 'OTHER' || !hasPurchased) ? '*' : t('report.optional')}
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Décrivez le problème en détail..."
+                            placeholder={t('report.descriptionPlaceholder')}
                             className="input-field w-full h-24 resize-none"
                             required={reason === 'OTHER' || !hasPurchased}
                         />
                         <p className="text-gray-500 text-xs mt-1">
-                            Plus vous donnez de détails, plus vite le problème pourra être résolu.
+                            {t('report.descriptionHint')}
                         </p>
                     </div>
 
                     {/* Info */}
                     <div className="bg-hyt-dark rounded-lg p-3 text-sm">
                         <p className="text-gray-400">
-                            <strong className="text-white">Note :</strong> Le vendeur et l'équipe de modération seront
-                            notifiés de votre signalement. Nous vous contacterons si nous avons besoin de plus d'informations.
+                            <strong className="text-white">{t('report.note')} :</strong> {t('report.infoNote')}
                         </p>
                     </div>
                 </form>
@@ -166,7 +166,7 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                         onClick={onClose}
                         className="btn-ghost flex-1"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -178,7 +178,7 @@ export default function ReportProductModal({ isOpen, onClose, modelId, modelTitl
                         ) : (
                             <AlertTriangle className="w-4 h-4" />
                         )}
-                        Envoyer le signalement
+                        {t('report.submit')}
                     </button>
                 </div>
             </div>

@@ -10,6 +10,7 @@ import {
     ArrowUp, ArrowDown, Minus, RefreshCw, Filter, Download, X
 } from 'lucide-react'
 import { adminAPI, gamesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 
 // Couleurs pour les graphiques
 const COLORS = {
@@ -100,6 +101,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // Composant principal
 export default function AdminAnalytics() {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(true)
     const [period, setPeriod] = useState('30')
     const [selectedGame, setSelectedGame] = useState('')
@@ -181,8 +183,8 @@ export default function AdminAnalytics() {
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">Analytics</h2>
-                        <p className="text-gray-400 text-sm">Statistiques détaillées de la plateforme</p>
+                        <h2 className="text-2xl font-bold text-white">{t('analytics.title')}</h2>
+                        <p className="text-gray-400 text-sm">{t('analytics.subtitle')}</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -199,7 +201,7 @@ export default function AdminAnalytics() {
                 <div className="flex flex-wrap items-center gap-3 p-4 bg-hyt-card border border-hyt-border rounded-xl">
                     <div className="flex items-center gap-2 text-gray-400">
                         <Filter className="w-4 h-4" />
-                        <span className="text-sm font-medium">Filtres:</span>
+                        <span className="text-sm font-medium">{t('analytics.filters.label')}:</span>
                     </div>
 
                     <select
@@ -207,10 +209,10 @@ export default function AdminAnalytics() {
                         onChange={(e) => setPeriod(e.target.value)}
                         className="bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm"
                     >
-                        <option value="7">7 derniers jours</option>
-                        <option value="30">30 derniers jours</option>
-                        <option value="90">90 derniers jours</option>
-                        <option value="365">Cette année</option>
+                        <option value="7">{t('analytics.filters.last7days')}</option>
+                        <option value="30">{t('analytics.filters.last30days')}</option>
+                        <option value="90">{t('analytics.filters.last90days')}</option>
+                        <option value="365">{t('analytics.filters.thisYear')}</option>
                     </select>
 
                     <select
@@ -218,7 +220,7 @@ export default function AdminAnalytics() {
                         onChange={(e) => setSelectedGame(e.target.value)}
                         className="bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm min-w-[150px]"
                     >
-                        <option value="">Tous les jeux</option>
+                        <option value="">{t('analytics.filters.allGames')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -230,7 +232,7 @@ export default function AdminAnalytics() {
                             className="flex items-center gap-1 px-3 py-2 bg-hyt-accent/20 text-hyt-accent rounded-lg text-sm hover:bg-hyt-accent/30 transition-colors"
                         >
                             <X className="w-4 h-4" />
-                            Effacer filtre
+                            {t('analytics.filters.clearFilter')}
                         </button>
                     )}
                 </div>
@@ -240,7 +242,7 @@ export default function AdminAnalytics() {
                     <div className="flex items-center gap-2 p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg">
                         <Gamepad2 className="w-5 h-5 text-hyt-accent" />
                         <span className="text-hyt-accent font-medium">
-                            Statistiques filtrées pour : {games.find(g => g.id === selectedGame)?.name || 'Jeu sélectionné'}
+                            {t('analytics.filteredFor')} : {games.find(g => g.id === selectedGame)?.name || t('analytics.selectedGame')}
                         </span>
                     </div>
                 )}
@@ -249,32 +251,32 @@ export default function AdminAnalytics() {
             {/* KPIs Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    title="Revenus totaux"
+                    title={t('analytics.kpis.totalRevenue')}
                     value={`${(overview.totalRevenue / 100 || 0).toFixed(2)} €`}
-                    subtitle={`${overview.totalSales || 0} ventes`}
+                    subtitle={t('analytics.kpis.salesCount', { count: overview.totalSales || 0 })}
                     icon={DollarSign}
                     color="bg-green-500/20 text-green-500"
                     trend={data.trends?.revenue}
                 />
                 <StatCard
-                    title="Panier moyen"
+                    title={t('analytics.kpis.avgCart')}
                     value={`${(overview.avgOrderValue / 100 || 0).toFixed(2)} €`}
-                    subtitle="Par transaction"
+                    subtitle={t('analytics.kpis.perTransaction')}
                     icon={ShoppingCart}
                     color="bg-hyt-accent/20 text-hyt-accent"
                 />
                 <StatCard
-                    title="Vues totales"
+                    title={t('analytics.kpis.totalViews')}
                     value={(overview.totalViews || 0).toLocaleString()}
-                    subtitle={`${(overview.uniqueVisitors || 0).toLocaleString()} visiteurs uniques`}
+                    subtitle={t('analytics.kpis.uniqueVisitors', { count: (overview.uniqueVisitors || 0).toLocaleString() })}
                     icon={Eye}
                     color="bg-purple-500/20 text-purple-500"
                     trend={data.trends?.views}
                 />
                 <StatCard
-                    title="Taux conversion"
+                    title={t('analytics.kpis.conversionRate')}
                     value={`${overview.conversionRate || 0}%`}
-                    subtitle="Visiteurs → Acheteurs"
+                    subtitle={t('analytics.kpis.visitorsToBuyers')}
                     icon={TrendingUp}
                     color="bg-yellow-500/20 text-yellow-500"
                 />
@@ -285,12 +287,12 @@ export default function AdminAnalytics() {
                 <div className="space-y-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Gamepad2 className="w-6 h-6 text-hyt-accent" />
-                        Détails pour {games.find(g => g.id === selectedGame)?.name}
+                        {t('analytics.gameDetails.title')} {games.find(g => g.id === selectedGame)?.name}
                     </h3>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Top Catégories pour ce jeu */}
-                        <ChartCard title="Catégories les plus vendues" subtitle="Pour ce jeu">
+                        <ChartCard title={t('analytics.gameDetails.topCategories')} subtitle={t('analytics.gameDetails.forThisGame')}>
                             {loadingGameDetails ? (
                                 <div className="flex items-center justify-center h-64">
                                     <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -310,7 +312,7 @@ export default function AdminAnalytics() {
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className="text-white font-medium">{cat.name}</span>
-                                                    <span className="text-green-400 text-sm">{cat.sales} ventes</span>
+                                                    <span className="text-green-400 text-sm">{cat.sales} {t('analytics.sales')}</span>
                                                 </div>
                                                 <div className="h-2 bg-hyt-dark rounded-full overflow-hidden">
                                                     <div
@@ -322,14 +324,14 @@ export default function AdminAnalytics() {
                                         </div>
                                     ))}
                                     {(!gameDetails.topCategories || gameDetails.topCategories.length === 0) && (
-                                        <p className="text-gray-400 text-center py-8">Aucune donnée</p>
+                                        <p className="text-gray-400 text-center py-8">{t('analytics.noData')}</p>
                                     )}
                                 </div>
                             )}
                         </ChartCard>
 
                         {/* Top Tags pour ce jeu */}
-                        <ChartCard title="Tags les plus populaires" subtitle="Pour ce jeu">
+                        <ChartCard title={t('analytics.gameDetails.topTags')} subtitle={t('analytics.gameDetails.forThisGame')}>
                             {loadingGameDetails ? (
                                 <div className="flex items-center justify-center h-64">
                                     <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -346,22 +348,22 @@ export default function AdminAnalytics() {
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-white">{tag.name}</span>
                                                     <div className="flex items-center gap-3 text-sm">
-                                                        <span className="text-gray-400">{tag.products} produits</span>
-                                                        <span className="text-green-400">{tag.sales} ventes</span>
+                                                        <span className="text-gray-400">{tag.products} {t('analytics.products')}</span>
+                                                        <span className="text-green-400">{tag.sales} {t('analytics.sales')}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                     {(!gameDetails.topTags || gameDetails.topTags.length === 0) && (
-                                        <p className="text-gray-400 text-center py-8">Aucune donnée</p>
+                                        <p className="text-gray-400 text-center py-8">{t('analytics.noData')}</p>
                                     )}
                                 </div>
                             )}
                         </ChartCard>
 
                         {/* Top Versions pour ce jeu */}
-                        <ChartCard title="Versions les plus vendues" subtitle="Pour ce jeu">
+                        <ChartCard title={t('analytics.gameDetails.topVersions')} subtitle={t('analytics.gameDetails.forThisGame')}>
                             {loadingGameDetails ? (
                                 <div className="flex items-center justify-center h-64">
                                     <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -379,13 +381,13 @@ export default function AdminAnalytics() {
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between text-sm">
-                                                <span className="text-gray-400">{version.products} produits</span>
-                                                <span className="text-green-400">{version.sales} ventes</span>
+                                                <span className="text-gray-400">{version.products} {t('analytics.products')}</span>
+                                                <span className="text-green-400">{version.sales} {t('analytics.sales')}</span>
                                             </div>
                                         </div>
                                     ))}
                                     {(!gameDetails.topVersions || gameDetails.topVersions.length === 0) && (
-                                        <p className="text-gray-400 text-center py-8">Aucune donnée</p>
+                                        <p className="text-gray-400 text-center py-8">{t('analytics.noData')}</p>
                                     )}
                                 </div>
                             )}
@@ -393,7 +395,7 @@ export default function AdminAnalytics() {
                     </div>
 
                     {/* Produits best-sellers pour ce jeu */}
-                    <ChartCard title="Produits best-sellers" subtitle={`Top 10 pour ${games.find(g => g.id === selectedGame)?.name}`}>
+                    <ChartCard title={t('analytics.gameDetails.bestSellers')} subtitle={t('analytics.gameDetails.top10For', { game: games.find(g => g.id === selectedGame)?.name })}>
                         {loadingGameDetails ? (
                             <div className="flex items-center justify-center h-32">
                                 <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -415,13 +417,13 @@ export default function AdminAnalytics() {
                                             <p className="text-gray-400 text-sm">{product.category}</p>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-green-400 font-bold">{product.sales} ventes</p>
+                                            <p className="text-green-400 font-bold">{product.sales} {t('analytics.sales')}</p>
                                             <p className="text-gray-400 text-sm">{(product.revenue / 100).toFixed(2)}€</p>
                                         </div>
                                     </div>
                                 ))}
                                 {(!gameDetails.bestSellers || gameDetails.bestSellers.length === 0) && (
-                                    <p className="text-gray-400 text-center py-8 col-span-2">Aucune donnée</p>
+                                    <p className="text-gray-400 text-center py-8 col-span-2">{t('analytics.noData')}</p>
                                 )}
                             </div>
                         )}
@@ -432,7 +434,7 @@ export default function AdminAnalytics() {
             {/* Graphiques globaux */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Ventes par Jeu - Camembert */}
-                <ChartCard title="Ventes par jeu" subtitle="Répartition des ventes">
+                <ChartCard title={t('analytics.charts.salesByGame')} subtitle={t('analytics.charts.salesDistribution')}>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -477,7 +479,7 @@ export default function AdminAnalytics() {
                 </ChartCard>
 
                 {/* Ventes par Catégorie - Camembert */}
-                <ChartCard title="Ventes par catégorie" subtitle="Répartition par type de produit">
+                <ChartCard title={t('analytics.charts.salesByCategory')} subtitle={t('analytics.charts.byProductType')}>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -516,7 +518,7 @@ export default function AdminAnalytics() {
             </div>
 
             {/* Évolution des ventes */}
-            <ChartCard title="Évolution des ventes" subtitle="Ventes et revenus sur la période">
+            <ChartCard title={t('analytics.charts.salesEvolution')} subtitle={t('analytics.charts.salesAndRevenue')}>
                 <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={data.salesOverTime || []}>
@@ -544,7 +546,7 @@ export default function AdminAnalytics() {
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorVentes)"
-                                name="Ventes"
+                                name={t('analytics.charts.salesLabel')}
                             />
                             <Area
                                 yAxisId="right"
@@ -554,7 +556,7 @@ export default function AdminAnalytics() {
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorRevenus)"
-                                name="Revenus (€)"
+                                name={t('analytics.charts.revenueLabel')}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
@@ -564,7 +566,7 @@ export default function AdminAnalytics() {
             {/* Distribution des prix et Tags */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Distribution des prix */}
-                <ChartCard title="Distribution des prix" subtitle="Répartition des ventes par tranche de prix">
+                <ChartCard title={t('analytics.charts.priceDistribution')} subtitle={t('analytics.charts.salesByPriceRange')}>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={data.priceDistribution || []}>
@@ -572,14 +574,14 @@ export default function AdminAnalytics() {
                                 <XAxis dataKey="range" stroke="#6B7280" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                                 <YAxis stroke="#6B7280" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} />
-                                <Bar dataKey="count" fill={COLORS.primary} radius={[4, 4, 0, 0]} name="Nombre de ventes" />
+                                <Bar dataKey="count" fill={COLORS.primary} radius={[4, 4, 0, 0]} name={t('analytics.charts.salesCount')} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </ChartCard>
 
                 {/* Tags populaires */}
-                <ChartCard title="Tags les plus populaires" subtitle="Tags les plus vendus">
+                <ChartCard title={t('analytics.charts.popularTags')} subtitle={t('analytics.charts.bestSellingTags')}>
                     <div className="space-y-3 max-h-64 overflow-y-auto">
                         {(data.topTags || []).map((tag, index) => (
                             <div key={tag.name} className="flex items-center gap-3">
@@ -617,7 +619,7 @@ export default function AdminAnalytics() {
             {/* Produits les plus vus et Funnel */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Produits les plus vus */}
-                <ChartCard title="Produits les plus consultés" subtitle="Top produits par ventes">
+                <ChartCard title={t('analytics.charts.mostViewedProducts')} subtitle={t('analytics.charts.topProductsBySales')}>
                     <div className="space-y-3">
                         {(data.mostViewedProducts || []).map((product, index) => (
                             <div key={product.name} className="bg-hyt-dark rounded-lg p-3">
@@ -644,11 +646,11 @@ export default function AdminAnalytics() {
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-gray-400">
                                         <Eye className="w-3 h-3 inline mr-1" />
-                                        {(product.views || 0).toLocaleString()} vues
+                                        {(product.views || 0).toLocaleString()} {t('analytics.views')}
                                     </span>
                                     <span className="text-green-400">
                                         <ShoppingCart className="w-3 h-3 inline mr-1" />
-                                        {product.sales} ventes
+                                        {product.sales} {t('analytics.sales')}
                                     </span>
                                 </div>
                             </div>
@@ -657,7 +659,7 @@ export default function AdminAnalytics() {
                 </ChartCard>
 
                 {/* Funnel de conversion */}
-                <ChartCard title="Entonnoir de conversion" subtitle="Parcours utilisateur">
+                <ChartCard title={t('analytics.charts.conversionFunnel')} subtitle={t('analytics.charts.userJourney')}>
                     <div className="flex items-end justify-between gap-2 h-64 px-4">
                         {(data.conversionFunnel || []).map((step, index) => {
                             const maxValue = data.conversionFunnel?.[0]?.value || 1

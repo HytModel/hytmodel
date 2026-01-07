@@ -8,20 +8,12 @@ import {
     ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react'
 import { customOrdersAPI, adminAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
-
-const requestStatusConfig = {
-    PENDING: { label: 'En attente', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
-    APPROVED: { label: 'Approuvée', color: 'bg-blue-500/20 text-blue-400', icon: CheckCircle },
-    ASSIGNED: { label: 'Assignée', color: 'bg-purple-500/20 text-purple-400', icon: Users },
-    IN_PROGRESS: { label: 'En cours', color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
-    COMPLETED: { label: 'Terminée', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
-    CANCELLED: { label: 'Annulée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-    REJECTED: { label: 'Refusée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-}
 
 // Onglet Demandes
 function RequestsTab() {
+    const { t } = useTranslation()
     const [requests, setRequests] = useState([])
     const [loading, setLoading] = useState(true)
     const [statusFilter, setStatusFilter] = useState('PENDING')
@@ -29,6 +21,16 @@ function RequestsTab() {
     const [actionLoading, setActionLoading] = useState(null)
     const [rejectReason, setRejectReason] = useState('')
     const [showRejectModal, setShowRejectModal] = useState(null)
+
+    const requestStatusConfig = {
+        PENDING: { label: t('customOrdersAdmin.status.pending'), color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
+        APPROVED: { label: t('customOrdersAdmin.status.approved'), color: 'bg-blue-500/20 text-blue-400', icon: CheckCircle },
+        ASSIGNED: { label: t('customOrdersAdmin.status.assigned'), color: 'bg-purple-500/20 text-purple-400', icon: Users },
+        IN_PROGRESS: { label: t('customOrdersAdmin.status.inProgress'), color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
+        COMPLETED: { label: t('customOrdersAdmin.status.completed'), color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
+        CANCELLED: { label: t('customOrdersAdmin.status.cancelled'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+        REJECTED: { label: t('customOrdersAdmin.status.rejected'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+    }
 
     useEffect(() => {
         loadRequests()
@@ -41,7 +43,7 @@ function RequestsTab() {
             setRequests(data.requests || [])
         } catch (error) {
             console.error('Failed to load requests:', error)
-            toast.error('Erreur lors du chargement')
+            toast.error(t('customOrdersAdmin.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -51,10 +53,10 @@ function RequestsTab() {
         setActionLoading(id)
         try {
             await customOrdersAPI.approveRequest(id)
-            toast.success('Demande approuvée')
+            toast.success(t('customOrdersAdmin.success.approved'))
             loadRequests()
         } catch (error) {
-            toast.error('Erreur lors de l\'approbation')
+            toast.error(t('customOrdersAdmin.errors.approveFailed'))
         } finally {
             setActionLoading(null)
         }
@@ -62,18 +64,18 @@ function RequestsTab() {
 
     const handleReject = async (id) => {
         if (!rejectReason.trim()) {
-            toast.error('Veuillez entrer une raison')
+            toast.error(t('customOrdersAdmin.errors.reasonRequired'))
             return
         }
         setActionLoading(id)
         try {
             await customOrdersAPI.rejectRequest(id, rejectReason)
-            toast.success('Demande refusée')
+            toast.success(t('customOrdersAdmin.success.rejected'))
             setShowRejectModal(null)
             setRejectReason('')
             loadRequests()
         } catch (error) {
-            toast.error('Erreur lors du refus')
+            toast.error(t('customOrdersAdmin.errors.rejectFailed'))
         } finally {
             setActionLoading(null)
         }
@@ -112,7 +114,7 @@ function RequestsTab() {
                                 : 'bg-hyt-dark text-gray-400 hover:text-white'
                         }`}
                     >
-                        {status === '' ? 'Toutes' : requestStatusConfig[status]?.label || status}
+                        {status === '' ? t('customOrdersAdmin.filters.all') : requestStatusConfig[status]?.label || status}
                     </button>
                 ))}
             </div>
@@ -121,9 +123,11 @@ function RequestsTab() {
             {requests.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <PenTool className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucune demande</p>
+                    <p className="text-white font-medium">{t('customOrdersAdmin.requests.noRequests')}</p>
                     <p className="text-gray-400 text-sm mt-1">
-                        {statusFilter ? `Aucune demande avec le statut "${requestStatusConfig[statusFilter]?.label}"` : 'Aucune demande dans le système'}
+                        {statusFilter
+                            ? t('customOrdersAdmin.requests.noRequestsWithStatus', { status: requestStatusConfig[statusFilter]?.label })
+                            : t('customOrdersAdmin.requests.noRequestsInSystem')}
                     </p>
                 </div>
             ) : (
@@ -145,10 +149,10 @@ function RequestsTab() {
                                             <StatusBadge status={request.status} />
                                         </div>
                                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-                                            <span>Par {request.client_username}</span>
+                                            <span>{t('customOrdersAdmin.requests.by')} {request.client_username}</span>
                                             <span>{request.client_email}</span>
                                             {request.offers_count > 0 && (
-                                                <span className="text-hyt-accent">{request.offers_count} offre(s)</span>
+                                                <span className="text-hyt-accent">{t('customOrdersAdmin.requests.offersCount', { count: request.offers_count })}</span>
                                             )}
                                         </div>
                                     </div>
@@ -165,14 +169,14 @@ function RequestsTab() {
                                                     ) : (
                                                         <CheckCircle className="w-4 h-4" />
                                                     )}
-                                                    Approuver
+                                                    {t('customOrdersAdmin.actions.approve')}
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setShowRejectModal(request.id) }}
                                                     className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                                 >
                                                     <XCircle className="w-4 h-4" />
-                                                    Refuser
+                                                    {t('customOrdersAdmin.actions.reject')}
                                                 </button>
                                             </>
                                         )}
@@ -190,25 +194,25 @@ function RequestsTab() {
                                 <div className="border-t border-hyt-border p-4 bg-hyt-dark/30">
                                     <div className="grid md:grid-cols-2 gap-6">
                                         <div>
-                                            <h4 className="text-sm font-medium text-gray-400 mb-2">Description</h4>
+                                            <h4 className="text-sm font-medium text-gray-400 mb-2">{t('customOrdersAdmin.requests.description')}</h4>
                                             <p className="text-white text-sm whitespace-pre-wrap">{request.description}</p>
                                         </div>
                                         <div className="space-y-3">
                                             {request.game_name && (
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-gray-500">Jeu:</span>
+                                                    <span className="text-gray-500">{t('customOrdersAdmin.requests.game')}:</span>
                                                     <span className="text-white">{request.game_name}</span>
                                                 </div>
                                             )}
                                             {request.category_name && (
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-gray-500">Catégorie:</span>
+                                                    <span className="text-gray-500">{t('customOrdersAdmin.requests.category')}:</span>
                                                     <span className="text-white">{request.category_name}</span>
                                                 </div>
                                             )}
                                             {(request.budget_min || request.budget_max) && (
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-gray-500">Budget:</span>
+                                                    <span className="text-gray-500">{t('customOrdersAdmin.requests.budget')}:</span>
                                                     <span className="text-white">
                                                         {request.budget_min && request.budget_max
                                                             ? `${request.budget_min}€ - ${request.budget_max}€`
@@ -221,14 +225,14 @@ function RequestsTab() {
                                             )}
                                             {request.deadline && (
                                                 <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-gray-500">Deadline:</span>
+                                                    <span className="text-gray-500">{t('customOrdersAdmin.requests.deadline')}:</span>
                                                     <span className="text-white">
                                                         {new Date(request.deadline).toLocaleDateString('fr-FR')}
                                                     </span>
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-2 text-sm">
-                                                <span className="text-gray-500">Créée le:</span>
+                                                <span className="text-gray-500">{t('customOrdersAdmin.requests.createdAt')}:</span>
                                                 <span className="text-white">
                                                     {new Date(request.created_at).toLocaleDateString('fr-FR')}
                                                 </span>
@@ -246,11 +250,11 @@ function RequestsTab() {
             {showRejectModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 w-full max-w-md">
-                        <h3 className="text-xl font-bold text-white mb-4">Refuser la demande</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">{t('customOrdersAdmin.rejectModal.title')}</h3>
                         <textarea
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Raison du refus..."
+                            placeholder={t('customOrdersAdmin.rejectModal.placeholder')}
                             rows={4}
                             className="input-field w-full resize-none mb-4"
                         />
@@ -259,7 +263,7 @@ function RequestsTab() {
                                 onClick={() => { setShowRejectModal(null); setRejectReason('') }}
                                 className="btn-ghost flex-1"
                             >
-                                Annuler
+                                {t('common.cancel')}
                             </button>
                             <button
                                 onClick={() => handleReject(showRejectModal)}
@@ -267,7 +271,7 @@ function RequestsTab() {
                                 className="btn-primary flex-1 bg-red-500 hover:bg-red-600 flex items-center justify-center gap-2"
                             >
                                 {actionLoading === showRejectModal && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Refuser
+                                {t('customOrdersAdmin.actions.reject')}
                             </button>
                         </div>
                     </div>
@@ -279,6 +283,7 @@ function RequestsTab() {
 
 // Onglet Créateurs affiliés - Utilise les créateurs AFFILIATED et HYTSTUDIO existants
 function CreatorsTab() {
+    const { t } = useTranslation()
     const [creators, setCreators] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -319,7 +324,7 @@ function CreatorsTab() {
         }
         return (
             <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded-full font-medium">
-                Affilié (10%)
+                {t('customOrdersAdmin.creators.affiliated')} (10%)
             </span>
         )
     }
@@ -337,8 +342,7 @@ function CreatorsTab() {
             {/* Info */}
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                 <p className="text-blue-400 text-sm">
-                    Les créateurs <strong>Affiliés</strong> et <strong>HytStudio</strong> peuvent recevoir des demandes sur mesure.
-                    Gérez leurs types dans l'onglet <strong>"Vendeurs actifs"</strong> de la page Vendeurs.
+                    {t('customOrdersAdmin.creators.info')}
                 </p>
             </div>
 
@@ -346,9 +350,9 @@ function CreatorsTab() {
             {creators.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucun créateur affilié</p>
+                    <p className="text-white font-medium">{t('customOrdersAdmin.creators.noCreators')}</p>
                     <p className="text-gray-400 text-sm mt-1">
-                        Promouvez des vendeurs en "Affilié" ou "HytStudio" dans la gestion des vendeurs
+                        {t('customOrdersAdmin.creators.promoteHint')}
                     </p>
                 </div>
             ) : (
@@ -386,17 +390,17 @@ function CreatorsTab() {
                                 <div className="flex items-center gap-6">
                                     <div className="text-center">
                                         <p className="text-2xl font-bold text-white">{creator.products_count || 0}</p>
-                                        <p className="text-xs text-gray-500">Produits</p>
+                                        <p className="text-xs text-gray-500">{t('customOrdersAdmin.creators.products')}</p>
                                     </div>
                                     <div className="text-center">
                                         <p className="text-2xl font-bold text-white">{creator.sales_count || 0}</p>
-                                        <p className="text-xs text-gray-500">Ventes</p>
+                                        <p className="text-xs text-gray-500">{t('customOrdersAdmin.creators.sales')}</p>
                                     </div>
                                     <div className="text-center">
                                         <p className="text-2xl font-bold text-green-500">
                                             {parseFloat(creator.total_revenue || 0).toFixed(0)}€
                                         </p>
-                                        <p className="text-xs text-gray-500">Revenus</p>
+                                        <p className="text-xs text-gray-500">{t('customOrdersAdmin.creators.revenue')}</p>
                                     </div>
                                     <ExternalLink className="w-5 h-5 text-gray-400" />
                                 </div>
@@ -411,6 +415,7 @@ function CreatorsTab() {
 
 // Onglet Commandes
 function OrdersTab() {
+    const { t } = useTranslation()
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -431,12 +436,12 @@ function OrdersTab() {
 
     const getStatusBadge = (status) => {
         const config = {
-            AWAITING_PAYMENT: { label: 'Attente paiement', color: 'bg-yellow-500/20 text-yellow-400' },
-            IN_PROGRESS: { label: 'En cours', color: 'bg-blue-500/20 text-blue-400' },
-            AWAITING_FINAL_PAYMENT: { label: 'Attente solde', color: 'bg-orange-500/20 text-orange-400' },
-            COMPLETED: { label: 'Terminée', color: 'bg-green-500/20 text-green-400' },
-            CANCELLED: { label: 'Annulée', color: 'bg-red-500/20 text-red-400' },
-            DISPUTED: { label: 'Litige', color: 'bg-red-500/20 text-red-400' },
+            AWAITING_PAYMENT: { label: t('customOrdersAdmin.orderStatus.awaitingPayment'), color: 'bg-yellow-500/20 text-yellow-400' },
+            IN_PROGRESS: { label: t('customOrdersAdmin.orderStatus.inProgress'), color: 'bg-blue-500/20 text-blue-400' },
+            AWAITING_FINAL_PAYMENT: { label: t('customOrdersAdmin.orderStatus.awaitingFinal'), color: 'bg-orange-500/20 text-orange-400' },
+            COMPLETED: { label: t('customOrdersAdmin.orderStatus.completed'), color: 'bg-green-500/20 text-green-400' },
+            CANCELLED: { label: t('customOrdersAdmin.orderStatus.cancelled'), color: 'bg-red-500/20 text-red-400' },
+            DISPUTED: { label: t('customOrdersAdmin.orderStatus.disputed'), color: 'bg-red-500/20 text-red-400' },
         }
         const cfg = config[status] || { label: status, color: 'bg-gray-500/20 text-gray-400' }
         return (
@@ -459,19 +464,19 @@ function OrdersTab() {
             {orders.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Package className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucune commande</p>
+                    <p className="text-white font-medium">{t('customOrdersAdmin.orders.noOrders')}</p>
                 </div>
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                         <tr className="border-b border-hyt-border">
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Commande</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Client</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Créateur</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Prix</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Statut</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Date</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.order')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.client')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.creator')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.price')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.status')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('customOrdersAdmin.orders.table.date')}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -487,7 +492,7 @@ function OrdersTab() {
                                 <td className="py-4 px-4">
                                     <p className="text-white font-medium">{parseFloat(order.total_price).toFixed(2)}€</p>
                                     <p className="text-xs text-gray-500">
-                                        Commission: {parseFloat(order.commission_amount).toFixed(2)}€
+                                        {t('customOrdersAdmin.orders.commission')}: {parseFloat(order.commission_amount).toFixed(2)}€
                                     </p>
                                 </td>
                                 <td className="py-4 px-4">{getStatusBadge(order.status)}</td>
@@ -505,7 +510,8 @@ function OrdersTab() {
 }
 
 // Composant principal
-export default function AdminCustomOrders() {
+export default function AdminCustomOrdersAdmin() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('requests')
     const [stats, setStats] = useState({
         pendingRequests: 0,
@@ -547,7 +553,7 @@ export default function AdminCustomOrders() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Commandes sur mesure</h2>
+            <h2 className="text-2xl font-bold text-white">{t('customOrdersAdmin.title')}</h2>
 
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -558,7 +564,7 @@ export default function AdminCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.pendingRequests}</p>
-                            <p className="text-xs text-gray-500">En attente</p>
+                            <p className="text-xs text-gray-500">{t('customOrdersAdmin.stats.pending')}</p>
                         </div>
                     </div>
                 </div>
@@ -569,7 +575,7 @@ export default function AdminCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.activeCreators}</p>
-                            <p className="text-xs text-gray-500">Créateurs</p>
+                            <p className="text-xs text-gray-500">{t('customOrdersAdmin.stats.creators')}</p>
                         </div>
                     </div>
                 </div>
@@ -580,7 +586,7 @@ export default function AdminCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.activeOrders}</p>
-                            <p className="text-xs text-gray-500">En cours</p>
+                            <p className="text-xs text-gray-500">{t('customOrdersAdmin.stats.inProgress')}</p>
                         </div>
                     </div>
                 </div>
@@ -591,7 +597,7 @@ export default function AdminCustomOrders() {
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-white">{stats.totalRevenue.toFixed(2)}€</p>
-                            <p className="text-xs text-gray-500">Commissions</p>
+                            <p className="text-xs text-gray-500">{t('customOrdersAdmin.stats.commissions')}</p>
                         </div>
                     </div>
                 </div>
@@ -607,7 +613,7 @@ export default function AdminCustomOrders() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Demandes
+                    {t('customOrdersAdmin.tabs.requests')}
                     {stats.pendingRequests > 0 && (
                         <span className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 text-black text-xs font-bold rounded-full flex items-center justify-center">
                             {stats.pendingRequests}
@@ -625,7 +631,7 @@ export default function AdminCustomOrders() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Créateurs affiliés
+                    {t('customOrdersAdmin.tabs.creators')}
                     {activeTab === 'creators' && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                     )}
@@ -638,7 +644,7 @@ export default function AdminCustomOrders() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Commandes
+                    {t('customOrdersAdmin.tabs.orders')}
                     {activeTab === 'orders' && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                     )}

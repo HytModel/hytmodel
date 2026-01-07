@@ -8,30 +8,32 @@ import {
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
-
-const statusConfig = {
-    PENDING: { label: 'En attente de validation', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
-    APPROVED: { label: 'Recherche de créateur', color: 'bg-blue-500/20 text-blue-400', icon: Users },
-    ASSIGNED: { label: 'Créateur assigné', color: 'bg-purple-500/20 text-purple-400', icon: CheckCircle },
-    IN_PROGRESS: { label: 'En cours', color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
-    AWAITING_FINAL_PAYMENT: { label: 'En attente paiement final', color: 'bg-orange-500/20 text-orange-400', icon: Euro },
-    COMPLETED: { label: 'Terminée', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
-    CANCELLED: { label: 'Annulée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-    REJECTED: { label: 'Refusée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-}
-
-const offerStatusConfig = {
-    PENDING: { label: 'En attente', color: 'bg-yellow-500/20 text-yellow-400' },
-    ACCEPTED: { label: 'Acceptée', color: 'bg-green-500/20 text-green-400' },
-    REJECTED: { label: 'Refusée', color: 'bg-red-500/20 text-red-400' },
-    WITHDRAWN: { label: 'Retirée', color: 'bg-gray-500/20 text-gray-400' },
-}
 
 export default function CustomRequestDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { t } = useTranslation()
+
+    const statusConfig = {
+        PENDING: { label: t('customRequestDetail.status.pending'), color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
+        APPROVED: { label: t('customRequestDetail.status.approved'), color: 'bg-blue-500/20 text-blue-400', icon: Users },
+        ASSIGNED: { label: t('customRequestDetail.status.assigned'), color: 'bg-purple-500/20 text-purple-400', icon: CheckCircle },
+        IN_PROGRESS: { label: t('customRequestDetail.status.inProgress'), color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
+        AWAITING_FINAL_PAYMENT: { label: t('customRequestDetail.status.awaitingFinalPayment'), color: 'bg-orange-500/20 text-orange-400', icon: Euro },
+        COMPLETED: { label: t('customRequestDetail.status.completed'), color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
+        CANCELLED: { label: t('customRequestDetail.status.cancelled'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+        REJECTED: { label: t('customRequestDetail.status.rejected'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+    }
+
+    const offerStatusConfig = {
+        PENDING: { label: t('customRequestDetail.offerStatus.pending'), color: 'bg-yellow-500/20 text-yellow-400' },
+        ACCEPTED: { label: t('customRequestDetail.offerStatus.accepted'), color: 'bg-green-500/20 text-green-400' },
+        REJECTED: { label: t('customRequestDetail.offerStatus.rejected'), color: 'bg-red-500/20 text-red-400' },
+        WITHDRAWN: { label: t('customRequestDetail.offerStatus.withdrawn'), color: 'bg-gray-500/20 text-gray-400' },
+    }
 
     const [request, setRequest] = useState(null)
     const [conversations, setConversations] = useState([])
@@ -58,7 +60,7 @@ export default function CustomRequestDetail() {
             }
         } catch (error) {
             console.error('Failed to load request:', error)
-            toast.error('Demande non trouvée')
+            toast.error(t('customRequestDetail.errors.notFound'))
             navigate('/custom-orders')
         } finally {
             setLoading(false)
@@ -66,30 +68,30 @@ export default function CustomRequestDetail() {
     }
 
     const handleAcceptOffer = async (offerId) => {
-        if (!confirm('Accepter cette offre ? Les autres offres seront automatiquement refusées.')) return
+        if (!confirm(t('customRequestDetail.confirmAccept'))) return
 
         setActionLoading(offerId)
         try {
             const { data } = await customOrdersAPI.acceptOffer(offerId)
-            toast.success('Offre acceptée ! Vous pouvez maintenant procéder au paiement.')
+            toast.success(t('customRequestDetail.success.offerAccepted'))
             navigate(`/custom-orders/${data.order.id}`)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'acceptation')
+            toast.error(error.response?.data?.error || t('customRequestDetail.errors.acceptFailed'))
         } finally {
             setActionLoading(null)
         }
     }
 
     const handleRejectOffer = async (offerId) => {
-        if (!confirm('Refuser cette offre ?')) return
+        if (!confirm(t('customRequestDetail.confirmReject'))) return
 
         setActionLoading(offerId)
         try {
             await customOrdersAPI.rejectOffer(offerId)
-            toast.success('Offre refusée')
+            toast.success(t('customRequestDetail.success.offerRejected'))
             loadRequest()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('customRequestDetail.errors.generic'))
         } finally {
             setActionLoading(null)
         }
@@ -104,7 +106,7 @@ export default function CustomRequestDetail() {
             })
             navigate(`/custom-orders/conversation/${data.conversation.id}`)
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la création de la conversation')
+            toast.error(error.response?.data?.error || t('customRequestDetail.errors.conversationFailed'))
         }
     }
 
@@ -153,7 +155,7 @@ export default function CustomRequestDetail() {
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour aux demandes
+                        {t('customRequestDetail.backToRequests')}
                     </Link>
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -165,7 +167,7 @@ export default function CustomRequestDetail() {
                         </div>
 
                         <div className="text-right text-sm text-gray-400">
-                            <p>Créée le {new Date(request.created_at).toLocaleDateString('fr-FR')}</p>
+                            <p>{t('customRequestDetail.createdOn')} {new Date(request.created_at).toLocaleDateString('fr-FR')}</p>
                         </div>
                     </div>
                 </motion.div>
@@ -180,7 +182,7 @@ export default function CustomRequestDetail() {
                             transition={{ delay: 0.1 }}
                             className="card"
                         >
-                            <h2 className="text-lg font-semibold text-white mb-4">Description</h2>
+                            <h2 className="text-lg font-semibold text-white mb-4">{t('customRequestDetail.description')}</h2>
                             <p className="text-gray-300 whitespace-pre-wrap">{request.description}</p>
                         </motion.div>
 
@@ -193,7 +195,7 @@ export default function CustomRequestDetail() {
                                 className="card"
                             >
                                 <h2 className="text-lg font-semibold text-white mb-4">
-                                    Pièces jointes ({attachments.length})
+                                    {t('customRequestDetail.attachments')} ({attachments.length})
                                 </h2>
                                 <div className="space-y-2">
                                     {attachments.map((file, index) => (
@@ -229,9 +231,9 @@ export default function CustomRequestDetail() {
                                 <div className="flex items-start gap-3">
                                     <Clock className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-yellow-400 font-medium">En attente de validation</p>
+                                        <p className="text-yellow-400 font-medium">{t('customRequestDetail.pendingValidation.title')}</p>
                                         <p className="text-gray-400 text-sm mt-1">
-                                            Notre équipe examine votre demande. Vous serez notifié dès qu'elle sera approuvée.
+                                            {t('customRequestDetail.pendingValidation.description')}
                                         </p>
                                     </div>
                                 </div>
@@ -249,10 +251,10 @@ export default function CustomRequestDetail() {
                                 <div className="flex items-start gap-3">
                                     <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-red-400 font-medium">Demande refusée</p>
+                                        <p className="text-red-400 font-medium">{t('customRequestDetail.rejected.title')}</p>
                                         {request.staff_notes && (
                                             <p className="text-gray-400 text-sm mt-1">
-                                                Raison : {request.staff_notes}
+                                                {t('customRequestDetail.rejected.reason')} {request.staff_notes}
                                             </p>
                                         )}
                                     </div>
@@ -269,7 +271,7 @@ export default function CustomRequestDetail() {
                                 className="card"
                             >
                                 <h2 className="text-lg font-semibold text-white mb-4">
-                                    Offres reçues ({request.offers.length})
+                                    {t('customRequestDetail.offersReceived')} ({request.offers.length})
                                 </h2>
                                 <div className="space-y-4">
                                     {request.offers.map((offer) => (
@@ -309,7 +311,7 @@ export default function CustomRequestDetail() {
                                                         </div>
                                                         {offer.completed_orders > 0 && (
                                                             <div className="flex items-center gap-2 text-sm text-gray-400">
-                                                                <span>{offer.completed_orders} commandes</span>
+                                                                <span>{offer.completed_orders} {t('customRequestDetail.orders')}</span>
                                                                 {offer.average_rating > 0 && (
                                                                     <span className="flex items-center gap-1">
                                                                         <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
@@ -326,7 +328,7 @@ export default function CustomRequestDetail() {
                                                         {parseFloat(offer.price).toFixed(2)}€
                                                     </p>
                                                     <p className="text-sm text-gray-400">
-                                                        {offer.estimated_days} jour{offer.estimated_days > 1 ? 's' : ''}
+                                                        {offer.estimated_days} {t('customRequestDetail.days', { count: offer.estimated_days })}
                                                     </p>
                                                 </div>
                                             </div>
@@ -345,14 +347,14 @@ export default function CustomRequestDetail() {
                                                             className="px-4 py-2 text-sm text-gray-400 hover:bg-hyt-dark rounded-lg transition-colors flex items-center gap-2"
                                                         >
                                                             <MessageSquare className="w-4 h-4" />
-                                                            Contacter
+                                                            {t('customRequestDetail.contact')}
                                                         </button>
                                                         <button
                                                             onClick={() => handleRejectOffer(offer.id)}
                                                             disabled={actionLoading === offer.id}
                                                             className="px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                                         >
-                                                            Refuser
+                                                            {t('customRequestDetail.reject')}
                                                         </button>
                                                         <button
                                                             onClick={() => handleAcceptOffer(offer.id)}
@@ -360,7 +362,7 @@ export default function CustomRequestDetail() {
                                                             className="px-4 py-2 text-sm bg-hyt-accent text-black font-medium rounded-lg hover:bg-hyt-accent/90 transition-colors flex items-center gap-2"
                                                         >
                                                             {actionLoading === offer.id && <Loader2 className="w-4 h-4 animate-spin" />}
-                                                            Accepter
+                                                            {t('customRequestDetail.accept')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -380,9 +382,9 @@ export default function CustomRequestDetail() {
                                 className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6 text-center"
                             >
                                 <Users className="w-12 h-12 text-blue-400 mx-auto mb-3" />
-                                <p className="text-white font-medium">En recherche de créateur</p>
+                                <p className="text-white font-medium">{t('customRequestDetail.searchingCreator.title')}</p>
                                 <p className="text-gray-400 text-sm mt-1">
-                                    Votre demande est visible par nos créateurs affiliés. Vous recevrez bientôt des offres !
+                                    {t('customRequestDetail.searchingCreator.description')}
                                 </p>
                             </motion.div>
                         )}
@@ -397,7 +399,7 @@ export default function CustomRequestDetail() {
                             >
                                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                                     <MessageSquare className="w-5 h-5 text-hyt-accent" />
-                                    Conversations ({conversations.length})
+                                    {t('customRequestDetail.conversations')} ({conversations.length})
                                 </h2>
                                 <div className="space-y-3">
                                     {conversations.map((conv) => (
@@ -447,7 +449,7 @@ export default function CustomRequestDetail() {
                                                                 'bg-gray-500/20 text-gray-400'
                                                     }`}>
                                                         {conv.offer_status === 'PENDING' ? `${Number(conv.offer_price).toFixed(0)}€` :
-                                                            conv.offer_status === 'ACCEPTED' ? 'Acceptée' : 'Refusée'}
+                                                            conv.offer_status === 'ACCEPTED' ? t('customRequestDetail.offerStatus.accepted') : t('customRequestDetail.offerStatus.rejected')}
                                                     </span>
                                                 </div>
                                             )}
@@ -467,26 +469,26 @@ export default function CustomRequestDetail() {
                             transition={{ delay: 0.2 }}
                             className="card"
                         >
-                            <h3 className="font-semibold text-white mb-4">Informations</h3>
+                            <h3 className="font-semibold text-white mb-4">{t('customRequestDetail.information')}</h3>
                             <div className="space-y-3">
                                 {request.game_name && (
                                     <div className="flex items-center gap-3 text-sm">
                                         <Gamepad2 className="w-4 h-4 text-gray-500" />
-                                        <span className="text-gray-400">Jeu :</span>
+                                        <span className="text-gray-400">{t('customRequestDetail.game')} :</span>
                                         <span className="text-white">{request.game_name}</span>
                                     </div>
                                 )}
                                 {request.category_name && (
                                     <div className="flex items-center gap-3 text-sm">
                                         <FolderOpen className="w-4 h-4 text-gray-500" />
-                                        <span className="text-gray-400">Catégorie :</span>
+                                        <span className="text-gray-400">{t('customRequestDetail.category')} :</span>
                                         <span className="text-white">{request.category_name}</span>
                                     </div>
                                 )}
                                 {(request.budget_min || request.budget_max) && (
                                     <div className="flex items-center gap-3 text-sm">
                                         <Euro className="w-4 h-4 text-gray-500" />
-                                        <span className="text-gray-400">Budget :</span>
+                                        <span className="text-gray-400">{t('customRequestDetail.budget')} :</span>
                                         <span className="text-white">
                                             {request.budget_min && request.budget_max
                                                 ? `${request.budget_min}€ - ${request.budget_max}€`
@@ -500,7 +502,7 @@ export default function CustomRequestDetail() {
                                 {request.deadline && (
                                     <div className="flex items-center gap-3 text-sm">
                                         <Calendar className="w-4 h-4 text-gray-500" />
-                                        <span className="text-gray-400">Deadline :</span>
+                                        <span className="text-gray-400">{t('customRequestDetail.deadline')} :</span>
                                         <span className="text-white">
                                             {new Date(request.deadline).toLocaleDateString('fr-FR')}
                                         </span>
@@ -518,12 +520,12 @@ export default function CustomRequestDetail() {
                         >
                             <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 text-hyt-accent" />
-                                Bon à savoir
+                                {t('customRequestDetail.goodToKnow.title')}
                             </h3>
                             <ul className="text-sm text-gray-400 space-y-1">
-                                <li>• Paiement en 2 fois : 50% + 50%</li>
-                                <li>• Annulation : 50% de l'acompte remboursé</li>
-                                <li>• Fichiers accessibles après paiement complet</li>
+                                <li>• {t('customRequestDetail.goodToKnow.payment')}</li>
+                                <li>• {t('customRequestDetail.goodToKnow.cancellation')}</li>
+                                <li>• {t('customRequestDetail.goodToKnow.files')}</li>
                             </ul>
                         </motion.div>
                     </div>

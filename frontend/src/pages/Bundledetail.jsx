@@ -7,6 +7,7 @@ import {
 import { bundlesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useTranslation } from '../context/LanguageContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
 
@@ -15,6 +16,7 @@ export default function BundleDetail() {
     const navigate = useNavigate()
     const { isAuthenticated, user } = useAuth()
     const { addToCart, isInCart } = useCart()
+    const { t } = useTranslation()
 
     const [bundle, setBundle] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -41,7 +43,7 @@ export default function BundleDetail() {
             }
         } catch (error) {
             console.error('Failed to load bundle:', error)
-            toast.error('Bundle non trouvé')
+            toast.error(t('bundleDetail.errors.notFound'))
             navigate('/models')
         } finally {
             setLoading(false)
@@ -50,7 +52,7 @@ export default function BundleDetail() {
 
     const handlePurchase = async () => {
         if (!isAuthenticated) {
-            toast.error('Connectez-vous pour acheter')
+            toast.error(t('bundleDetail.errors.loginRequired'))
             navigate('/login')
             return
         }
@@ -63,11 +65,11 @@ export default function BundleDetail() {
             if (data.url) {
                 window.location.href = data.url
             } else {
-                toast.success('Bundle acheté avec succès !')
+                toast.success(t('bundleDetail.success.purchased'))
                 setHasPurchased(true)
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'achat')
+            toast.error(error.response?.data?.error || t('bundleDetail.errors.purchaseFailed'))
             setPurchasing(false)
         }
     }
@@ -93,7 +95,7 @@ export default function BundleDetail() {
                     className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5" />
-                    Retour
+                    {t('common.back')}
                 </button>
 
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -140,7 +142,7 @@ export default function BundleDetail() {
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                                 <Package className="w-5 h-5 text-hyt-accent" />
-                                Produits inclus ({bundle.item_count})
+                                {t('bundleDetail.includedProducts', { count: bundle.item_count })}
                             </h2>
 
                             <div className="space-y-3">
@@ -181,7 +183,7 @@ export default function BundleDetail() {
                                                 {parseFloat(item.price).toFixed(2)}€
                                             </p>
                                             <p className="text-xs text-green-400">
-                                                Inclus
+                                                {t('bundleDetail.included')}
                                             </p>
                                         </div>
                                     </Link>
@@ -202,14 +204,14 @@ export default function BundleDetail() {
                                     {parseFloat(bundle.final_price).toFixed(2)}€
                                 </p>
                                 <p className="text-green-400 text-sm mt-1">
-                                    Vous économisez {(parseFloat(bundle.original_price) - parseFloat(bundle.final_price)).toFixed(2)}€
+                                    {t('bundleDetail.youSave', { amount: (parseFloat(bundle.original_price) - parseFloat(bundle.final_price)).toFixed(2) })}
                                 </p>
                             </div>
 
                             {/* Détails remise */}
                             <div className="bg-hyt-dark rounded-lg p-4 mb-6">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400">Remise appliquée</span>
+                                    <span className="text-gray-400">{t('bundleDetail.discountApplied')}</span>
                                     <span className="text-red-400 font-bold">
                                         {bundle.discount_type === 'PERCENT'
                                             ? `-${bundle.discount_value}%`
@@ -218,7 +220,7 @@ export default function BundleDetail() {
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm mt-2">
-                                    <span className="text-gray-400">Produits</span>
+                                    <span className="text-gray-400">{t('bundleDetail.products')}</span>
                                     <span className="text-white">{bundle.item_count}</span>
                                 </div>
                             </div>
@@ -226,14 +228,14 @@ export default function BundleDetail() {
                             {/* Bouton d'achat */}
                             {isOwner ? (
                                 <div className="bg-hyt-dark rounded-lg p-4 text-center">
-                                    <p className="text-gray-400 text-sm">C'est votre bundle</p>
+                                    <p className="text-gray-400 text-sm">{t('bundleDetail.yourBundle')}</p>
                                 </div>
                             ) : hasPurchased ? (
                                 <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 text-center">
                                     <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                                    <p className="text-green-400 font-medium">Bundle acheté</p>
+                                    <p className="text-green-400 font-medium">{t('bundleDetail.bundlePurchased')}</p>
                                     <Link to="/purchases" className="text-sm text-green-400/70 hover:underline">
-                                        Voir mes achats
+                                        {t('bundleDetail.viewPurchases')}
                                     </Link>
                                 </div>
                             ) : (
@@ -247,7 +249,7 @@ export default function BundleDetail() {
                                     ) : (
                                         <>
                                             <ShoppingCart className="w-5 h-5" />
-                                            Acheter le bundle
+                                            {t('bundleDetail.buyBundle')}
                                         </>
                                     )}
                                 </button>
@@ -255,7 +257,7 @@ export default function BundleDetail() {
 
                             {/* Info */}
                             <p className="text-xs text-gray-500 text-center mt-4">
-                                En achetant ce bundle, vous obtenez tous les produits inclus.
+                                {t('bundleDetail.purchaseInfo')}
                             </p>
 
                             {/* Dates de validité */}
@@ -265,7 +267,7 @@ export default function BundleDetail() {
                                         <Calendar className="w-4 h-4" />
                                         {bundle.ends_at && (
                                             <span>
-                                                Offre valable jusqu'au {new Date(bundle.ends_at).toLocaleDateString('fr-FR')}
+                                                {t('bundleDetail.validUntil', { date: new Date(bundle.ends_at).toLocaleDateString('fr-FR') })}
                                             </span>
                                         )}
                                     </div>

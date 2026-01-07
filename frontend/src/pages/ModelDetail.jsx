@@ -9,6 +9,7 @@ import {
 import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI, dependenciesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useTranslation } from '../context/LanguageContext'
 import Loading, { LoadingButton } from '../components/Loading'
 import ReportProductModal from '../components/ReportProductModal'
 import toast from 'react-hot-toast'
@@ -62,6 +63,7 @@ function ImageModal({ image, onClose, onPrev, onNext, hasPrev, hasNext }) {
 
 // Composant d'affichage des dépendances
 function DependenciesSection({ modelId }) {
+    const { t } = useTranslation()
     const [dependencies, setDependencies] = useState([])
     const [loading, setLoading] = useState(true)
     const { cart } = useCart()
@@ -86,7 +88,7 @@ function DependenciesSection({ modelId }) {
             <div className="mb-6">
                 <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                     <Link2 className="w-4 h-4" />
-                    Dépendances
+                    {t('modelDetail.dependencies.title')}
                 </h3>
                 <div className="animate-pulse bg-hyt-darker rounded-lg h-20"></div>
             </div>
@@ -108,7 +110,7 @@ function DependenciesSection({ modelId }) {
         <div className="mb-6">
             <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                 <Link2 className="w-4 h-4 text-hyt-accent" />
-                Dépendances
+                {t('modelDetail.dependencies.title')}
                 <span className="text-xs text-gray-500 font-normal">({dependencies.length})</span>
             </h3>
 
@@ -118,7 +120,7 @@ function DependenciesSection({ modelId }) {
                     <div>
                         <p className="text-xs text-red-400 font-medium mb-2 flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
-                            Requis pour le fonctionnement
+                            {t('modelDetail.dependencies.requiredFor')}
                         </p>
                         <div className="space-y-2">
                             {requiredDeps.map(dep => (
@@ -136,7 +138,7 @@ function DependenciesSection({ modelId }) {
                 {/* Dépendances recommandées */}
                 {recommendedDeps.length > 0 && (
                     <div>
-                        <p className="text-xs text-yellow-400 font-medium mb-2">Recommandé</p>
+                        <p className="text-xs text-yellow-400 font-medium mb-2">{t('modelDetail.dependencies.recommended')}</p>
                         <div className="space-y-2">
                             {recommendedDeps.map(dep => (
                                 <DependencyItem
@@ -156,6 +158,7 @@ function DependenciesSection({ modelId }) {
 
 // Item de dépendance individuel
 function DependencyItem({ dep, isRequired, inCart }) {
+    const { t } = useTranslation()
     const isPredefined = !!dep.dependency_id
     const isProduct = !!dep.product_id
 
@@ -192,23 +195,23 @@ function DependencyItem({ dep, isRequired, inCart }) {
                     </span>
                     {isProduct && (
                         <span className="px-1.5 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">
-                            Produit du site
+                            {t('modelDetail.dependencies.siteProduct')}
                         </span>
                     )}
                     {inCart && (
                         <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded flex items-center gap-1">
                             <Check className="w-3 h-3" />
-                            Dans le panier
+                            {t('modelDetail.dependencies.inCart')}
                         </span>
                     )}
                 </div>
 
                 {dep.version_info && (
-                    <p className="text-xs text-gray-500">Version: {dep.version_info}</p>
+                    <p className="text-xs text-gray-500">{t('modelDetail.dependencies.version')}: {dep.version_info}</p>
                 )}
 
                 {dep.product_creator && (
-                    <p className="text-xs text-gray-500">par {dep.product_creator}</p>
+                    <p className="text-xs text-gray-500">{t('common.by')} {dep.product_creator}</p>
                 )}
 
                 {dep.note && (
@@ -224,7 +227,7 @@ function DependencyItem({ dep, isRequired, inCart }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg transition-colors"
-                        title="Site officiel"
+                        title={t('modelDetail.dependencies.officialSite')}
                     >
                         <ExternalLink className="w-4 h-4" />
                     </a>
@@ -235,7 +238,7 @@ function DependencyItem({ dep, isRequired, inCart }) {
                         to={`/models/${dep.product_id}`}
                         className="px-3 py-1.5 text-sm bg-hyt-accent/20 text-hyt-accent hover:bg-hyt-accent/30 rounded-lg transition-colors"
                     >
-                        Voir
+                        {t('modelDetail.dependencies.view')}
                     </Link>
                 )}
             </div>
@@ -245,6 +248,7 @@ function DependencyItem({ dep, isRequired, inCart }) {
 
 // Composant de sélection de version pour le téléchargement
 function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
+    const { t } = useTranslation()
     const [fileVersions, setFileVersions] = useState([])
     const [gameVersions, setGameVersions] = useState([])
     const [selectedVersion, setSelectedVersion] = useState(null)
@@ -313,7 +317,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
 
     const handleDownload = async () => {
         if (!selectedVersion) {
-            toast.error('Sélectionnez une version')
+            toast.error(t('modelDetail.download.errors.selectVersion'))
             return
         }
 
@@ -332,9 +336,9 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             link.remove()
             window.URL.revokeObjectURL(url)
 
-            toast.success('Téléchargement démarré')
+            toast.success(t('modelDetail.download.success'))
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur de téléchargement')
+            toast.error(error.response?.data?.error || t('modelDetail.download.errors.failed'))
         } finally {
             setDownloading(false)
             onDownloadEnd?.()
@@ -366,7 +370,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                 className="btn-primary w-full flex items-center justify-center gap-2"
             >
                 <Download className="w-5 h-5" />
-                Télécharger
+                {t('modelDetail.download.button')}
             </LoadingButton>
         )
     }
@@ -376,7 +380,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             {fileVersions.length > 0 && (
                 <div>
                     <label className="block text-xs text-gray-500 mb-2">
-                        Versions disponibles
+                        {t('modelDetail.download.availableVersions')}
                     </label>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                         {fileVersions.map(version => (
@@ -406,7 +410,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                                         </span>
                                         {version.is_latest && (
                                             <span className="px-1.5 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded">
-                                                Dernière
+                                                {t('modelDetail.download.latest')}
                                             </span>
                                         )}
                                     </div>
@@ -443,14 +447,14 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             {gameVersions.length > 0 && fileVersions.some(v => v.compatible_versions?.length > 0) && (
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">
-                        Filtrer par version du jeu
+                        {t('modelDetail.download.filterByGameVersion')}
                     </label>
                     <select
                         value={filterGameVersion}
                         onChange={(e) => setFilterGameVersion(e.target.value)}
                         className="input-field w-full text-sm"
                     >
-                        <option value="">Toutes les versions</option>
+                        <option value="">{t('modelDetail.download.allVersions')}</option>
                         {gameVersions.map(gv => (
                             <option key={gv.id} value={gv.id}>{gv.version}</option>
                         ))}
@@ -460,7 +464,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
 
             {selectedVersion?.compatible_versions?.length > 0 && (
                 <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-xs text-green-400 mb-1">Compatible avec :</p>
+                    <p className="text-xs text-green-400 mb-1">{t('modelDetail.download.compatibleWith')} :</p>
                     <div className="flex flex-wrap gap-1">
                         {selectedVersion.compatible_versions.map(cv => (
                             <span key={cv.id} className="px-2 py-0.5 bg-green-500/20 text-green-300 text-xs rounded">
@@ -478,7 +482,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
                 className="btn-primary w-full flex items-center justify-center gap-2"
             >
                 <Download className="w-5 h-5" />
-                Télécharger {selectedVersion ? `v${selectedVersion.version_number}` : ''}
+                {t('modelDetail.download.button')} {selectedVersion ? `v${selectedVersion.version_number}` : ''}
             </LoadingButton>
         </div>
     )
@@ -489,6 +493,7 @@ export default function ModelDetail() {
     const navigate = useNavigate()
     const { user, isAuthenticated } = useAuth()
     const { addToCart, isInCart } = useCart()
+    const { t } = useTranslation()
 
     const [model, setModel] = useState(null)
     const [images, setImages] = useState([])
@@ -523,7 +528,7 @@ export default function ModelDetail() {
             }
         } catch (error) {
             console.error('Failed to fetch model:', error)
-            toast.error('Produit non trouvé')
+            toast.error(t('modelDetail.errors.notFound'))
             navigate('/models')
         } finally {
             setLoading(false)
@@ -556,17 +561,17 @@ export default function ModelDetail() {
         try {
             await modelsAPI.rate(id, rating)
             setUserRating(rating)
-            toast.success('Note enregistrée')
+            toast.success(t('modelDetail.rating.success'))
             fetchModel()
         } catch (error) {
-            const message = error.response?.data?.error || 'Erreur lors de la notation'
+            const message = error.response?.data?.error || t('modelDetail.rating.error')
             toast.error(message)
         }
     }
 
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href)
-        toast.success('Lien copié !')
+        toast.success(t('modelDetail.share.success'))
     }
 
     const handleReport = () => {
@@ -589,7 +594,6 @@ export default function ModelDetail() {
         return `http://localhost:3001${img.image_url}`
     }
 
-    // Formater les nombres avec séparateur de milliers
     const formatNumber = (num) => {
         if (!num && num !== 0) return '0'
         return num.toLocaleString('fr-FR')
@@ -622,7 +626,7 @@ export default function ModelDetail() {
                     className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Retour aux produits
+                    {t('modelDetail.backToProducts')}
                 </Link>
 
                 <div className="grid lg:grid-cols-2 gap-8">
@@ -702,7 +706,7 @@ export default function ModelDetail() {
                             <div className="mt-6">
                                 <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                                     <Youtube className="w-5 h-5 text-red-500" />
-                                    Vidéo de présentation
+                                    {t('modelDetail.youtube.title')}
                                 </h3>
                                 <div className="aspect-video rounded-xl overflow-hidden bg-black">
                                     <iframe
@@ -724,21 +728,21 @@ export default function ModelDetail() {
                                         {model.rating_avg ? parseFloat(model.rating_avg).toFixed(1) : '-'}
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-500">{formatNumber(model.rating_count || 0)} avis</p>
+                                <p className="text-xs text-gray-500">{formatNumber(model.rating_count || 0)} {t('modelDetail.stats.reviews')}</p>
                             </div>
                             <div className="card text-center">
                                 <div className="flex items-center justify-center gap-1 text-blue-400 mb-1">
                                     <Eye className="w-5 h-5" />
                                     <span className="font-bold text-lg">{formatNumber(model.view_count || model.views || 0)}</span>
                                 </div>
-                                <p className="text-xs text-gray-500">Vues</p>
+                                <p className="text-xs text-gray-500">{t('modelDetail.stats.views')}</p>
                             </div>
                             <div className="card text-center">
                                 <div className="flex items-center justify-center gap-1 text-green-400 mb-1">
                                     <Download className="w-5 h-5" />
                                     <span className="font-bold text-lg">{formatNumber(model.download_count || model.downloads || 0)}</span>
                                 </div>
-                                <p className="text-xs text-gray-500">Téléchargements</p>
+                                <p className="text-xs text-gray-500">{t('modelDetail.stats.downloads')}</p>
                             </div>
                         </div>
                     </div>
@@ -788,7 +792,7 @@ export default function ModelDetail() {
                             </div>
                             <div>
                                 <p className="font-medium text-white group-hover:text-hyt-accent transition-colors">
-                                    {model.creator_display_name || model.creator_username || 'Créateur'}
+                                    {model.creator_display_name || model.creator_username || t('modelDetail.creator')}
                                 </p>
                                 <p className="text-sm text-gray-500 flex items-center gap-1">
                                     <Calendar className="w-3.5 h-3.5" />
@@ -800,7 +804,7 @@ export default function ModelDetail() {
                         {/* Description */}
                         {model.description && (
                             <div className="mb-6">
-                                <h3 className="font-semibold text-white mb-2">Description</h3>
+                                <h3 className="font-semibold text-white mb-2">{t('modelDetail.description')}</h3>
                                 <p className="text-gray-400 leading-relaxed whitespace-pre-wrap">{model.description}</p>
                             </div>
                         )}
@@ -810,7 +814,7 @@ export default function ModelDetail() {
                             <div className="mb-6">
                                 <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
                                     <Tag className="w-4 h-4" />
-                                    Tags
+                                    {t('modelDetail.tags')}
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
                                     {model.tags.map((tag) => (
@@ -828,7 +832,7 @@ export default function ModelDetail() {
                         {/* Versions compatibles du jeu */}
                         {model.versions && model.versions.length > 0 && (
                             <div className="mb-6">
-                                <h3 className="font-semibold text-white mb-2">Versions du jeu compatibles</h3>
+                                <h3 className="font-semibold text-white mb-2">{t('modelDetail.compatibleVersions')}</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {model.versions.map((version) => (
                                         <span key={version.id} className="px-3 py-1 bg-hyt-success/10 text-hyt-success rounded-full text-sm">
@@ -842,7 +846,7 @@ export default function ModelDetail() {
                         {/* Price & Actions */}
                         <div className="card mt-8">
                             <div className="flex items-center justify-between mb-6">
-                                <span className="text-gray-400">Prix</span>
+                                <span className="text-gray-400">{t('modelDetail.price')}</span>
                                 <span className="font-display text-4xl font-bold text-white">
                                     {parseFloat(model.price).toFixed(2)}€
                                 </span>
@@ -851,7 +855,7 @@ export default function ModelDetail() {
                             <div className="space-y-3">
                                 {isOwner ? (
                                     <Link to={`/dashboard/models/${model.id}/edit`} className="btn-secondary w-full text-center block">
-                                        Modifier mon produit
+                                        {t('modelDetail.editProduct')}
                                     </Link>
                                 ) : hasPurchased ? (
                                     <>
@@ -868,7 +872,7 @@ export default function ModelDetail() {
                                                 className="btn-ghost flex-1 flex items-center justify-center gap-2"
                                             >
                                                 <Share2 className="w-5 h-5" />
-                                                Partager
+                                                {t('modelDetail.share.button')}
                                             </button>
 
                                             <button
@@ -876,7 +880,7 @@ export default function ModelDetail() {
                                                 className="btn-ghost flex-1 flex items-center justify-center gap-2 text-red-400 hover:text-red-500 hover:bg-red-500/10"
                                             >
                                                 <Flag className="w-5 h-5" />
-                                                Signaler
+                                                {t('modelDetail.report')}
                                             </button>
                                         </div>
                                     </>
@@ -894,12 +898,12 @@ export default function ModelDetail() {
                                             {inCart ? (
                                                 <>
                                                     <Check className="w-5 h-5" />
-                                                    Dans le panier
+                                                    {t('modelDetail.inCart')}
                                                 </>
                                             ) : (
                                                 <>
                                                     <ShoppingCart className="w-5 h-5" />
-                                                    Ajouter au panier
+                                                    {t('modelDetail.addToCart')}
                                                 </>
                                             )}
                                         </button>
@@ -910,7 +914,7 @@ export default function ModelDetail() {
                                                 className="btn-ghost flex-1 flex items-center justify-center gap-2"
                                             >
                                                 <Share2 className="w-5 h-5" />
-                                                Partager
+                                                {t('modelDetail.share.button')}
                                             </button>
 
                                             <button
@@ -918,7 +922,7 @@ export default function ModelDetail() {
                                                 className="btn-ghost flex-1 flex items-center justify-center gap-2 text-red-400 hover:text-red-500 hover:bg-red-500/10"
                                             >
                                                 <Flag className="w-5 h-5" />
-                                                Signaler
+                                                {t('modelDetail.report')}
                                             </button>
                                         </div>
                                     </>
@@ -929,7 +933,7 @@ export default function ModelDetail() {
                         {/* Rating - uniquement si acheté */}
                         {isAuthenticated && !isOwner && hasPurchased && (
                             <div className="card mt-4">
-                                <h3 className="font-semibold text-white mb-3">Noter ce produit</h3>
+                                <h3 className="font-semibold text-white mb-3">{t('modelDetail.rating.title')}</h3>
                                 <div className="flex items-center gap-1">
                                     {[1, 2, 3, 4, 5].map((star) => (
                                         <button

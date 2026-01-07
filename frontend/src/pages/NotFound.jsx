@@ -1,8 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Home, ArrowLeft, Search } from 'lucide-react'
+import { useTranslation } from '../context/LanguageContext'
 
 export default function NotFound() {
+    const { t } = useTranslation()
+
     return (
         <div className="min-h-screen pt-20 flex items-center justify-center">
             <div className="max-w-2xl mx-auto px-4 text-center">
@@ -18,10 +21,10 @@ export default function NotFound() {
 
                 {/* Message */}
                 <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-                    Page introuvable
+                    {t('notFound.title')}
                 </h1>
                 <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
-                    Oups ! La page que vous recherchez semble avoir disparu dans une autre dimension.
+                    {t('notFound.description')}
                 </p>
 
                 {/* Actions */}
@@ -31,14 +34,14 @@ export default function NotFound() {
                         className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                         <Home className="w-5 h-5" />
-                        Retour à l'accueil
+                        {t('notFound.backHome')}
                     </Link>
                     <Link
                         to="/models"
                         className="btn-secondary flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                         <Search className="w-5 h-5" />
-                        Explorer les modèles
+                        {t('notFound.exploreModels')}
                     </Link>
                 </div>
 
@@ -48,7 +51,7 @@ export default function NotFound() {
                     className="mt-6 text-gray-500 hover:text-hyt-accent transition-colors inline-flex items-center gap-2"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Revenir en arrière
+                    {t('notFound.goBack')}
                 </button>
 
                 {/* Decorative elements */}

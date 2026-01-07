@@ -10,9 +10,11 @@ import {
     Loader2
 } from 'lucide-react'
 import { checkoutAPI, modelsAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function Purchases() {
+    const { t } = useTranslation()
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -28,7 +30,7 @@ export default function Purchases() {
             setPurchases(data.purchases || [])
         } catch (error) {
             console.error('Failed to load purchases:', error)
-            toast.error('Erreur lors du chargement des achats')
+            toast.error(t('purchases.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -50,10 +52,10 @@ export default function Purchases() {
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
 
-            toast.success('Téléchargement démarré')
+            toast.success(t('purchases.success.downloadStarted'))
         } catch (error) {
             console.error('Download failed:', error)
-            toast.error('Erreur lors du téléchargement')
+            toast.error(t('purchases.errors.downloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -73,10 +75,10 @@ export default function Purchases() {
                     className="mb-8"
                 >
                     <h1 className="text-3xl font-display font-bold text-white mb-2">
-                        Mes Achats
+                        {t('purchases.title')}
                     </h1>
                     <p className="text-gray-400">
-                        Retrouvez tous vos produits achetés et téléchargez-les à tout moment
+                        {t('purchases.subtitle')}
                     </p>
                 </motion.div>
 
@@ -94,7 +96,7 @@ export default function Purchases() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-white">{purchases.length}</p>
-                                <p className="text-sm text-gray-400">Produits achetés</p>
+                                <p className="text-sm text-gray-400">{t('purchases.stats.purchased')}</p>
                             </div>
                         </div>
                     </div>
@@ -106,7 +108,7 @@ export default function Purchases() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-white">∞</p>
-                                <p className="text-sm text-gray-400">Téléchargements</p>
+                                <p className="text-sm text-gray-400">{t('purchases.stats.downloads')}</p>
                             </div>
                         </div>
                     </div>
@@ -123,7 +125,7 @@ export default function Purchases() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Rechercher dans mes achats..."
+                            placeholder={t('purchases.searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="input-field pl-12 w-full"
@@ -155,17 +157,17 @@ export default function Purchases() {
                     >
                         <ShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-white mb-2">
-                            {searchQuery ? 'Aucun résultat' : 'Aucun achat'}
+                            {searchQuery ? t('purchases.empty.noResults') : t('purchases.empty.title')}
                         </h3>
                         <p className="text-gray-400 mb-6">
                             {searchQuery
-                                ? 'Essayez avec d\'autres termes de recherche'
-                                : 'Vous n\'avez pas encore acheté de produits'
+                                ? t('purchases.empty.tryOtherTerms')
+                                : t('purchases.empty.description')
                             }
                         </p>
                         {!searchQuery && (
                             <Link to="/models" className="btn-primary">
-                                Découvrir les produits
+                                {t('purchases.empty.discover')}
                             </Link>
                         )}
                     </motion.div>
@@ -209,13 +211,13 @@ export default function Purchases() {
                                         </h3>
                                         <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
                                             <Calendar className="w-4 h-4" />
-                                            Acheté le {new Date(purchase.purchased_at).toLocaleDateString('fr-FR')}
+                                            {t('purchases.purchasedOn')} {new Date(purchase.purchased_at).toLocaleDateString('fr-FR')}
                                         </p>
                                         <Link
                                             to={`/models/${purchase.model_id}`}
                                             className="text-sm text-hyt-accent hover:underline flex items-center gap-1 mt-1"
                                         >
-                                            Voir le produit
+                                            {t('purchases.viewProduct')}
                                             <ExternalLink className="w-3 h-3" />
                                         </Link>
                                     </div>
@@ -231,7 +233,7 @@ export default function Purchases() {
                                         ) : (
                                             <Download className="w-4 h-4" />
                                         )}
-                                        Télécharger
+                                        {t('purchases.download')}
                                     </button>
                                 </div>
                             </motion.div>

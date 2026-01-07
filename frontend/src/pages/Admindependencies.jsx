@@ -5,9 +5,11 @@ import {
     CheckCircle, XCircle, Clock, Gamepad2
 } from 'lucide-react'
 import { dependenciesAPI, gamesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function AdminDependencies() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('dependencies') // dependencies, proposals
     const [dependencies, setDependencies] = useState([])
     const [proposals, setProposals] = useState([])
@@ -61,7 +63,7 @@ export default function AdminDependencies() {
             setDependencies(data.dependencies || [])
         } catch (error) {
             console.error('Failed to load dependencies:', error)
-            toast.error('Erreur de chargement')
+            toast.error(t('dependencies.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -113,7 +115,7 @@ export default function AdminDependencies() {
         const file = e.target.files[0]
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                toast.error('Logo trop volumineux (max 2MB)')
+                toast.error(t('dependencies.errors.logoTooLarge'))
                 return
             }
             setLogoFile(file)
@@ -125,12 +127,12 @@ export default function AdminDependencies() {
         e.preventDefault()
 
         if (!formData.name.trim()) {
-            toast.error('Nom requis')
+            toast.error(t('dependencies.errors.nameRequired'))
             return
         }
 
         if (!formData.gameId) {
-            toast.error('Jeu requis')
+            toast.error(t('dependencies.errors.gameRequired'))
             return
         }
 
@@ -147,54 +149,54 @@ export default function AdminDependencies() {
 
             if (editingDep) {
                 await dependenciesAPI.update(editingDep.id, fd)
-                toast.success('Dépendance mise à jour')
+                toast.success(t('dependencies.success.updated'))
             } else {
                 await dependenciesAPI.create(fd)
-                toast.success('Dépendance créée')
+                toast.success(t('dependencies.success.created'))
             }
 
             setShowModal(false)
             loadDependencies()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('dependencies.errors.generic'))
         } finally {
             setSaving(false)
         }
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Supprimer cette dépendance ? Les produits liés perdront cette association.')) return
+        if (!confirm(t('dependencies.confirmDelete'))) return
 
         try {
             await dependenciesAPI.delete(id)
-            toast.success('Dépendance supprimée')
+            toast.success(t('dependencies.success.deleted'))
             loadDependencies()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('dependencies.errors.generic'))
         }
     }
 
     const handleApproveProposal = async (id) => {
         try {
             await dependenciesAPI.approveProposal(id)
-            toast.success('Proposition approuvée')
+            toast.success(t('dependencies.success.proposalApproved'))
             loadProposals()
             loadPendingCount()
             loadDependencies()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('dependencies.errors.generic'))
         }
     }
 
     const handleRejectProposal = async (id) => {
-        const reason = prompt('Raison du refus (optionnel):')
+        const reason = prompt(t('dependencies.rejectReasonPrompt'))
         try {
             await dependenciesAPI.rejectProposal(id, reason)
-            toast.success('Proposition refusée')
+            toast.success(t('dependencies.success.proposalRejected'))
             loadProposals()
             loadPendingCount()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('dependencies.errors.generic'))
         }
     }
 
@@ -205,10 +207,10 @@ export default function AdminDependencies() {
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-3">
                         <Link2 className="w-7 h-7 text-hyt-accent" />
-                        Dépendances
+                        {t('dependencies.title')}
                     </h1>
                     <p className="text-gray-400 mt-1">
-                        Gérez les dépendances disponibles pour les produits
+                        {t('dependencies.subtitle')}
                     </p>
                 </div>
             </div>
@@ -223,7 +225,7 @@ export default function AdminDependencies() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Dépendances
+                    {t('dependencies.tabs.dependencies')}
                     {activeTab === 'dependencies' && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                     )}
@@ -236,7 +238,7 @@ export default function AdminDependencies() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Propositions
+                    {t('dependencies.tabs.proposals')}
                     {pendingCount > 0 && (
                         <span className="px-2 py-0.5 text-xs bg-orange-500 text-white rounded-full">
                             {pendingCount}
@@ -257,7 +259,7 @@ export default function AdminDependencies() {
                         onChange={(e) => setFilterGameId(e.target.value)}
                         className="input-field"
                     >
-                        <option value="">Tous les jeux</option>
+                        <option value="">{t('dependencies.filters.allGames')}</option>
                         {games.map(game => (
                             <option key={game.id} value={game.id}>{game.name}</option>
                         ))}
@@ -270,17 +272,17 @@ export default function AdminDependencies() {
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="input-field"
                     >
-                        <option value="">Tous les statuts</option>
-                        <option value="PENDING">En attente</option>
-                        <option value="APPROVED">Approuvées</option>
-                        <option value="REJECTED">Refusées</option>
+                        <option value="">{t('dependencies.filters.allStatuses')}</option>
+                        <option value="PENDING">{t('dependencies.status.pending')}</option>
+                        <option value="APPROVED">{t('dependencies.status.approved')}</option>
+                        <option value="REJECTED">{t('dependencies.status.rejected')}</option>
                     </select>
                 )}
 
                 {activeTab === 'dependencies' && (
                     <button onClick={openCreateModal} className="btn-primary flex items-center gap-2 ml-auto">
                         <Plus className="w-4 h-4" />
-                        Nouvelle dépendance
+                        {t('dependencies.newDependency')}
                     </button>
                 )}
             </div>
@@ -296,7 +298,7 @@ export default function AdminDependencies() {
                     {dependencies.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
                             <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>Aucune dépendance</p>
+                            <p>{t('dependencies.noDependencies')}</p>
                         </div>
                     ) : (
                         dependencies.map(dep => (
@@ -328,7 +330,7 @@ export default function AdminDependencies() {
                                         </span>
                                         {!dep.is_active && (
                                             <span className="px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded">
-                                                Désactivée
+                                                {t('dependencies.disabled')}
                                             </span>
                                         )}
                                     </div>
@@ -336,7 +338,7 @@ export default function AdminDependencies() {
                                         <p className="text-sm text-gray-400 mt-1 line-clamp-1">{dep.description}</p>
                                     )}
                                     <p className="text-xs text-gray-500 mt-1">
-                                        Utilisée par {dep.usage_count || 0} produit(s)
+                                        {t('dependencies.usedBy', { count: dep.usage_count || 0 })}
                                     </p>
                                 </div>
 
@@ -375,7 +377,7 @@ export default function AdminDependencies() {
                     {proposals.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
                             <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>Aucune proposition</p>
+                            <p>{t('dependencies.noProposals')}</p>
                         </div>
                     ) : (
                         proposals.map(prop => (
@@ -408,16 +410,16 @@ export default function AdminDependencies() {
                                                 prop.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                                                     'bg-red-500/20 text-red-400'
                                         }`}>
-                                            {prop.status === 'PENDING' ? 'En attente' :
-                                                prop.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
+                                            {prop.status === 'PENDING' ? t('dependencies.status.pending') :
+                                                prop.status === 'APPROVED' ? t('dependencies.status.approved') : t('dependencies.status.rejected')}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-400 mt-1">
-                                        Proposée par <span className="text-white">{prop.proposed_by_username}</span>
+                                        {t('dependencies.proposedBy')} <span className="text-white">{prop.proposed_by_username}</span>
                                     </p>
                                     {prop.rejection_reason && (
                                         <p className="text-xs text-red-400 mt-1">
-                                            Raison: {prop.rejection_reason}
+                                            {t('dependencies.reason')}: {prop.rejection_reason}
                                         </p>
                                     )}
                                 </div>
@@ -428,14 +430,14 @@ export default function AdminDependencies() {
                                         <button
                                             onClick={() => handleApproveProposal(prop.id)}
                                             className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
-                                            title="Approuver"
+                                            title={t('dependencies.actions.approve')}
                                         >
                                             <CheckCircle className="w-5 h-5" />
                                         </button>
                                         <button
                                             onClick={() => handleRejectProposal(prop.id)}
                                             className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            title="Refuser"
+                                            title={t('dependencies.actions.reject')}
                                         >
                                             <XCircle className="w-5 h-5" />
                                         </button>
@@ -453,7 +455,7 @@ export default function AdminDependencies() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
                         <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                             <h3 className="text-lg font-bold text-white">
-                                {editingDep ? 'Modifier la dépendance' : 'Nouvelle dépendance'}
+                                {editingDep ? t('dependencies.modal.editTitle') : t('dependencies.modal.createTitle')}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white">
                                 <X className="w-5 h-5" />
@@ -463,7 +465,7 @@ export default function AdminDependencies() {
                         <form onSubmit={handleSubmit} className="p-4 space-y-4">
                             {/* Logo */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Logo</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('dependencies.modal.logo')}</label>
                                 <div className="flex items-center gap-4">
                                     <div
                                         onClick={() => fileInputRef.current?.click()}
@@ -476,8 +478,8 @@ export default function AdminDependencies() {
                                         )}
                                     </div>
                                     <div className="text-sm text-gray-500">
-                                        <p>Cliquez pour uploader</p>
-                                        <p className="text-xs">PNG, JPG, SVG (max 2MB)</p>
+                                        <p>{t('dependencies.modal.clickToUpload')}</p>
+                                        <p className="text-xs">{t('dependencies.modal.logoFormats')}</p>
                                     </div>
                                 </div>
                                 <input
@@ -491,12 +493,12 @@ export default function AdminDependencies() {
 
                             {/* Nom */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('dependencies.modal.name')} *</label>
                                 <input
                                     type="text"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ex: Fabric, Forge, OptiFine..."
+                                    placeholder={t('dependencies.modal.namePlaceholder')}
                                     className="input-field w-full"
                                     required
                                 />
@@ -504,14 +506,14 @@ export default function AdminDependencies() {
 
                             {/* Jeu */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('dependencies.modal.game')} *</label>
                                 <select
                                     value={formData.gameId}
                                     onChange={(e) => setFormData({ ...formData, gameId: e.target.value })}
                                     className="input-field w-full"
                                     required
                                 >
-                                    <option value="">Sélectionner un jeu</option>
+                                    <option value="">{t('dependencies.modal.selectGame')}</option>
                                     {games.map(game => (
                                         <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
@@ -520,11 +522,11 @@ export default function AdminDependencies() {
 
                             {/* Description */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Description</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('dependencies.modal.description')}</label>
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Description courte..."
+                                    placeholder={t('dependencies.modal.descriptionPlaceholder')}
                                     rows={2}
                                     className="input-field w-full resize-none"
                                 />
@@ -532,7 +534,7 @@ export default function AdminDependencies() {
 
                             {/* Site web */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Site web</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('dependencies.modal.website')}</label>
                                 <input
                                     type="url"
                                     value={formData.websiteUrl}
@@ -549,7 +551,7 @@ export default function AdminDependencies() {
                                     onClick={() => setShowModal(false)}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -557,7 +559,7 @@ export default function AdminDependencies() {
                                     className="btn-primary flex-1 flex items-center justify-center gap-2"
                                 >
                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                    {editingDep ? 'Mettre à jour' : 'Créer'}
+                                    {editingDep ? t('dependencies.modal.update') : t('dependencies.modal.create')}
                                 </button>
                             </div>
                         </form>

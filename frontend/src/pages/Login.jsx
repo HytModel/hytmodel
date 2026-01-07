@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, Shield, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function Login() {
+    const { t } = useTranslation()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -21,13 +23,13 @@ export default function Login() {
         e.preventDefault()
 
         if (!email || !password) {
-            toast.error('Veuillez remplir tous les champs')
+            toast.error(t('login.errors.fillAllFields'))
             return
         }
 
         // Si 2FA requis, vérifier le code
         if (requires2FA && !totpCode) {
-            toast.error('Veuillez entrer votre code d\'authentification')
+            toast.error(t('login.errors.enter2FACode'))
             return
         }
 
@@ -48,7 +50,7 @@ export default function Login() {
             }
         } catch (error) {
             console.error('Login error:', error)
-            toast.error('Erreur de connexion')
+            toast.error(t('login.errors.loginFailed'))
         } finally {
             setLoading(false)
         }
@@ -69,12 +71,12 @@ export default function Login() {
                         <img src="/logo.png" alt="HytModel" className="h-12 w-auto" />
                     </Link>
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
-                        {requires2FA ? 'Vérification 2FA' : 'Connexion'}
+                        {requires2FA ? t('login.twoFA.title') : t('login.title')}
                     </h1>
                     <p className="text-gray-500">
                         {requires2FA
-                            ? 'Entrez le code de votre application d\'authentification'
-                            : 'Connectez-vous à votre compte'
+                            ? t('login.twoFA.subtitle')
+                            : t('login.subtitle')
                         }
                     </p>
                 </div>
@@ -89,7 +91,7 @@ export default function Login() {
                                 className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
                             >
                                 <ArrowLeft className="w-4 h-4" />
-                                Retour
+                                {t('common.back')}
                             </button>
 
                             <div className="flex justify-center mb-4">
@@ -100,7 +102,7 @@ export default function Login() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Code d'authentification
+                                    {t('login.twoFA.codeLabel')}
                                 </label>
                                 <input
                                     type="text"
@@ -113,7 +115,7 @@ export default function Login() {
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-2 text-center">
-                                    Entrez le code à 6 chiffres de votre app (Google Authenticator, Authy, etc.)
+                                    {t('login.twoFA.codeHint')}
                                 </p>
                             </div>
 
@@ -125,12 +127,12 @@ export default function Login() {
                                 {loading ? (
                                     <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
                                 ) : (
-                                    'Vérifier'
+                                    t('login.twoFA.verify')
                                 )}
                             </button>
 
                             <p className="text-xs text-gray-500 text-center">
-                                Vous pouvez aussi utiliser un code de secours
+                                {t('login.twoFA.backupCodeHint')}
                             </p>
                         </form>
                     ) : (
@@ -139,7 +141,7 @@ export default function Login() {
                             {/* Email */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Email
+                                    {t('login.email')}
                                 </label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -147,7 +149,7 @@ export default function Login() {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="vous@exemple.com"
+                                        placeholder={t('login.emailPlaceholder')}
                                         className="input-field pl-12 w-full"
                                         required
                                     />
@@ -157,7 +159,7 @@ export default function Login() {
                             {/* Password */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-2">
-                                    Mot de passe
+                                    {t('login.password')}
                                 </label>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -188,7 +190,7 @@ export default function Login() {
                                 {loading ? (
                                     <span className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
                                 ) : (
-                                    'Se connecter'
+                                    t('login.submit')
                                 )}
                             </button>
                         </form>
@@ -197,9 +199,9 @@ export default function Login() {
                     {!requires2FA && (
                         <div className="mt-6 text-center">
                             <p className="text-gray-400">
-                                Pas encore de compte ?{' '}
+                                {t('login.noAccount')}{' '}
                                 <Link to="/register" className="text-hyt-accent font-medium hover:underline">
-                                    Créer un compte
+                                    {t('login.createAccount')}
                                 </Link>
                             </p>
                         </div>
@@ -213,7 +215,7 @@ export default function Login() {
                                     <div className="w-full border-t border-hyt-border"></div>
                                 </div>
                                 <div className="relative flex justify-center text-sm">
-                                    <span className="px-4 bg-hyt-card text-gray-500">Ou continuer avec</span>
+                                    <span className="px-4 bg-hyt-card text-gray-500">{t('login.orContinueWith')}</span>
                                 </div>
                             </div>
 

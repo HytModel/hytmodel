@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 const getImageUrl = (url) => {
@@ -16,7 +17,7 @@ const getImageUrl = (url) => {
 }
 
 // Composant Message
-function MessageBubble({ message, isOwn }) {
+function MessageBubble({ message, isOwn, t }) {
     const attachments = typeof message.attachments === 'string'
         ? JSON.parse(message.attachments)
         : message.attachments || []
@@ -80,7 +81,7 @@ function MessageBubble({ message, isOwn }) {
                                     }`}
                                 >
                                     <FileText className="w-4 h-4" />
-                                    {file.originalname || `Fichier ${i + 1}`}
+                                    {file.originalname || `${t('conversation.file')} ${i + 1}`}
                                 </a>
                             ))}
                         </div>
@@ -100,6 +101,7 @@ function MessageBubble({ message, isOwn }) {
 
 // Modal pour faire une offre (créateur)
 function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
+    const { t } = useTranslation()
     const [price, setPrice] = useState(existingOffer ? (existingOffer.price / 100).toString() : '')
     const [days, setDays] = useState(existingOffer?.estimated_days?.toString() || '')
     const [message, setMessage] = useState('')
@@ -107,11 +109,11 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
     const handleSubmit = (e) => {
         e.preventDefault()
         if (!price || parseFloat(price) < 5) {
-            toast.error('Prix minimum: 5€')
+            toast.error(t('conversation.offerModal.errors.minPrice'))
             return
         }
         if (!days || parseInt(days) < 1) {
-            toast.error('Délai minimum: 1 jour')
+            toast.error(t('conversation.offerModal.errors.minDays'))
             return
         }
         onSubmit({
@@ -127,7 +129,7 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
                 <div className="p-4 border-b border-hyt-border flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <Euro className="w-5 h-5 text-hyt-accent" />
-                        {existingOffer ? 'Modifier l\'offre' : 'Faire une offre'}
+                        {existingOffer ? t('conversation.offerModal.editTitle') : t('conversation.offerModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -136,7 +138,7 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
 
                 <form onSubmit={handleSubmit} className="p-4 space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Prix (€) *</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('conversation.offerModal.priceLabel')} *</label>
                         <div className="relative">
                             <Euro className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                             <input
@@ -153,7 +155,7 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Délai (jours) *</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('conversation.offerModal.daysLabel')} *</label>
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                             <input
@@ -169,23 +171,23 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Message (optionnel)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('conversation.offerModal.messageLabel')}</label>
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             className="input-field w-full resize-none"
                             rows={3}
-                            placeholder="Détails supplémentaires..."
+                            placeholder={t('conversation.offerModal.messagePlaceholder')}
                         />
                     </div>
 
                     <div className="flex gap-3">
                         <button type="button" onClick={onClose} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button type="submit" disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Envoyer
+                            {t('conversation.offerModal.send')}
                         </button>
                     </div>
                 </form>
@@ -196,6 +198,7 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
 
 // Modal pour refuser une offre (client)
 function RejectOfferModal({ onClose, onSubmit, loading }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [closeConversation, setCloseConversation] = useState(false)
 
@@ -205,7 +208,7 @@ function RejectOfferModal({ onClose, onSubmit, loading }) {
                 <div className="p-4 border-b border-hyt-border flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <XCircle className="w-5 h-5 text-red-500" />
-                        Refuser l'offre
+                        {t('conversation.rejectModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -214,13 +217,13 @@ function RejectOfferModal({ onClose, onSubmit, loading }) {
 
                 <div className="p-4 space-y-4">
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Raison (optionnel)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('conversation.rejectModal.reasonLabel')}</label>
                         <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             className="input-field w-full resize-none"
                             rows={3}
-                            placeholder="Expliquez pourquoi vous refusez..."
+                            placeholder={t('conversation.rejectModal.reasonPlaceholder')}
                         />
                     </div>
 
@@ -232,14 +235,14 @@ function RejectOfferModal({ onClose, onSubmit, loading }) {
                             className="w-4 h-4"
                         />
                         <div>
-                            <p className="text-red-400 font-medium">Clôturer définitivement</p>
-                            <p className="text-gray-400 text-sm">La conversation sera supprimée dans 48h</p>
+                            <p className="text-red-400 font-medium">{t('conversation.rejectModal.closeDefinitely')}</p>
+                            <p className="text-gray-400 text-sm">{t('conversation.rejectModal.closeHint')}</p>
                         </div>
                     </label>
 
                     <div className="flex gap-3">
                         <button onClick={onClose} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={() => onSubmit(reason, closeConversation)}
@@ -247,7 +250,7 @@ function RejectOfferModal({ onClose, onSubmit, loading }) {
                             className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                            {closeConversation ? 'Refuser et clôturer' : 'Refuser'}
+                            {closeConversation ? t('conversation.rejectModal.rejectAndClose') : t('conversation.rejectModal.reject')}
                         </button>
                     </div>
                 </div>
@@ -258,6 +261,7 @@ function RejectOfferModal({ onClose, onSubmit, loading }) {
 
 // Modal pour clôturer la conversation (créateur)
 function CloseConversationModal({ onClose, onSubmit, loading }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
 
     return (
@@ -266,7 +270,7 @@ function CloseConversationModal({ onClose, onSubmit, loading }) {
                 <div className="p-4 border-b border-hyt-border flex items-center justify-between">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <Lock className="w-5 h-5 text-orange-500" />
-                        Clôturer la conversation
+                        {t('conversation.closeModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -276,24 +280,24 @@ function CloseConversationModal({ onClose, onSubmit, loading }) {
                 <div className="p-4 space-y-4">
                     <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
                         <p className="text-orange-400 text-sm">
-                            ⚠️ Cette action est définitive. Si vous avez une offre en attente, elle sera retirée.
+                            ⚠️ {t('conversation.closeModal.warning')}
                         </p>
                     </div>
 
                     <div>
-                        <label className="block text-sm text-gray-400 mb-2">Raison (optionnel)</label>
+                        <label className="block text-sm text-gray-400 mb-2">{t('conversation.closeModal.reasonLabel')}</label>
                         <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             className="input-field w-full resize-none"
                             rows={3}
-                            placeholder="Expliquez pourquoi vous clôturez..."
+                            placeholder={t('conversation.closeModal.reasonPlaceholder')}
                         />
                     </div>
 
                     <div className="flex gap-3">
                         <button onClick={onClose} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             onClick={() => onSubmit(reason)}
@@ -301,7 +305,7 @@ function CloseConversationModal({ onClose, onSubmit, loading }) {
                             className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-                            Clôturer
+                            {t('conversation.closeModal.close')}
                         </button>
                     </div>
                 </div>
@@ -315,6 +319,7 @@ export default function CustomOrderConversation() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { t } = useTranslation()
     const messagesEndRef = useRef(null)
     const fileInputRef = useRef(null)
 
@@ -354,7 +359,7 @@ export default function CustomOrderConversation() {
             setExistingOffer(data.existing_offer)
             setIsClient(data.is_client)
         } catch (error) {
-            toast.error('Erreur lors du chargement')
+            toast.error(t('conversation.errors.loadFailed'))
             navigate('/custom-orders')
         } finally {
             setLoading(false)
@@ -388,7 +393,7 @@ export default function CustomOrderConversation() {
             setNewMessage('')
             setAttachments([])
         } catch (error) {
-            toast.error('Erreur lors de l\'envoi')
+            toast.error(t('conversation.errors.sendFailed'))
         } finally {
             setSending(false)
         }
@@ -398,26 +403,26 @@ export default function CustomOrderConversation() {
         setActionLoading(true)
         try {
             await customOrdersAPI.makeConversationOffer(id, offerData)
-            toast.success('Offre envoyée !')
+            toast.success(t('conversation.success.offerSent'))
             setShowOfferModal(false)
             loadConversation()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('conversation.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
     const handleAcceptOffer = async () => {
-        if (!confirm('Accepter cette offre ? Vous devrez ensuite payer 50% du montant.')) return
+        if (!confirm(t('conversation.confirmAcceptOffer'))) return
 
         setActionLoading(true)
         try {
             const { data } = await customOrdersAPI.acceptConversationOffer(id)
-            toast.success('Offre acceptée !')
+            toast.success(t('conversation.success.offerAccepted'))
             loadConversation()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('conversation.errors.generic'))
         } finally {
             setActionLoading(false)
         }
@@ -427,7 +432,7 @@ export default function CustomOrderConversation() {
         setActionLoading(true)
         try {
             await customOrdersAPI.rejectConversationOffer(id, { reason, close_conversation: closeConversation })
-            toast.success(closeConversation ? 'Conversation clôturée' : 'Offre refusée')
+            toast.success(closeConversation ? t('conversation.success.conversationClosed') : t('conversation.success.offerRejected'))
             setShowRejectModal(false)
             if (closeConversation) {
                 navigate('/custom-orders')
@@ -435,7 +440,7 @@ export default function CustomOrderConversation() {
                 loadConversation()
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('conversation.errors.generic'))
         } finally {
             setActionLoading(false)
         }
@@ -446,11 +451,11 @@ export default function CustomOrderConversation() {
         setActionLoading(true)
         try {
             await customOrdersAPI.closeConversation(id, { reason })
-            toast.success('Conversation clôturée')
+            toast.success(t('conversation.success.conversationClosed'))
             setShowCloseModal(false)
             navigate('/dashboard')
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('conversation.errors.generic'))
         } finally {
             setActionLoading(false)
         }
@@ -459,7 +464,7 @@ export default function CustomOrderConversation() {
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files)
         if (files.length + attachments.length > 5) {
-            toast.error('Maximum 5 fichiers')
+            toast.error(t('conversation.errors.maxFiles'))
             return
         }
         setAttachments([...attachments, ...files])
@@ -514,15 +519,15 @@ export default function CustomOrderConversation() {
                         {isClosed ? (
                             <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm flex items-center gap-1">
                                 <Lock className="w-4 h-4" />
-                                Clôturée
+                                {t('conversation.status.closed')}
                             </span>
                         ) : existingOffer?.status === 'ACCEPTED' ? (
                             <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
-                                ✓ Offre acceptée
+                                ✓ {t('conversation.status.offerAccepted')}
                             </span>
                         ) : existingOffer?.status === 'PENDING' ? (
                             <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                                Offre: {(existingOffer.price / 100).toFixed(0)}€
+                                {t('conversation.status.offer')}: {(existingOffer.price / 100).toFixed(0)}€
                             </span>
                         ) : null}
 
@@ -531,10 +536,10 @@ export default function CustomOrderConversation() {
                             <button
                                 onClick={() => setShowCloseModal(true)}
                                 className="px-3 py-1 text-orange-400 hover:bg-orange-500/10 rounded-lg text-sm flex items-center gap-1 transition-colors"
-                                title="Clôturer la conversation"
+                                title={t('conversation.closeModal.title')}
                             >
                                 <Lock className="w-4 h-4" />
-                                Clôturer
+                                {t('conversation.close')}
                             </button>
                         )}
                     </div>
@@ -546,10 +551,10 @@ export default function CustomOrderConversation() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-white font-medium">
-                                            Offre : {(existingOffer.price / 100).toFixed(2)}€
+                                            {t('conversation.status.offer')} : {(existingOffer.price / 100).toFixed(2)}€
                                         </p>
                                         <p className="text-gray-400 text-sm">
-                                            Délai : {existingOffer.estimated_days} jour(s)
+                                            {t('conversation.delay')} : {existingOffer.estimated_days} {t('conversation.days')}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
@@ -557,7 +562,7 @@ export default function CustomOrderConversation() {
                                             onClick={() => setShowRejectModal(true)}
                                             className="px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                         >
-                                            Refuser
+                                            {t('conversation.reject')}
                                         </button>
                                         <button
                                             onClick={handleAcceptOffer}
@@ -565,7 +570,7 @@ export default function CustomOrderConversation() {
                                             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
                                         >
                                             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                            Accepter
+                                            {t('conversation.accept')}
                                         </button>
                                     </div>
                                 </div>
@@ -573,13 +578,13 @@ export default function CustomOrderConversation() {
                                 <div className="flex items-center justify-between">
                                     <p className="text-yellow-400">
                                         <Clock className="w-4 h-4 inline mr-1" />
-                                        En attente de réponse du client
+                                        {t('conversation.awaitingClientResponse')}
                                     </p>
                                     <button
                                         onClick={() => setShowOfferModal(true)}
                                         className="text-sm text-gray-400 hover:text-white"
                                     >
-                                        Modifier l'offre
+                                        {t('conversation.modifyOffer')}
                                     </button>
                                 </div>
                             )}
@@ -591,15 +596,15 @@ export default function CustomOrderConversation() {
                         <div className="mt-4 pt-4 border-t border-hyt-border">
                             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex items-center justify-between">
                                 <div>
-                                    <p className="text-green-400 font-medium">Offre acceptée !</p>
-                                    <p className="text-gray-400 text-sm">Payez l'acompte de 50% pour démarrer</p>
+                                    <p className="text-green-400 font-medium">{t('conversation.offerAccepted')}</p>
+                                    <p className="text-gray-400 text-sm">{t('conversation.payDepositToStart')}</p>
                                 </div>
                                 <button
-                                    onClick={() => toast.success('Redirection vers le paiement...')}
+                                    onClick={() => toast.success(t('conversation.redirectingToPayment'))}
                                     className="px-4 py-2 bg-hyt-accent text-black font-medium rounded-lg hover:bg-hyt-accent/90 flex items-center gap-2"
                                 >
                                     <CreditCard className="w-4 h-4" />
-                                    Payer {(existingOffer.price / 100 / 2).toFixed(2)}€
+                                    {t('conversation.pay')} {(existingOffer.price / 100 / 2).toFixed(2)}€
                                 </button>
                             </div>
                         </div>
@@ -611,8 +616,8 @@ export default function CustomOrderConversation() {
                     {messages.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-gray-500">
                             <MessageSquare className="w-12 h-12 mb-4" />
-                            <p>Aucun message</p>
-                            <p className="text-sm">Commencez la conversation !</p>
+                            <p>{t('conversation.noMessages')}</p>
+                            <p className="text-sm">{t('conversation.startConversation')}</p>
                         </div>
                     ) : (
                         <>
@@ -621,6 +626,7 @@ export default function CustomOrderConversation() {
                                     key={msg.id}
                                     message={msg}
                                     isOwn={msg.sender_id === user?.id}
+                                    t={t}
                                 />
                             ))}
                             <div ref={messagesEndRef} />
@@ -632,12 +638,12 @@ export default function CustomOrderConversation() {
                 {isClosed && (
                     <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4 text-center">
                         <Lock className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                        <p className="text-red-400 font-medium">Conversation clôturée</p>
+                        <p className="text-red-400 font-medium">{t('conversation.conversationClosed')}</p>
                         {conversation.close_reason && (
                             <p className="text-gray-400 text-sm mt-1">{conversation.close_reason}</p>
                         )}
                         <p className="text-gray-500 text-xs mt-2">
-                            Cette conversation sera supprimée automatiquement
+                            {t('conversation.willBeDeleted')}
                         </p>
                     </div>
                 )}
@@ -688,7 +694,7 @@ export default function CustomOrderConversation() {
                                     type="button"
                                     onClick={() => setShowOfferModal(true)}
                                     className="p-2 text-hyt-accent hover:bg-hyt-accent/10 rounded-lg transition-colors"
-                                    title="Faire une offre"
+                                    title={t('conversation.makeOffer')}
                                 >
                                     <Euro className="w-5 h-5" />
                                 </button>
@@ -697,7 +703,7 @@ export default function CustomOrderConversation() {
                             <textarea
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Écrivez votre message..."
+                                placeholder={t('conversation.messagePlaceholder')}
                                 rows={1}
                                 className="flex-1 bg-hyt-dark border border-hyt-border rounded-lg px-4 py-2 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent"
                                 onKeyDown={(e) => {

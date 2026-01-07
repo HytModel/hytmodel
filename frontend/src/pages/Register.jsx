@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Sparkles, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import { LoadingButton } from '../components/Loading'
 import toast from 'react-hot-toast'
 
 export default function Register() {
+    const { t } = useTranslation()
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -18,9 +20,9 @@ export default function Register() {
     const navigate = useNavigate()
 
     const passwordRequirements = [
-        { text: 'Au moins 8 caractères', valid: password.length >= 8 },
-        { text: 'Une lettre majuscule', valid: /[A-Z]/.test(password) },
-        { text: 'Un chiffre', valid: /[0-9]/.test(password) },
+        { text: t('register.requirements.minLength'), valid: password.length >= 8 },
+        { text: t('register.requirements.uppercase'), valid: /[A-Z]/.test(password) },
+        { text: t('register.requirements.number'), valid: /[0-9]/.test(password) },
     ]
 
     const isPasswordValid = passwordRequirements.every(req => req.valid)
@@ -29,22 +31,22 @@ export default function Register() {
         e.preventDefault()
 
         if (!username || !email || !password) {
-            toast.error('Veuillez remplir tous les champs')
+            toast.error(t('register.errors.fillAllFields'))
             return
         }
 
         if (password !== confirmPassword) {
-            toast.error('Les mots de passe ne correspondent pas')
+            toast.error(t('register.errors.passwordMismatch'))
             return
         }
 
         if (!isPasswordValid) {
-            toast.error('Le mot de passe ne respecte pas les critères')
+            toast.error(t('register.errors.passwordInvalid'))
             return
         }
 
         if (!acceptTerms) {
-            toast.error('Veuillez accepter les conditions d\'utilisation')
+            toast.error(t('register.errors.acceptTerms'))
             return
         }
 
@@ -52,10 +54,10 @@ export default function Register() {
 
         try {
             await register(username, email, password)
-            toast.success('Compte créé avec succès !')
+            toast.success(t('register.success'))
             navigate('/')
         } catch (error) {
-            const message = error.response?.data?.error || 'Erreur lors de l\'inscription'
+            const message = error.response?.data?.error || t('register.errors.registerFailed')
             toast.error(message)
         } finally {
             setLoading(false)
@@ -76,10 +78,10 @@ export default function Register() {
                         </div>
                     </Link>
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
-                        Créer un compte
+                        {t('register.title')}
                     </h1>
                     <p className="text-gray-500">
-                        Rejoignez la communauté HytModel
+                        {t('register.subtitle')}
                     </p>
                 </div>
 
@@ -89,7 +91,7 @@ export default function Register() {
                         {/* Username */}
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Nom d'utilisateur
+                                {t('register.username')}
                             </label>
                             <div className="relative">
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -97,7 +99,7 @@ export default function Register() {
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="votre_pseudo"
+                                    placeholder={t('register.usernamePlaceholder')}
                                     className="input-field pl-12"
                                     autoComplete="username"
                                 />
@@ -107,7 +109,7 @@ export default function Register() {
                         {/* Email */}
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Email
+                                {t('register.email')}
                             </label>
                             <div className="relative">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -115,7 +117,7 @@ export default function Register() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="vous@exemple.com"
+                                    placeholder={t('register.emailPlaceholder')}
                                     className="input-field pl-12"
                                     autoComplete="email"
                                 />
@@ -125,7 +127,7 @@ export default function Register() {
                         {/* Password */}
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Mot de passe
+                                {t('register.password')}
                             </label>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -167,7 +169,7 @@ export default function Register() {
                         {/* Confirm Password */}
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">
-                                Confirmer le mot de passe
+                                {t('register.confirmPassword')}
                             </label>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -182,7 +184,7 @@ export default function Register() {
                             </div>
                             {confirmPassword && password !== confirmPassword && (
                                 <p className="mt-1 text-xs text-red-400">
-                                    Les mots de passe ne correspondent pas
+                                    {t('register.errors.passwordMismatch')}
                                 </p>
                             )}
                         </div>
@@ -197,13 +199,13 @@ export default function Register() {
                                 className="mt-1 w-4 h-4 rounded border-hyt-border bg-hyt-darker text-hyt-accent focus:ring-hyt-accent focus:ring-offset-0"
                             />
                             <label htmlFor="terms" className="text-sm text-gray-400">
-                                J'accepte les{' '}
+                                {t('register.acceptTerms.prefix')}{' '}
                                 <Link to="/terms" className="text-hyt-accent hover:underline">
-                                    conditions d'utilisation
+                                    {t('register.acceptTerms.terms')}
                                 </Link>{' '}
-                                et la{' '}
+                                {t('register.acceptTerms.and')}{' '}
                                 <Link to="/privacy" className="text-hyt-accent hover:underline">
-                                    politique de confidentialité
+                                    {t('register.acceptTerms.privacy')}
                                 </Link>
                             </label>
                         </div>
@@ -214,7 +216,7 @@ export default function Register() {
                             loading={loading}
                             className="btn-primary w-full py-3"
                         >
-                            Créer mon compte
+                            {t('register.submit')}
                         </LoadingButton>
                     </form>
 
@@ -224,15 +226,15 @@ export default function Register() {
                             <div className="w-full border-t border-hyt-border" />
                         </div>
                         <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-hyt-card text-gray-500">ou</span>
+                            <span className="px-4 bg-hyt-card text-gray-500">{t('register.or')}</span>
                         </div>
                     </div>
 
                     {/* Login Link */}
                     <p className="text-center text-gray-400">
-                        Déjà un compte ?{' '}
+                        {t('register.hasAccount')}{' '}
                         <Link to="/login" className="text-hyt-accent font-medium hover:underline">
-                            Se connecter
+                            {t('register.login')}
                         </Link>
                     </p>
                 </div>

@@ -2,8 +2,11 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { XCircle, ShoppingCart, ArrowRight, RefreshCw } from 'lucide-react'
+import { useTranslation } from '../context/LanguageContext'
 
 export default function Cancel() {
+    const { t } = useTranslation()
+
     return (
         <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
             <motion.div
@@ -28,11 +31,10 @@ export default function Cancel() {
                     transition={{ delay: 0.3 }}
                 >
                     <h1 className="text-3xl md:text-4xl font-display font-bold text-white mb-4">
-                        Paiement annulé
+                        {t('cancel.title')}
                     </h1>
                     <p className="text-gray-400 text-lg mb-8">
-                        Votre paiement a été annulé. Aucun montant n'a été débité de votre compte.
-                        Vos articles sont toujours dans votre panier.
+                        {t('cancel.description')}
                     </p>
                 </motion.div>
 
@@ -44,11 +46,10 @@ export default function Cancel() {
                     className="bg-hyt-card border border-hyt-border rounded-2xl p-6 mb-8"
                 >
                     <h2 className="text-lg font-semibold text-white mb-3">
-                        Un problème ?
+                        {t('cancel.problemTitle')}
                     </h2>
                     <p className="text-gray-400 text-sm">
-                        Si vous avez rencontré un problème lors du paiement, n'hésitez pas à réessayer.
-                        Si le problème persiste, contactez notre support.
+                        {t('cancel.problemDescription')}
                     </p>
                 </motion.div>
 
@@ -64,13 +65,13 @@ export default function Cancel() {
                         className="btn-primary flex-1 flex items-center justify-center gap-2"
                     >
                         <ShoppingCart className="w-5 h-5" />
-                        Retour au panier
+                        {t('cancel.backToCart')}
                     </Link>
                     <Link
                         to="/models"
                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                     >
-                        Continuer les achats
+                        {t('cancel.continueShopping')}
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                 </motion.div>
@@ -83,7 +84,7 @@ export default function Cancel() {
                     className="mt-8 text-sm text-gray-500 flex items-center justify-center gap-2"
                 >
                     <RefreshCw className="w-4 h-4" />
-                    Vous pouvez réessayer le paiement à tout moment
+                    {t('cancel.retryHint')}
                 </motion.p>
             </motion.div>
         </div>

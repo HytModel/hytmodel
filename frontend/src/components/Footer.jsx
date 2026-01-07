@@ -1,25 +1,27 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, Github, Twitter, Heart, MessageCircle } from 'lucide-react'
+import { useTranslation } from '../context/LanguageContext'
 
 export default function Footer() {
+    const { t } = useTranslation()
     const currentYear = new Date().getFullYear()
 
     const footerLinks = {
         platform: [
-            { to: '/models', label: 'Produits' },
-            { to: '/games', label: 'Jeux' },
-            { to: '/become-creator', label: 'Devenir créateur' },
+            { to: '/models', label: t('footer.links.products') },
+            { to: '/games', label: t('footer.links.games') },
+            { to: '/become-creator', label: t('footer.links.becomeCreator') },
         ],
         support: [
-            { to: '/faq', label: 'FAQ' },
-            { to: '/contact', label: 'Contact' },
-            { to: '/help', label: 'Aide' },
+            { to: '/faq', label: t('footer.links.faq') },
+            { to: '/contact', label: t('footer.links.contact') },
+            { to: '/help', label: t('footer.links.help') },
         ],
         legal: [
-            { to: '/terms', label: 'CGU' },
-            { to: '/privacy', label: 'Confidentialité' },
-            { to: '/cookies', label: 'Cookies' },
+            { to: '/terms', label: t('footer.links.terms') },
+            { to: '/privacy', label: t('footer.links.privacy') },
+            { to: '/cookies', label: t('footer.links.cookies') },
         ]
     }
 
@@ -37,7 +39,7 @@ export default function Footer() {
                             />
                         </Link>
                         <p className="text-gray-400 text-sm mb-4">
-                            La marketplace gaming de référence pour vos modèles 3D, textures, plugins et plus encore.
+                            {t('footer.description')}
                         </p>
                         <div className="flex items-center gap-3">
                             <a
@@ -67,7 +69,7 @@ export default function Footer() {
 
                     {/* Plateforme */}
                     <div>
-                        <h3 className="text-white font-semibold mb-4">Plateforme</h3>
+                        <h3 className="text-white font-semibold mb-4">{t('footer.sections.platform')}</h3>
                         <ul className="space-y-2">
                             {footerLinks.platform.map(link => (
                                 <li key={link.to}>
@@ -84,7 +86,7 @@ export default function Footer() {
 
                     {/* Support */}
                     <div>
-                        <h3 className="text-white font-semibold mb-4">Support</h3>
+                        <h3 className="text-white font-semibold mb-4">{t('footer.sections.support')}</h3>
                         <ul className="space-y-2">
                             {footerLinks.support.map(link => (
                                 <li key={link.to}>
@@ -101,7 +103,7 @@ export default function Footer() {
 
                     {/* Légal */}
                     <div>
-                        <h3 className="text-white font-semibold mb-4">Légal</h3>
+                        <h3 className="text-white font-semibold mb-4">{t('footer.sections.legal')}</h3>
                         <ul className="space-y-2">
                             {footerLinks.legal.map(link => (
                                 <li key={link.to}>
@@ -120,10 +122,10 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <div className="mt-12 pt-8 border-t border-hyt-border flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-gray-500 text-sm">
-                        © {currentYear} HytModel. Tous droits réservés.
+                        © {currentYear} HytModel. {t('footer.allRightsReserved')}
                     </p>
                     <p className="text-gray-500 text-sm flex items-center gap-1">
-                        Fait avec <Heart className="w-4 h-4 text-red-500" /> en France
+                        {t('footer.madeWith')} <Heart className="w-4 h-4 text-red-500" /> {t('footer.inFrance')}
                     </p>
                 </div>
             </div>

@@ -6,6 +6,7 @@ import {
     Grid, List, Filter, Search, ChevronDown, Gift
 } from 'lucide-react'
 import { sellersAPI, bundlesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import ModelCard from '../components/ModelCard'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
@@ -31,13 +32,14 @@ const YoutubeIcon = () => (
 
 export default function SellerProfile() {
     const { username } = useParams()
+    const { t } = useTranslation()
 
     const [seller, setSeller] = useState(null)
     const [products, setProducts] = useState([])
     const [bundles, setBundles] = useState([])
     const [loading, setLoading] = useState(true)
     const [viewMode, setViewMode] = useState('grid')
-    const [activeSection, setActiveSection] = useState('products') // products, bundles
+    const [activeSection, setActiveSection] = useState('products')
 
     // Filtres
     const [searchQuery, setSearchQuery] = useState('')
@@ -74,7 +76,7 @@ export default function SellerProfile() {
             }
         } catch (error) {
             console.error('Failed to load seller:', error)
-            toast.error('Vendeur non trouvé')
+            toast.error(t('sellerProfile.errors.notFound'))
         } finally {
             setLoading(false)
         }
@@ -90,7 +92,6 @@ export default function SellerProfile() {
                     .filter(Boolean)
             )]
             setCategories(filteredCategories)
-            // Reset la catégorie si elle n'existe plus dans le jeu sélectionné
             if (selectedCategory && !filteredCategories.includes(selectedCategory)) {
                 setSelectedCategory('')
             }
@@ -136,10 +137,10 @@ export default function SellerProfile() {
             <div className="min-h-screen pt-20 flex items-center justify-center">
                 <div className="text-center">
                     <User className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-white mb-2">Vendeur non trouvé</h2>
-                    <p className="text-gray-400 mb-4">Ce profil n'existe pas ou n'est plus disponible</p>
+                    <h2 className="text-2xl font-bold text-white mb-2">{t('sellerProfile.notFound.title')}</h2>
+                    <p className="text-gray-400 mb-4">{t('sellerProfile.notFound.description')}</p>
                     <Link to="/models" className="btn-primary">
-                        Retour aux produits
+                        {t('sellerProfile.notFound.backToProducts')}
                     </Link>
                 </div>
             </div>
@@ -182,7 +183,7 @@ export default function SellerProfile() {
                                 )}
                                 {seller.creator_type === 'AFFILIATED' && (
                                     <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs font-bold rounded">
-                                        Affilié
+                                        {t('sellerProfile.badges.affiliated')}
                                     </span>
                                 )}
                             </div>
@@ -201,7 +202,7 @@ export default function SellerProfile() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-2 bg-hyt-card hover:bg-hyt-dark rounded-lg text-gray-400 hover:text-white transition-colors"
-                                        title="Site web"
+                                        title={t('sellerProfile.social.website')}
                                     >
                                         <ExternalLink className="w-5 h-5" />
                                     </a>
@@ -245,11 +246,11 @@ export default function SellerProfile() {
                             <div className="flex items-center justify-center md:justify-start gap-6">
                                 <div className="text-center">
                                     <p className="text-2xl font-bold text-white">{seller.total_products || 0}</p>
-                                    <p className="text-xs text-gray-500">Produits</p>
+                                    <p className="text-xs text-gray-500">{t('sellerProfile.stats.products')}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-2xl font-bold text-white">{formatNumber(seller.total_sales || 0)}</p>
-                                    <p className="text-xs text-gray-500">Ventes</p>
+                                    <p className="text-xs text-gray-500">{t('sellerProfile.stats.sales')}</p>
                                 </div>
                                 <div className="text-center">
                                     <div className="flex items-center justify-center gap-1">
@@ -258,18 +259,18 @@ export default function SellerProfile() {
                                             {seller.average_rating ? parseFloat(seller.average_rating).toFixed(1) : '-'}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-gray-500">Note moyenne</p>
+                                    <p className="text-xs text-gray-500">{t('sellerProfile.stats.avgRating')}</p>
                                 </div>
                                 <div className="text-center">
                                     <p className="text-2xl font-bold text-white">{formatNumber(seller.total_views || 0)}</p>
-                                    <p className="text-xs text-gray-500">Vues totales</p>
+                                    <p className="text-xs text-gray-500">{t('sellerProfile.stats.totalViews')}</p>
                                 </div>
                             </div>
 
                             {/* Member since */}
                             <p className="text-xs text-gray-500 mt-4 flex items-center justify-center md:justify-start gap-1">
                                 <Calendar className="w-3 h-3" />
-                                Membre depuis {new Date(seller.member_since).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                                {t('sellerProfile.memberSince')} {new Date(seller.member_since).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
                             </p>
                         </div>
                     </div>
@@ -287,7 +288,7 @@ export default function SellerProfile() {
                         }`}
                     >
                         <Package className="w-5 h-5" />
-                        Produits
+                        {t('sellerProfile.tabs.products')}
                         <span className="text-sm text-gray-500">({products.length})</span>
                         {activeSection === 'products' && (
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
@@ -301,7 +302,7 @@ export default function SellerProfile() {
                             }`}
                         >
                             <Gift className="w-5 h-5" />
-                            Bundles
+                            {t('sellerProfile.tabs.bundles')}
                             <span className="text-sm text-gray-500">({bundles.length})</span>
                             {activeSection === 'bundles' && (
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
@@ -353,7 +354,7 @@ export default function SellerProfile() {
                                     ))}
                                     {bundle.items?.length > 4 && (
                                         <div className="px-2 py-1 bg-hyt-dark rounded-lg text-xs text-gray-400">
-                                            +{bundle.items.length - 4} autres
+                                            +{bundle.items.length - 4} {t('sellerProfile.bundles.others')}
                                         </div>
                                     )}
                                 </div>
@@ -361,7 +362,7 @@ export default function SellerProfile() {
                                 {/* Prix */}
                                 <div className="flex items-center justify-between pt-4 border-t border-hyt-border">
                                     <div className="text-sm text-gray-500">
-                                        {bundle.item_count} produits inclus
+                                        {bundle.item_count} {t('sellerProfile.bundles.productsIncluded')}
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-gray-500 line-through">
@@ -381,7 +382,7 @@ export default function SellerProfile() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                 <Package className="w-6 h-6 text-hyt-accent" />
-                                Catalogue
+                                {t('sellerProfile.catalog')}
                                 <span className="text-gray-500 text-lg font-normal">({filteredProducts.length})</span>
                             </h2>
 
@@ -394,7 +395,7 @@ export default function SellerProfile() {
                                         type="text"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="Rechercher..."
+                                        placeholder={t('sellerProfile.filters.search')}
                                         className="input-field pl-10 w-full sm:w-48"
                                     />
                                 </div>
@@ -406,7 +407,7 @@ export default function SellerProfile() {
                                         onChange={(e) => setSelectedGame(e.target.value)}
                                         className="input-field"
                                     >
-                                        <option value="">Tous les jeux</option>
+                                        <option value="">{t('sellerProfile.filters.allGames')}</option>
                                         {games.map(game => (
                                             <option key={game} value={game}>{game}</option>
                                         ))}
@@ -420,7 +421,7 @@ export default function SellerProfile() {
                                         onChange={(e) => setSelectedCategory(e.target.value)}
                                         className="input-field"
                                     >
-                                        <option value="">Toutes catégories</option>
+                                        <option value="">{t('sellerProfile.filters.allCategories')}</option>
                                         {categories.map(cat => (
                                             <option key={cat} value={cat}>{cat}</option>
                                         ))}
@@ -433,12 +434,12 @@ export default function SellerProfile() {
                                     onChange={(e) => setSortBy(e.target.value)}
                                     className="input-field"
                                 >
-                                    <option value="newest">Plus récents</option>
-                                    <option value="oldest">Plus anciens</option>
-                                    <option value="price-low">Prix croissant</option>
-                                    <option value="price-high">Prix décroissant</option>
-                                    <option value="popular">Plus populaires</option>
-                                    <option value="rating">Mieux notés</option>
+                                    <option value="newest">{t('sellerProfile.sort.newest')}</option>
+                                    <option value="oldest">{t('sellerProfile.sort.oldest')}</option>
+                                    <option value="price-low">{t('sellerProfile.sort.priceAsc')}</option>
+                                    <option value="price-high">{t('sellerProfile.sort.priceDesc')}</option>
+                                    <option value="popular">{t('sellerProfile.sort.popular')}</option>
+                                    <option value="rating">{t('sellerProfile.sort.rating')}</option>
                                 </select>
 
                                 {/* Vue */}
@@ -463,11 +464,11 @@ export default function SellerProfile() {
                         {filteredProducts.length === 0 ? (
                             <div className="text-center py-16">
                                 <ShoppingBag className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                                <h3 className="text-xl font-semibold text-white mb-2">Aucun produit</h3>
+                                <h3 className="text-xl font-semibold text-white mb-2">{t('sellerProfile.empty.title')}</h3>
                                 <p className="text-gray-400">
                                     {searchQuery || selectedGame || selectedCategory
-                                        ? 'Aucun produit ne correspond à vos critères'
-                                        : 'Ce vendeur n\'a pas encore de produits'}
+                                        ? t('sellerProfile.empty.noMatch')
+                                        : t('sellerProfile.empty.noProducts')}
                                 </p>
                                 {(searchQuery || selectedGame || selectedCategory) && (
                                     <button
@@ -478,7 +479,7 @@ export default function SellerProfile() {
                                         }}
                                         className="mt-4 btn-secondary"
                                     >
-                                        Réinitialiser les filtres
+                                        {t('sellerProfile.empty.resetFilters')}
                                     </button>
                                 )}
                             </div>

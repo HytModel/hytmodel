@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Package, Download, Calendar, Loader2, ShoppingBag, FileText, ExternalLink } from 'lucide-react'
 import { checkoutAPI, modelsAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function MyPurchases() {
+    const { t } = useTranslation()
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
     const [downloading, setDownloading] = useState(null)
@@ -19,7 +21,7 @@ export default function MyPurchases() {
             setPurchases(data.purchases || [])
         } catch (error) {
             console.error('Failed to load purchases:', error)
-            toast.error('Erreur lors du chargement des achats')
+            toast.error(t('myPurchases.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -38,9 +40,9 @@ export default function MyPurchases() {
             a.click()
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
-            toast.success('Téléchargement démarré')
+            toast.success(t('myPurchases.success.downloadStarted'))
         } catch (error) {
-            toast.error('Erreur lors du téléchargement')
+            toast.error(t('myPurchases.errors.downloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -58,9 +60,9 @@ export default function MyPurchases() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-white">Mes achats</h2>
+                    <h2 className="text-2xl font-bold text-white">{t('myPurchases.title')}</h2>
                     <p className="text-gray-400">
-                        {purchases.length} produit{purchases.length !== 1 ? 's' : ''} acheté{purchases.length !== 1 ? 's' : ''}
+                        {t('myPurchases.count', { count: purchases.length })}
                     </p>
                 </div>
             </div>
@@ -70,12 +72,12 @@ export default function MyPurchases() {
                     <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-hyt-card flex items-center justify-center">
                         <ShoppingBag className="w-10 h-10 text-gray-600" />
                     </div>
-                    <h3 className="text-xl font-semibold text-white mb-2">Aucun achat</h3>
+                    <h3 className="text-xl font-semibold text-white mb-2">{t('myPurchases.empty.title')}</h3>
                     <p className="text-gray-400 mb-6">
-                        Vous n'avez pas encore effectué d'achat
+                        {t('myPurchases.empty.description')}
                     </p>
                     <Link to="/models" className="btn-primary">
-                        Découvrir les produits
+                        {t('myPurchases.empty.discoverProducts')}
                     </Link>
                 </div>
             ) : (
@@ -134,7 +136,7 @@ export default function MyPurchases() {
                                     <Link
                                         to={`/models/${purchase.model_id}`}
                                         className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg transition-colors"
-                                        title="Voir le produit"
+                                        title={t('myPurchases.viewProduct')}
                                     >
                                         <ExternalLink className="w-5 h-5" />
                                     </Link>
@@ -148,7 +150,7 @@ export default function MyPurchases() {
                                         ) : (
                                             <Download className="w-4 h-4" />
                                         )}
-                                        Télécharger
+                                        {t('myPurchases.download')}
                                     </button>
                                 </div>
                             </div>
@@ -162,10 +164,9 @@ export default function MyPurchases() {
                 <div className="bg-hyt-dark rounded-xl p-4 flex items-start gap-3">
                     <FileText className="w-5 h-5 text-hyt-accent flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-white font-medium">Factures</p>
+                        <p className="text-white font-medium">{t('myPurchases.invoices.title')}</p>
                         <p className="text-gray-400 text-sm">
-                            Vos factures sont envoyées par email après chaque achat.
-                            Contactez le support si vous avez besoin d'une copie.
+                            {t('myPurchases.invoices.description')}
                         </p>
                     </div>
                 </div>

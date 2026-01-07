@@ -6,6 +6,7 @@ import {
     ExternalLink, MessageCircleReply, Filter, Link2, Gamepad2
 } from 'lucide-react'
 import { adminAPI, dependenciesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 // Icônes pour les types de propositions
@@ -14,13 +15,6 @@ const TYPE_ICONS = {
     TAG: Tag,
     VERSION: Layers,
     DEPENDENCY: Link2
-}
-
-const TYPE_LABELS = {
-    CATEGORY: 'Catégorie',
-    TAG: 'Tag',
-    VERSION: 'Version',
-    DEPENDENCY: 'Dépendance'
 }
 
 // Icônes pour les raisons de signalement
@@ -33,30 +27,8 @@ const REASON_ICONS = {
     OTHER: HelpCircle
 }
 
-const REASON_LABELS = {
-    BUG: 'Bug technique',
-    ERROR: 'Fichiers manquants',
-    MISLEADING: 'Description trompeuse',
-    COPYRIGHT: 'Violation de droits',
-    INAPPROPRIATE: 'Contenu inapproprié',
-    OTHER: 'Autre'
-}
-
-const STATUS_LABELS = {
-    PENDING: 'En attente',
-    REVIEWED: 'En cours',
-    RESOLVED: 'Résolu',
-    DISMISSED: 'Rejeté'
-}
-
-const STATUS_COLORS = {
-    PENDING: 'bg-yellow-500/20 text-yellow-500',
-    REVIEWED: 'bg-blue-500/20 text-blue-500',
-    RESOLVED: 'bg-green-500/20 text-green-500',
-    DISMISSED: 'bg-gray-500/20 text-gray-400'
-}
-
 export default function AdminFeedback() {
+    const { t } = useTranslation()
     const [activeTab, setActiveTab] = useState('proposals')
     const [proposals, setProposals] = useState([])
     const [depProposals, setDepProposals] = useState([]) // Propositions de dépendances
@@ -69,6 +41,36 @@ export default function AdminFeedback() {
     const [staffNoteModal, setStaffNoteModal] = useState(null)
     const [staffNote, setStaffNote] = useState('')
     const [rejectDepModal, setRejectDepModal] = useState(null) // Modal rejet dépendance
+
+    const TYPE_LABELS = {
+        CATEGORY: t('feedback.types.category'),
+        TAG: t('feedback.types.tag'),
+        VERSION: t('feedback.types.version'),
+        DEPENDENCY: t('feedback.types.dependency')
+    }
+
+    const REASON_LABELS = {
+        BUG: t('feedback.reasons.bug'),
+        ERROR: t('feedback.reasons.error'),
+        MISLEADING: t('feedback.reasons.misleading'),
+        COPYRIGHT: t('feedback.reasons.copyright'),
+        INAPPROPRIATE: t('feedback.reasons.inappropriate'),
+        OTHER: t('feedback.reasons.other')
+    }
+
+    const STATUS_LABELS = {
+        PENDING: t('feedback.status.pending'),
+        REVIEWED: t('feedback.status.reviewed'),
+        RESOLVED: t('feedback.status.resolved'),
+        DISMISSED: t('feedback.status.dismissed')
+    }
+
+    const STATUS_COLORS = {
+        PENDING: 'bg-yellow-500/20 text-yellow-500',
+        REVIEWED: 'bg-blue-500/20 text-blue-500',
+        RESOLVED: 'bg-green-500/20 text-green-500',
+        DISMISSED: 'bg-gray-500/20 text-gray-400'
+    }
 
     useEffect(() => {
         fetchData()
@@ -97,10 +99,10 @@ export default function AdminFeedback() {
         setProcessing(id)
         try {
             await adminAPI.approveProposal(id)
-            toast.success('Proposition approuvée et créée !')
+            toast.success(t('feedback.success.proposalApproved'))
             fetchData()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('feedback.errors.generic'))
         } finally {
             setProcessing(null)
         }
@@ -112,12 +114,12 @@ export default function AdminFeedback() {
         setProcessing(rejectModal)
         try {
             await adminAPI.rejectProposal(rejectModal, rejectReason)
-            toast.success('Proposition rejetée')
+            toast.success(t('feedback.success.proposalRejected'))
             setRejectModal(null)
             setRejectReason('')
             fetchData()
         } catch (error) {
-            toast.error('Erreur lors du rejet')
+            toast.error(t('feedback.errors.rejectFailed'))
         } finally {
             setProcessing(null)
         }
@@ -128,12 +130,12 @@ export default function AdminFeedback() {
         setProcessing(id)
         try {
             await adminAPI.updateReport(id, { status, staffNote: note })
-            toast.success('Signalement mis à jour')
+            toast.success(t('feedback.success.reportUpdated'))
             setStaffNoteModal(null)
             setStaffNote('')
             fetchData()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('feedback.errors.generic'))
         } finally {
             setProcessing(null)
         }
@@ -144,10 +146,10 @@ export default function AdminFeedback() {
         setProcessing(`dep-${id}`)
         try {
             await dependenciesAPI.approveProposal(id)
-            toast.success('Dépendance approuvée et créée !')
+            toast.success(t('feedback.success.depApproved'))
             fetchData()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('feedback.errors.generic'))
         } finally {
             setProcessing(null)
         }
@@ -159,12 +161,12 @@ export default function AdminFeedback() {
         setProcessing(`dep-${rejectDepModal}`)
         try {
             await dependenciesAPI.rejectProposal(rejectDepModal, rejectReason)
-            toast.success('Proposition de dépendance rejetée')
+            toast.success(t('feedback.success.depRejected'))
             setRejectDepModal(null)
             setRejectReason('')
             fetchData()
         } catch (error) {
-            toast.error('Erreur lors du rejet')
+            toast.error(t('feedback.errors.rejectFailed'))
         } finally {
             setProcessing(null)
         }
@@ -181,7 +183,7 @@ export default function AdminFeedback() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Feedback & Signalements</h2>
+            <h2 className="text-2xl font-bold text-white">{t('feedback.title')}</h2>
 
             {/* Tabs */}
             <div className="flex gap-2 border-b border-hyt-border">
@@ -193,7 +195,7 @@ export default function AdminFeedback() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Propositions
+                    {t('feedback.tabs.proposals')}
                     {pendingProposalsCount > 0 && (
                         <span className="ml-2 px-2 py-0.5 bg-hyt-accent text-black text-xs font-bold rounded-full">
                             {pendingProposalsCount}
@@ -211,14 +213,14 @@ export default function AdminFeedback() {
                             : 'text-gray-400 hover:text-white'
                     }`}
                 >
-                    Signalements
+                    {t('feedback.tabs.reports')}
                     {pendingReportsCount > 0 && (
                         <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
                             {pendingReportsCount}
                         </span>
                     )}
                     {reportsWithResponse > 0 && (
-                        <span className="ml-1 px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full" title="Avec réponse vendeur">
+                        <span className="ml-1 px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full" title={t('feedback.withSellerResponse')}>
                             {reportsWithResponse} 💬
                         </span>
                     )}
@@ -241,9 +243,9 @@ export default function AdminFeedback() {
                             {proposals.length === 0 && depProposals.length === 0 ? (
                                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                                     <MessageSquare className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                                    <p className="text-white font-medium">Aucune proposition en attente</p>
+                                    <p className="text-white font-medium">{t('feedback.proposals.noProposals')}</p>
                                     <p className="text-gray-400 text-sm mt-1">
-                                        Les propositions des vendeurs apparaîtront ici
+                                        {t('feedback.proposals.willAppearHere')}
                                     </p>
                                 </div>
                             ) : (
@@ -282,7 +284,7 @@ export default function AdminFeedback() {
                                                             <Gamepad2 className="w-4 h-4 inline mr-1" />
                                                             <span className="text-white">{proposal.game_name}</span>
                                                             {' • '}
-                                                            Par : <span className="text-white">{proposal.user_name}</span>
+                                                            {t('feedback.proposals.by')} : <span className="text-white">{proposal.user_name}</span>
                                                         </p>
                                                         {proposal.description && (
                                                             <p className="text-gray-500 text-sm mt-2 italic">
@@ -290,7 +292,7 @@ export default function AdminFeedback() {
                                                             </p>
                                                         )}
                                                         <p className="text-xs text-gray-500 mt-2">
-                                                            Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                                            {t('feedback.proposals.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
                                                         </p>
                                                     </div>
 
@@ -299,7 +301,7 @@ export default function AdminFeedback() {
                                                             onClick={() => handleApproveProposal(proposal.id)}
                                                             disabled={processing === proposal.id}
                                                             className="p-2 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                                                            title="Approuver et créer"
+                                                            title={t('feedback.actions.approveAndCreate')}
                                                         >
                                                             {processing === proposal.id ? (
                                                                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -311,7 +313,7 @@ export default function AdminFeedback() {
                                                             onClick={() => setRejectModal(proposal.id)}
                                                             disabled={processing === proposal.id}
                                                             className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                                                            title="Refuser"
+                                                            title={t('feedback.actions.reject')}
                                                         >
                                                             <X className="w-5 h-5" />
                                                         </button>
@@ -348,14 +350,14 @@ export default function AdminFeedback() {
                                                         </span>
                                                         <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full flex items-center gap-1">
                                                             <Link2 className="w-3 h-3" />
-                                                            Dépendance
+                                                            {t('feedback.types.dependency')}
                                                         </span>
                                                     </div>
                                                     <p className="text-gray-400 text-sm">
                                                         <Gamepad2 className="w-4 h-4 inline mr-1" />
                                                         <span className="text-white">{proposal.game_name}</span>
                                                         {' • '}
-                                                        Par : <span className="text-white">{proposal.proposed_by_username}</span>
+                                                        {t('feedback.proposals.by')} : <span className="text-white">{proposal.proposed_by_username}</span>
                                                     </p>
                                                     {proposal.description && (
                                                         <p className="text-gray-500 text-sm mt-2">
@@ -370,11 +372,11 @@ export default function AdminFeedback() {
                                                             className="text-hyt-accent text-sm hover:underline flex items-center gap-1 mt-1 inline-flex"
                                                         >
                                                             <ExternalLink className="w-3 h-3" />
-                                                            Site web
+                                                            {t('feedback.proposals.website')}
                                                         </a>
                                                     )}
                                                     <p className="text-xs text-gray-500 mt-2">
-                                                        Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                                        {t('feedback.proposals.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
                                                     </p>
                                                 </div>
 
@@ -383,7 +385,7 @@ export default function AdminFeedback() {
                                                         onClick={() => handleApproveDepProposal(proposal.id)}
                                                         disabled={processing === `dep-${proposal.id}`}
                                                         className="p-2 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                                                        title="Approuver et créer"
+                                                        title={t('feedback.actions.approveAndCreate')}
                                                     >
                                                         {processing === `dep-${proposal.id}` ? (
                                                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -395,7 +397,7 @@ export default function AdminFeedback() {
                                                         onClick={() => setRejectDepModal(proposal.id)}
                                                         disabled={processing === `dep-${proposal.id}`}
                                                         className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                                                        title="Refuser"
+                                                        title={t('feedback.actions.reject')}
                                                     >
                                                         <X className="w-5 h-5" />
                                                     </button>
@@ -424,7 +426,7 @@ export default function AdminFeedback() {
                                                 : 'bg-hyt-dark text-gray-400 hover:text-white'
                                         }`}
                                     >
-                                        {status === 'ALL' ? 'Tous' : STATUS_LABELS[status]}
+                                        {status === 'ALL' ? t('feedback.filters.all') : STATUS_LABELS[status]}
                                     </button>
                                 ))}
                             </div>
@@ -432,9 +434,9 @@ export default function AdminFeedback() {
                             {reports.length === 0 ? (
                                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                                     <AlertTriangle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                                    <p className="text-white font-medium">Aucun signalement</p>
+                                    <p className="text-white font-medium">{t('feedback.reports.noReports')}</p>
                                     <p className="text-gray-400 text-sm mt-1">
-                                        Les signalements de produits apparaîtront ici
+                                        {t('feedback.reports.willAppearHere')}
                                     </p>
                                 </div>
                             ) : (
@@ -476,15 +478,15 @@ export default function AdminFeedback() {
                                                         {hasSellerResponse && (
                                                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full flex items-center gap-1">
                                                                 <MessageCircleReply className="w-3 h-3" />
-                                                                Réponse vendeur
+                                                                {t('feedback.reports.sellerResponse')}
                                                             </span>
                                                         )}
                                                     </div>
 
                                                     <p className="text-gray-400 text-sm">
-                                                        Vendeur : <span className="text-white">{report.creator_username}</span>
+                                                        {t('feedback.reports.seller')} : <span className="text-white">{report.creator_username}</span>
                                                         {' • '}
-                                                        Signalé par : <span className="text-white">{report.reporter_username}</span>
+                                                        {t('feedback.reports.reportedBy')} : <span className="text-white">{report.reporter_username}</span>
                                                         {' • '}
                                                         <span className="text-gray-500">
                                                             {new Date(report.created_at).toLocaleDateString('fr-FR')}
@@ -494,7 +496,7 @@ export default function AdminFeedback() {
                                                     {/* Description du signalement */}
                                                     {report.description && (
                                                         <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                                            <p className="text-xs text-red-400 font-medium mb-1">Description du signalement :</p>
+                                                            <p className="text-xs text-red-400 font-medium mb-1">{t('feedback.reports.reportDescription')} :</p>
                                                             <p className="text-gray-300 text-sm">
                                                                 {report.description}
                                                             </p>
@@ -505,7 +507,7 @@ export default function AdminFeedback() {
                                                     {hasSellerResponse && (
                                                         <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                                                             <p className="text-xs text-blue-400 font-medium mb-1">
-                                                                💬 Réponse du vendeur ({new Date(report.seller_response_at).toLocaleDateString('fr-FR')}) :
+                                                                💬 {t('feedback.reports.sellerResponseOn', { date: new Date(report.seller_response_at).toLocaleDateString('fr-FR') })} :
                                                             </p>
                                                             <p className="text-gray-300 text-sm">
                                                                 {report.seller_response}
@@ -516,7 +518,7 @@ export default function AdminFeedback() {
                                                     {/* Note du staff */}
                                                     {report.staff_note && (
                                                         <div className="mt-3 p-3 bg-hyt-accent/10 border border-hyt-accent/20 rounded-lg">
-                                                            <p className="text-xs text-hyt-accent font-medium mb-1">Note du staff :</p>
+                                                            <p className="text-xs text-hyt-accent font-medium mb-1">{t('feedback.reports.staffNote')} :</p>
                                                             <p className="text-gray-300 text-sm">
                                                                 {report.staff_note}
                                                             </p>
@@ -530,7 +532,7 @@ export default function AdminFeedback() {
                                                             className="text-hyt-accent text-sm hover:underline flex items-center gap-1"
                                                         >
                                                             <Eye className="w-4 h-4" />
-                                                            Voir le produit
+                                                            {t('feedback.reports.viewProduct')}
                                                             <ExternalLink className="w-3 h-3" />
                                                         </Link>
                                                     </div>
@@ -544,21 +546,21 @@ export default function AdminFeedback() {
                                                             disabled={processing === report.id}
                                                             className="px-3 py-1.5 bg-green-500/20 text-green-500 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50 text-sm"
                                                         >
-                                                            ✓ Résolu
+                                                            ✓ {t('feedback.actions.resolved')}
                                                         </button>
                                                         <button
                                                             onClick={() => handleUpdateReport(report.id, 'REVIEWED')}
                                                             disabled={processing === report.id || report.status === 'REVIEWED'}
                                                             className="px-3 py-1.5 bg-yellow-500/20 text-yellow-500 rounded-lg hover:bg-yellow-500/30 transition-colors disabled:opacity-50 text-sm"
                                                         >
-                                                            🔍 En cours
+                                                            🔍 {t('feedback.actions.inProgress')}
                                                         </button>
                                                         <button
                                                             onClick={() => openStaffNoteModal(report, 'DISMISSED')}
                                                             disabled={processing === report.id}
                                                             className="px-3 py-1.5 bg-gray-500/20 text-gray-400 rounded-lg hover:bg-gray-500/30 transition-colors disabled:opacity-50 text-sm"
                                                         >
-                                                            ✗ Non fondé
+                                                            ✗ {t('feedback.actions.unfounded')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -577,17 +579,17 @@ export default function AdminFeedback() {
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
                         <div className="p-4 border-b border-hyt-border">
-                            <h3 className="text-lg font-semibold text-white">Refuser la proposition</h3>
+                            <h3 className="text-lg font-semibold text-white">{t('feedback.modals.rejectProposal')}</h3>
                         </div>
                         <div className="p-4 space-y-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Raison du refus (optionnel)
+                                    {t('feedback.modals.rejectReasonOptional')}
                                 </label>
                                 <textarea
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
-                                    placeholder="Expliquez pourquoi cette proposition est refusée..."
+                                    placeholder={t('feedback.modals.rejectReasonPlaceholder')}
                                     className="input-field w-full h-24 resize-none"
                                 />
                             </div>
@@ -599,7 +601,7 @@ export default function AdminFeedback() {
                                     }}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleRejectProposal}
@@ -611,7 +613,7 @@ export default function AdminFeedback() {
                                     ) : (
                                         <X className="w-4 h-4" />
                                     )}
-                                    Refuser
+                                    {t('feedback.actions.reject')}
                                 </button>
                             </div>
                         </div>
@@ -625,27 +627,27 @@ export default function AdminFeedback() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
                         <div className="p-4 border-b border-hyt-border">
                             <h3 className="text-lg font-semibold text-white">
-                                {staffNoteModal.status === 'RESOLVED' ? '✓ Marquer comme résolu' : '✗ Marquer comme non fondé'}
+                                {staffNoteModal.status === 'RESOLVED' ? t('feedback.modals.markResolved') : t('feedback.modals.markUnfounded')}
                             </h3>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="bg-hyt-dark rounded-lg p-3">
-                                <p className="text-sm text-gray-400">Produit : <span className="text-white">{staffNoteModal.report.model_title}</span></p>
-                                <p className="text-sm text-gray-400">Raison : <span className="text-white">{REASON_LABELS[staffNoteModal.report.reason]}</span></p>
+                                <p className="text-sm text-gray-400">{t('feedback.modals.product')} : <span className="text-white">{staffNoteModal.report.model_title}</span></p>
+                                <p className="text-sm text-gray-400">{t('feedback.modals.reason')} : <span className="text-white">{REASON_LABELS[staffNoteModal.report.reason]}</span></p>
                             </div>
 
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Note pour le vendeur (optionnel)
+                                    {t('feedback.modals.staffNoteOptional')}
                                 </label>
                                 <textarea
                                     value={staffNote}
                                     onChange={(e) => setStaffNote(e.target.value)}
-                                    placeholder="Ajoutez une note explicative pour le vendeur..."
+                                    placeholder={t('feedback.modals.staffNotePlaceholder')}
                                     className="input-field w-full h-24 resize-none"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Cette note sera visible par le vendeur dans sa notification.
+                                    {t('feedback.modals.staffNoteHint')}
                                 </p>
                             </div>
 
@@ -657,7 +659,7 @@ export default function AdminFeedback() {
                                     }}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={() => handleUpdateReport(staffNoteModal.report.id, staffNoteModal.status, staffNote)}
@@ -673,7 +675,7 @@ export default function AdminFeedback() {
                                     ) : (
                                         <Check className="w-4 h-4" />
                                     )}
-                                    Confirmer
+                                    {t('feedback.modals.confirm')}
                                 </button>
                             </div>
                         </div>
@@ -688,18 +690,18 @@ export default function AdminFeedback() {
                         <div className="p-4 border-b border-hyt-border">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                 <Link2 className="w-5 h-5 text-blue-500" />
-                                Refuser la proposition de dépendance
+                                {t('feedback.modals.rejectDepProposal')}
                             </h3>
                         </div>
                         <div className="p-4 space-y-4">
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Raison du refus (optionnel)
+                                    {t('feedback.modals.rejectReasonOptional')}
                                 </label>
                                 <textarea
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
-                                    placeholder="Expliquez pourquoi cette dépendance est refusée..."
+                                    placeholder={t('feedback.modals.rejectDepPlaceholder')}
                                     className="input-field w-full h-24 resize-none"
                                 />
                             </div>
@@ -711,7 +713,7 @@ export default function AdminFeedback() {
                                     }}
                                     className="btn-ghost flex-1"
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleRejectDepProposal}
@@ -723,7 +725,7 @@ export default function AdminFeedback() {
                                     ) : (
                                         <X className="w-4 h-4" />
                                     )}
-                                    Refuser
+                                    {t('feedback.actions.reject')}
                                 </button>
                             </div>
                         </div>

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers, Gift } from 'lucide-react'
 import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, bundlesAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import ModelCard from '../components/ModelCard'
 import Loading from '../components/Loading'
 
 export default function Models() {
+    const { t } = useTranslation()
     const [searchParams, setSearchParams] = useSearchParams()
 
     const [models, setModels] = useState([])
@@ -17,7 +19,7 @@ export default function Models() {
     const [loading, setLoading] = useState(true)
     const [showFilters, setShowFilters] = useState(false)
     const [viewMode, setViewMode] = useState('grid')
-    const [activeTab, setActiveTab] = useState('products') // products, bundles
+    const [activeTab, setActiveTab] = useState('products')
 
     // Filters
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -29,12 +31,10 @@ export default function Models() {
     const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '')
     const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest')
 
-    // Chargement initial des jeux et catégories
     useEffect(() => {
         fetchInitialData()
     }, [])
 
-    // Charger les versions quand le jeu change
     useEffect(() => {
         if (selectedGame) {
             fetchVersionsByGame(selectedGame)
@@ -44,12 +44,10 @@ export default function Models() {
         }
     }, [selectedGame])
 
-    // Charger les tags (peuvent être filtrés par catégorie si besoin)
     useEffect(() => {
         fetchTags()
     }, [selectedCategory])
 
-    // Rechercher les modèles quand les filtres changent
     useEffect(() => {
         fetchModels()
     }, [searchQuery, selectedGame, selectedCategory, selectedTags, selectedVersions, minPrice, maxPrice, sortBy])
@@ -103,7 +101,6 @@ export default function Models() {
             const { data } = await modelsAPI.searchAdvanced(params)
             let sortedModels = data.models || data || []
 
-            // Sort
             switch (sortBy) {
                 case 'price-asc':
                     sortedModels.sort((a, b) => a.price - b.price)
@@ -142,13 +139,11 @@ export default function Models() {
         setSearchParams({})
     }
 
-    // Quand on change de jeu, reset les versions sélectionnées
     const handleGameChange = (gameId) => {
         setSelectedGame(gameId)
-        setSelectedVersions([]) // Reset versions quand on change de jeu
+        setSelectedVersions([])
     }
 
-    // Quand on change de catégorie
     const handleCategoryChange = (categoryId) => {
         setSelectedCategory(categoryId)
     }
@@ -187,9 +182,9 @@ export default function Models() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="font-display text-3xl font-bold text-white">Boutique</h1>
+                        <h1 className="font-display text-3xl font-bold text-white">{t('models.title')}</h1>
                         <p className="text-gray-400 mt-1">
-                            Découvrez nos produits et offres groupées
+                            {t('models.subtitle')}
                         </p>
                     </div>
 
@@ -199,7 +194,7 @@ export default function Models() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Rechercher..."
+                                placeholder={t('models.searchPlaceholder')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="input-field pl-12 w-full"
@@ -213,7 +208,7 @@ export default function Models() {
                                 className={`btn-ghost flex items-center gap-2 ${showFilters ? 'bg-hyt-accent/10 text-hyt-accent' : ''}`}
                             >
                                 <SlidersHorizontal className="w-5 h-5" />
-                                <span className="hidden sm:inline">Filtres</span>
+                                <span className="hidden sm:inline">{t('models.filters.button')}</span>
                             </button>
                         )}
 
@@ -244,7 +239,7 @@ export default function Models() {
                         }`}
                     >
                         <Box className="w-5 h-5" />
-                        Produits
+                        {t('models.tabs.products')}
                         <span className="text-sm text-gray-500">({models.length})</span>
                         {activeTab === 'products' && (
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
@@ -257,7 +252,7 @@ export default function Models() {
                         }`}
                     >
                         <Gift className="w-5 h-5" />
-                        Bundles
+                        {t('models.tabs.bundles')}
                         {bundles.length > 0 && (
                             <span className="text-sm text-gray-500">({bundles.length})</span>
                         )}
@@ -273,11 +268,11 @@ export default function Models() {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                 <Filter className="w-5 h-5" />
-                                Filtres avancés
+                                {t('models.filters.title')}
                             </h3>
                             {hasActiveFilters && (
                                 <button onClick={clearFilters} className="text-sm text-hyt-accent hover:underline">
-                                    Effacer tout
+                                    {t('models.filters.clearAll')}
                                 </button>
                             )}
                         </div>
@@ -285,13 +280,13 @@ export default function Models() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Game Filter */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Jeu</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('models.filters.game')}</label>
                                 <select
                                     value={selectedGame}
                                     onChange={(e) => handleGameChange(e.target.value)}
                                     className="input-field w-full"
                                 >
-                                    <option value="">Tous les jeux</option>
+                                    <option value="">{t('models.filters.allGames')}</option>
                                     {games.map(game => (
                                         <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
@@ -300,13 +295,13 @@ export default function Models() {
 
                             {/* Category Filter */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Catégorie</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('models.filters.category')}</label>
                                 <select
                                     value={selectedCategory}
                                     onChange={(e) => handleCategoryChange(e.target.value)}
                                     className="input-field w-full"
                                 >
-                                    <option value="">Toutes les catégories</option>
+                                    <option value="">{t('models.filters.allCategories')}</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
@@ -315,7 +310,7 @@ export default function Models() {
 
                             {/* Price Range */}
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Prix min (€)</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('models.filters.minPrice')}</label>
                                 <input
                                     type="number"
                                     placeholder="5"
@@ -327,7 +322,7 @@ export default function Models() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Prix max (€)</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('models.filters.maxPrice')}</label>
                                 <input
                                     type="number"
                                     placeholder="1000"
@@ -339,14 +334,14 @@ export default function Models() {
                             </div>
                         </div>
 
-                        {/* Versions - Affichées seulement si un jeu est sélectionné */}
+                        {/* Versions */}
                         {selectedGame && versions.length > 0 && (
                             <div className="mt-6 pt-6 border-t border-hyt-border">
                                 <label className="block text-sm text-gray-400 mb-3 flex items-center gap-2">
                                     <Layers className="w-4 h-4" />
-                                    Versions du jeu
+                                    {t('models.filters.gameVersions')}
                                     <span className="text-xs text-gray-500">
-                                        ({versions.length} disponible{versions.length > 1 ? 's' : ''})
+                                        ({t('models.filters.available', { count: versions.length })})
                                     </span>
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -366,7 +361,7 @@ export default function Models() {
                                 </div>
                                 {selectedVersions.length > 0 && (
                                     <p className="text-xs text-hyt-accent mt-2">
-                                        {selectedVersions.length} version{selectedVersions.length > 1 ? 's' : ''} sélectionnée{selectedVersions.length > 1 ? 's' : ''}
+                                        {t('models.filters.versionsSelected', { count: selectedVersions.length })}
                                     </p>
                                 )}
                             </div>
@@ -377,7 +372,7 @@ export default function Models() {
                             <div className="mt-6 pt-6 border-t border-hyt-border">
                                 <div className="flex items-center gap-2 text-gray-500 text-sm">
                                     <Layers className="w-4 h-4" />
-                                    <span>Sélectionnez un jeu pour filtrer par version</span>
+                                    <span>{t('models.filters.selectGameForVersions')}</span>
                                 </div>
                             </div>
                         )}
@@ -387,9 +382,9 @@ export default function Models() {
                             <div className="mt-6 pt-6 border-t border-hyt-border">
                                 <label className="block text-sm text-gray-400 mb-3 flex items-center gap-2">
                                     <Tag className="w-4 h-4" />
-                                    Tags
+                                    {t('models.filters.tags')}
                                     <span className="text-xs text-gray-500">
-                                        ({tags.length} disponible{tags.length > 1 ? 's' : ''})
+                                        ({t('models.filters.available', { count: tags.length })})
                                     </span>
                                 </label>
                                 <div className="flex flex-wrap gap-2">
@@ -409,7 +404,7 @@ export default function Models() {
                                 </div>
                                 {selectedTags.length > 0 && (
                                     <p className="text-xs text-hyt-purple mt-2">
-                                        {selectedTags.length} tag{selectedTags.length > 1 ? 's' : ''} sélectionné{selectedTags.length > 1 ? 's' : ''}
+                                        {t('models.filters.tagsSelected', { count: selectedTags.length })}
                                     </p>
                                 )}
                             </div>
@@ -417,17 +412,17 @@ export default function Models() {
 
                         {/* Sort */}
                         <div className="mt-6 pt-6 border-t border-hyt-border">
-                            <label className="block text-sm text-gray-400 mb-2">Trier par</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('models.filters.sortBy')}</label>
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value)}
                                 className="input-field w-full md:w-48"
                             >
-                                <option value="newest">Plus récents</option>
-                                <option value="popular">Plus populaires</option>
-                                <option value="rating">Mieux notés</option>
-                                <option value="price-asc">Prix croissant</option>
-                                <option value="price-desc">Prix décroissant</option>
+                                <option value="newest">{t('models.filters.sort.newest')}</option>
+                                <option value="popular">{t('models.filters.sort.popular')}</option>
+                                <option value="rating">{t('models.filters.sort.rating')}</option>
+                                <option value="price-asc">{t('models.filters.sort.priceAsc')}</option>
+                                <option value="price-desc">{t('models.filters.sort.priceDesc')}</option>
                             </select>
                         </div>
                     </div>
@@ -436,7 +431,7 @@ export default function Models() {
                 {/* Active Filters - Quick view - Only for products */}
                 {hasActiveFilters && !showFilters && activeTab === 'products' && (
                     <div className="flex flex-wrap items-center gap-2 mb-6">
-                        <span className="text-sm text-gray-400">Filtres actifs:</span>
+                        <span className="text-sm text-gray-400">{t('models.filters.activeFilters')}:</span>
 
                         {searchQuery && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
@@ -495,7 +490,7 @@ export default function Models() {
                         )}
 
                         <button onClick={clearFilters} className="text-sm text-hyt-accent hover:underline ml-2">
-                            Effacer tout
+                            {t('models.filters.clearAll')}
                         </button>
                     </div>
                 )}
@@ -504,7 +499,7 @@ export default function Models() {
                 {activeTab === 'products' && (
                     <div className="mb-4">
                         <p className="text-gray-400 text-sm">
-                            {models.length} résultat{models.length !== 1 ? 's' : ''} trouvé{models.length !== 1 ? 's' : ''}
+                            {t('models.results', { count: models.length })}
                         </p>
                     </div>
                 )}
@@ -583,7 +578,7 @@ export default function Models() {
                                         {/* Prix */}
                                         <div className="flex items-center justify-between pt-4 border-t border-hyt-border">
                                             <div className="text-sm text-gray-500">
-                                                {bundle.item_count} produits
+                                                {t('models.bundles.productCount', { count: bundle.item_count })}
                                             </div>
                                             <div className="flex items-center gap-2">
                                             <span className="text-gray-500 line-through text-sm">
@@ -600,9 +595,9 @@ export default function Models() {
                     ) : (
                         <div className="text-center py-20">
                             <Gift className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                            <h3 className="text-xl font-semibold text-white mb-2">Aucun bundle disponible</h3>
+                            <h3 className="text-xl font-semibold text-white mb-2">{t('models.bundles.empty.title')}</h3>
                             <p className="text-gray-500">
-                                Les vendeurs n'ont pas encore créé d'offres groupées
+                                {t('models.bundles.empty.description')}
                             </p>
                         </div>
                     )
@@ -625,13 +620,13 @@ export default function Models() {
                         ) : (
                             <div className="text-center py-20">
                                 <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-                                <h3 className="text-xl font-semibold text-white mb-2">Aucun produit trouvé</h3>
+                                <h3 className="text-xl font-semibold text-white mb-2">{t('models.empty.title')}</h3>
                                 <p className="text-gray-500 mb-6">
-                                    Essayez de modifier vos critères de recherche
+                                    {t('models.empty.description')}
                                 </p>
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="btn-secondary">
-                                        Effacer les filtres
+                                        {t('models.empty.clearFilters')}
                                     </button>
                                 )}
                             </div>

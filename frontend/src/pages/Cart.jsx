@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart, Trash2, ArrowRight, ShoppingBag, CreditCard } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import { checkoutAPI } from '../services/api'
 import Loading, { LoadingButton } from '../components/Loading'
 import toast from 'react-hot-toast'
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast'
 export default function Cart() {
     const { items, total, loading, removeFromCart, clearCart } = useCart()
     const { isAuthenticated } = useAuth()
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const [checkoutLoading, setCheckoutLoading] = useState(false)
 
@@ -18,7 +20,7 @@ export default function Cart() {
     }
 
     const handleClear = async () => {
-        if (window.confirm('Voulez-vous vraiment vider votre panier ?')) {
+        if (window.confirm(t('cart.confirmClear'))) {
             await clearCart()
         }
     }
@@ -36,7 +38,7 @@ export default function Cart() {
                 window.location.href = data.url
             }
         } catch (error) {
-            const message = error.response?.data?.error || 'Erreur lors du checkout'
+            const message = error.response?.data?.error || t('cart.errors.checkoutFailed')
             toast.error(message)
         } finally {
             setCheckoutLoading(false)
@@ -56,8 +58,8 @@ export default function Cart() {
                         <ShoppingCart className="w-6 h-6 text-hyt-accent" />
                     </div>
                     <div>
-                        <h1 className="font-display text-3xl font-bold text-white">Mon panier</h1>
-                        <p className="text-gray-500">{items.length} produit{items.length !== 1 ? 's' : ''}</p>
+                        <h1 className="font-display text-3xl font-bold text-white">{t('cart.title')}</h1>
+                        <p className="text-gray-500">{t('cart.productCount', { count: items.length })}</p>
                     </div>
                 </div>
 
@@ -67,12 +69,12 @@ export default function Cart() {
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-hyt-card flex items-center justify-center">
                             <ShoppingBag className="w-12 h-12 text-gray-600" />
                         </div>
-                        <h2 className="text-2xl font-semibold text-white mb-2">Votre panier est vide</h2>
+                        <h2 className="text-2xl font-semibold text-white mb-2">{t('cart.empty.title')}</h2>
                         <p className="text-gray-500 mb-8">
-                            Découvrez notre collection de produits premium
+                            {t('cart.empty.description')}
                         </p>
                         <Link to="/models" className="btn-primary">
-                            Explorer les produits
+                            {t('cart.empty.explore')}
                             <ArrowRight className="inline-block ml-2 w-5 h-5" />
                         </Link>
                     </div>
@@ -135,27 +137,27 @@ export default function Cart() {
                                 onClick={handleClear}
                                 className="text-sm text-gray-500 hover:text-red-400 transition-colors"
                             >
-                                Vider le panier
+                                {t('cart.clearCart')}
                             </button>
                         </div>
 
                         {/* Summary */}
                         <div className="lg:col-span-1">
                             <div className="card sticky top-24">
-                                <h2 className="font-semibold text-white mb-4">Récapitulatif</h2>
+                                <h2 className="font-semibold text-white mb-4">{t('cart.summary.title')}</h2>
 
                                 <div className="space-y-3 mb-6">
                                     <div className="flex justify-between text-gray-400">
-                                        <span>Sous-total</span>
+                                        <span>{t('cart.summary.subtotal')}</span>
                                         <span>{total}€</span>
                                     </div>
                                     <div className="flex justify-between text-gray-400">
-                                        <span>TVA incluse</span>
+                                        <span>{t('cart.summary.vatIncluded')}</span>
                                         <span>-</span>
                                     </div>
                                     <div className="border-t border-hyt-border pt-3">
                                         <div className="flex justify-between">
-                                            <span className="font-semibold text-white">Total</span>
+                                            <span className="font-semibold text-white">{t('cart.summary.total')}</span>
                                             <span className="font-display text-2xl font-bold text-white">{total}€</span>
                                         </div>
                                     </div>
@@ -167,11 +169,11 @@ export default function Cart() {
                                     className="btn-primary w-full flex items-center justify-center gap-2"
                                 >
                                     <CreditCard className="w-5 h-5" />
-                                    Passer au paiement
+                                    {t('cart.checkout')}
                                 </LoadingButton>
 
                                 <p className="text-xs text-gray-500 text-center mt-4">
-                                    Paiement sécurisé par Stripe
+                                    {t('cart.securePayment')}
                                 </p>
                             </div>
                         </div>

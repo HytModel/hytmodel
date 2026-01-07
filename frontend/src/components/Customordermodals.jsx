@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, AlertTriangle, CheckCircle, XCircle, Info, Loader2 } from 'lucide-react'
+import { useTranslation } from '../context/LanguageContext'
 
 // ==================== MODAL DE BASE ====================
 export function Modal({ isOpen, onClose, children, size = 'md' }) {
@@ -61,12 +62,14 @@ export function ConfirmModal({
                                  onConfirm,
                                  title,
                                  message,
-                                 confirmText = 'Confirmer',
-                                 cancelText = 'Annuler',
+                                 confirmText,
+                                 cancelText,
                                  variant = 'danger', // 'danger', 'warning', 'success', 'info'
                                  loading = false,
                                  children // Pour contenu personnalisé
                              }) {
+    const { t } = useTranslation()
+
     const variants = {
         danger: {
             icon: XCircle,
@@ -127,7 +130,7 @@ export function ConfirmModal({
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        {cancelText}
+                        {cancelText || t('common.cancel')}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -137,7 +140,7 @@ export function ConfirmModal({
                         {loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                            confirmText
+                            confirmText || t('modals.confirm')
                         )}
                     </button>
                 </div>
@@ -154,8 +157,8 @@ export function PromptModal({
                                 title,
                                 message,
                                 placeholder = '',
-                                submitText = 'Envoyer',
-                                cancelText = 'Annuler',
+                                submitText,
+                                cancelText,
                                 variant = 'info',
                                 loading = false,
                                 required = false,
@@ -163,6 +166,7 @@ export function PromptModal({
                                 multiline = false,
                                 rows = 3
                             }) {
+    const { t } = useTranslation()
     const [value, setValue] = useState('')
     const [error, setError] = useState('')
 
@@ -175,11 +179,11 @@ export function PromptModal({
 
     const handleSubmit = () => {
         if (required && !value.trim()) {
-            setError('Ce champ est requis')
+            setError(t('modals.errors.fieldRequired'))
             return
         }
         if (minLength && value.trim().length < minLength) {
-            setError(`Minimum ${minLength} caractères requis`)
+            setError(t('modals.errors.minChars', { count: minLength }))
             return
         }
         onSubmit(value)
@@ -272,7 +276,7 @@ export function PromptModal({
                     )}
                     {minLength > 0 && (
                         <p className={`text-xs mt-2 ${value.length >= minLength ? 'text-green-400' : 'text-gray-500'}`}>
-                            {value.length}/{minLength} caractères minimum
+                            {value.length}/{minLength} {t('modals.minCharsLabel')}
                         </p>
                     )}
                 </div>
@@ -284,7 +288,7 @@ export function PromptModal({
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        {cancelText}
+                        {cancelText || t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -294,7 +298,7 @@ export function PromptModal({
                         {loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                            submitText
+                            submitText || t('modals.send')
                         )}
                     </button>
                 </div>
@@ -305,6 +309,7 @@ export function PromptModal({
 
 // ==================== MODAL DE RÉTRACTATION ====================
 export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
 
     const clientRefund = order ? Number(order.first_payment_amount) * 0.25 : 0
@@ -323,30 +328,30 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                         <AlertTriangle className="w-7 h-7 text-red-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">Se rétracter</h3>
-                        <p className="text-gray-400 text-sm">Cette action est irréversible</p>
+                        <h3 className="text-xl font-bold text-white">{t('modals.withdraw.title')}</h3>
+                        <p className="text-gray-400 text-sm">{t('modals.withdraw.subtitle')}</p>
                     </div>
                 </div>
 
                 {/* Détails remboursement */}
                 <div className="bg-hyt-dark rounded-xl p-4 mb-4 space-y-3">
                     <div className="flex justify-between items-center">
-                        <span className="text-gray-400">Acompte payé</span>
+                        <span className="text-gray-400">{t('modals.withdraw.depositPaid')}</span>
                         <span className="text-white font-medium">
                             {order ? Number(order.first_payment_amount).toFixed(2) : 0}€
                         </span>
                     </div>
                     <div className="border-t border-hyt-border pt-3 space-y-2">
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Vous récupérez (25%)</span>
+                            <span className="text-gray-400">{t('modals.withdraw.youGet')}</span>
                             <span className="text-green-400 font-medium">+{clientRefund.toFixed(2)}€</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Créateur reçoit (20%)</span>
+                            <span className="text-gray-400">{t('modals.withdraw.creatorGets')}</span>
                             <span className="text-yellow-400 font-medium">{creatorPayment.toFixed(2)}€</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Frais plateforme (5%)</span>
+                            <span className="text-gray-400">{t('modals.withdraw.platformFee')}</span>
                             <span className="text-gray-500 font-medium">
                                 {(Number(order?.first_payment_amount || 0) * 0.05).toFixed(2)}€
                             </span>
@@ -357,12 +362,12 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                 {/* Raison */}
                 <div className="mb-4">
                     <label className="block text-sm text-gray-400 mb-2">
-                        Raison de la rétractation (optionnel)
+                        {t('modals.withdraw.reasonLabel')}
                     </label>
                     <textarea
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
-                        placeholder="Expliquez pourquoi vous souhaitez annuler..."
+                        placeholder={t('modals.withdraw.reasonPlaceholder')}
                         rows={3}
                         className="w-full bg-hyt-dark border border-hyt-border rounded-xl px-4 py-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent"
                     />
@@ -375,7 +380,7 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={() => onConfirm(reason)}
@@ -387,7 +392,7 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                         ) : (
                             <>
                                 <XCircle className="w-4 h-4" />
-                                Confirmer la rétractation
+                                {t('modals.withdraw.confirm')}
                             </>
                         )}
                     </button>
@@ -399,6 +404,7 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
 
 // ==================== MODAL DE RÉCLAMATION ====================
 export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [error, setError] = useState('')
 
@@ -411,7 +417,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
 
     const handleSubmit = () => {
         if (reason.trim().length < 20) {
-            setError('Veuillez décrire le problème plus en détail (min 20 caractères)')
+            setError(t('modals.claim.errorMinChars'))
             return
         }
         onSubmit(reason)
@@ -426,23 +432,22 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
                         <AlertTriangle className="w-7 h-7 text-yellow-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">Signaler un problème</h3>
-                        <p className="text-gray-400 text-sm">Le créateur et notre équipe seront notifiés</p>
+                        <h3 className="text-xl font-bold text-white">{t('modals.claim.title')}</h3>
+                        <p className="text-gray-400 text-sm">{t('modals.claim.subtitle')}</p>
                     </div>
                 </div>
 
                 {/* Info */}
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
                     <p className="text-blue-400 text-sm">
-                        💡 Si les fichiers ne fonctionnent pas correctement, décrivez précisément le problème.
-                        Le créateur pourra vous envoyer une version corrigée.
+                        💡 {t('modals.claim.info')}
                     </p>
                 </div>
 
                 {/* Raison */}
                 <div className="mb-4">
                     <label className="block text-sm text-gray-400 mb-2">
-                        Décrivez le problème rencontré *
+                        {t('modals.claim.describeLabel')} *
                     </label>
                     <textarea
                         value={reason}
@@ -450,7 +455,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
                             setReason(e.target.value)
                             setError('')
                         }}
-                        placeholder="Ex: Le fichier ne s'ouvre pas, il manque des textures, les dimensions ne correspondent pas..."
+                        placeholder={t('modals.claim.describePlaceholder')}
                         rows={4}
                         className={`w-full bg-hyt-dark border rounded-xl px-4 py-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent transition-colors ${error ? 'border-red-500' : 'border-hyt-border'}`}
                     />
@@ -458,7 +463,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
                         <p className="text-red-400 text-sm mt-2">{error}</p>
                     )}
                     <p className={`text-xs mt-2 ${reason.length >= 20 ? 'text-green-400' : 'text-gray-500'}`}>
-                        {reason.length}/20 caractères minimum
+                        {reason.length}/20 {t('modals.minCharsLabel')}
                     </p>
                 </div>
 
@@ -469,7 +474,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -481,7 +486,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
                         ) : (
                             <>
                                 <AlertTriangle className="w-4 h-4" />
-                                Envoyer la réclamation
+                                {t('modals.claim.submit')}
                             </>
                         )}
                     </button>
@@ -493,6 +498,7 @@ export function ClaimModal({ isOpen, onClose, onSubmit, loading }) {
 
 // ==================== MODAL DE RÉVISION ====================
 export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [error, setError] = useState('')
 
@@ -505,7 +511,7 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
 
     const handleSubmit = () => {
         if (!reason.trim()) {
-            setError('Veuillez décrire les modifications souhaitées')
+            setError(t('modals.revision.errorRequired'))
             return
         }
         onSubmit(reason)
@@ -520,15 +526,15 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
                         <Info className="w-7 h-7 text-purple-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">Demander des révisions</h3>
-                        <p className="text-gray-400 text-sm">Le créateur sera notifié</p>
+                        <h3 className="text-xl font-bold text-white">{t('modals.revision.title')}</h3>
+                        <p className="text-gray-400 text-sm">{t('modals.revision.subtitle')}</p>
                     </div>
                 </div>
 
                 {/* Raison */}
                 <div className="mb-4">
                     <label className="block text-sm text-gray-400 mb-2">
-                        Quelles modifications souhaitez-vous ? *
+                        {t('modals.revision.whatChanges')} *
                     </label>
                     <textarea
                         value={reason}
@@ -536,7 +542,7 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
                             setReason(e.target.value)
                             setError('')
                         }}
-                        placeholder="Décrivez précisément les changements que vous aimeriez voir..."
+                        placeholder={t('modals.revision.placeholder')}
                         rows={4}
                         className={`w-full bg-hyt-dark border rounded-xl px-4 py-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent transition-colors ${error ? 'border-red-500' : 'border-hyt-border'}`}
                     />
@@ -552,7 +558,7 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -562,7 +568,7 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
                         {loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                            'Envoyer la demande'
+                            t('modals.revision.submit')
                         )}
                     </button>
                 </div>
@@ -573,6 +579,8 @@ export function RevisionModal({ isOpen, onClose, onSubmit, loading }) {
 
 // ==================== MODAL DE CONFIRMATION LIVRAISON ====================
 export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, loading }) {
+    const { t } = useTranslation()
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
             <div className="p-6">
@@ -583,15 +591,15 @@ export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, l
 
                 {/* Titre */}
                 <h3 className="text-xl font-bold text-white text-center mb-2">
-                    Confirmer la livraison ?
+                    {t('modals.delivery.title')}
                 </h3>
 
                 {/* Message */}
                 <p className="text-gray-400 text-center mb-2">
-                    Vous allez livrer <span className="text-white font-medium">{filesCount} fichier{filesCount > 1 ? 's' : ''}</span>
+                    {t('modals.delivery.message', { count: filesCount })}
                 </p>
                 <p className="text-gray-500 text-sm text-center mb-6">
-                    Le client pourra ensuite valider ou demander des modifications.
+                    {t('modals.delivery.info')}
                 </p>
 
                 {/* Boutons */}
@@ -601,7 +609,7 @@ export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, l
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -613,7 +621,7 @@ export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, l
                         ) : (
                             <>
                                 <CheckCircle className="w-4 h-4" />
-                                Livrer
+                                {t('modals.delivery.deliver')}
                             </>
                         )}
                     </button>
@@ -625,6 +633,8 @@ export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, l
 
 // ==================== MODAL DE VALIDATION LIVRAISON ====================
 export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loading }) {
+    const { t } = useTranslation()
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
             <div className="p-6">
@@ -635,18 +645,18 @@ export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loadin
 
                 {/* Titre */}
                 <h3 className="text-xl font-bold text-white text-center mb-2">
-                    Valider la livraison ?
+                    {t('modals.approveDelivery.title')}
                 </h3>
 
                 {/* Message */}
                 <p className="text-gray-400 text-center mb-4">
-                    En validant, vous confirmez que le travail correspond à vos attentes.
+                    {t('modals.approveDelivery.message')}
                 </p>
 
                 {/* Info paiement */}
                 <div className="bg-hyt-dark rounded-xl p-4 mb-6">
                     <p className="text-gray-400 text-sm text-center">
-                        Prochaine étape : paiement du solde
+                        {t('modals.approveDelivery.nextStep')}
                     </p>
                     <p className="text-white font-bold text-lg text-center mt-1">
                         {order ? Number(order.second_payment_amount).toFixed(2) : 0}€
@@ -660,7 +670,7 @@ export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loadin
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -672,7 +682,7 @@ export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loadin
                         ) : (
                             <>
                                 <CheckCircle className="w-4 h-4" />
-                                Valider
+                                {t('modals.approveDelivery.validate')}
                             </>
                         )}
                     </button>
@@ -684,6 +694,7 @@ export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loadin
 
 // ==================== MODAL REFUSER CORRECTIF ====================
 export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
+    const { t } = useTranslation()
     const [feedback, setFeedback] = useState('')
     const [error, setError] = useState('')
 
@@ -696,7 +707,7 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
 
     const handleSubmit = () => {
         if (!feedback.trim()) {
-            setError('Veuillez expliquer pourquoi le correctif ne convient pas')
+            setError(t('modals.rejectFix.errorRequired'))
             return
         }
         onSubmit(feedback)
@@ -711,22 +722,22 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
                         <XCircle className="w-7 h-7 text-red-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">Refuser le correctif</h3>
-                        <p className="text-gray-400 text-sm">Version {fix?.version || '?'}</p>
+                        <h3 className="text-xl font-bold text-white">{t('modals.rejectFix.title')}</h3>
+                        <p className="text-gray-400 text-sm">{t('modals.rejectFix.version', { version: fix?.version || '?' })}</p>
                     </div>
                 </div>
 
                 {/* Info */}
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
                     <p className="text-blue-400 text-sm">
-                        💡 Expliquez précisément ce qui ne fonctionne pas pour que le créateur puisse corriger efficacement.
+                        💡 {t('modals.rejectFix.info')}
                     </p>
                 </div>
 
                 {/* Feedback */}
                 <div className="mb-4">
                     <label className="block text-sm text-gray-400 mb-2">
-                        Qu'est-ce qui ne va pas ? *
+                        {t('modals.rejectFix.whatWrong')} *
                     </label>
                     <textarea
                         value={feedback}
@@ -734,7 +745,7 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
                             setFeedback(e.target.value)
                             setError('')
                         }}
-                        placeholder="Ex: Le fichier ne s'ouvre toujours pas, les couleurs ne correspondent pas à ma demande, il manque encore..."
+                        placeholder={t('modals.rejectFix.placeholder')}
                         rows={4}
                         className={`w-full bg-hyt-dark border rounded-xl px-4 py-3 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent transition-colors ${error ? 'border-red-500' : 'border-hyt-border'}`}
                     />
@@ -750,7 +761,7 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleSubmit}
@@ -762,7 +773,7 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
                         ) : (
                             <>
                                 <XCircle className="w-4 h-4" />
-                                Refuser et envoyer
+                                {t('modals.rejectFix.submit')}
                             </>
                         )}
                     </button>
@@ -774,6 +785,8 @@ export function RejectFixModal({ isOpen, onClose, onSubmit, fix, loading }) {
 
 // ==================== MODAL ACCEPTER CORRECTIF ====================
 export function AcceptFixModal({ isOpen, onClose, onConfirm, fix, loading }) {
+    const { t } = useTranslation()
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
             <div className="p-6">
@@ -784,21 +797,21 @@ export function AcceptFixModal({ isOpen, onClose, onConfirm, fix, loading }) {
 
                 {/* Titre */}
                 <h3 className="text-xl font-bold text-white text-center mb-2">
-                    Accepter le correctif ?
+                    {t('modals.acceptFix.title')}
                 </h3>
 
                 {/* Message */}
                 <p className="text-gray-400 text-center mb-2">
-                    Version {fix?.version || '?'}
+                    {t('modals.acceptFix.version', { version: fix?.version || '?' })}
                 </p>
                 <p className="text-gray-500 text-sm text-center mb-6">
-                    En acceptant, la réclamation sera clôturée et les fichiers corrigés remplaceront les fichiers finaux.
+                    {t('modals.acceptFix.info')}
                 </p>
 
                 {/* Info */}
                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-6">
                     <p className="text-green-400 text-sm text-center">
-                        ✅ Vous pourrez télécharger les fichiers corrigés une fois le paiement effectué
+                        ✅ {t('modals.acceptFix.downloadInfo')}
                     </p>
                 </div>
 
@@ -809,7 +822,7 @@ export function AcceptFixModal({ isOpen, onClose, onConfirm, fix, loading }) {
                         disabled={loading}
                         className="flex-1 px-4 py-2.5 bg-hyt-dark border border-hyt-border rounded-xl text-white hover:bg-hyt-border transition-colors disabled:opacity-50"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -821,7 +834,7 @@ export function AcceptFixModal({ isOpen, onClose, onConfirm, fix, loading }) {
                         ) : (
                             <>
                                 <CheckCircle className="w-4 h-4" />
-                                Accepter
+                                {t('modals.acceptFix.accept')}
                             </>
                         )}
                     </button>

@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShoppingCart, Star, Eye, Download, Check, User } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 
 export default function ModelCard({ model, showActions = true }) {
     const { addToCart, isInCart } = useCart()
     const { isAuthenticated } = useAuth()
+    const { t } = useTranslation()
     const navigate = useNavigate()
 
     const inCart = isInCart(model.id)
@@ -78,7 +80,7 @@ export default function ModelCard({ model, showActions = true }) {
                     <div
                         onClick={handleSellerClick}
                         className="absolute top-3 right-3 cursor-pointer group/seller"
-                        title={`Voir la boutique de ${model.creator_display_name || model.creator_username}`}
+                        title={t('modelCard.viewShop', { name: model.creator_display_name || model.creator_username })}
                     >
                         <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 bg-hyt-dark shadow-lg transition-all group-hover/seller:border-hyt-accent group-hover/seller:scale-110">
                             {creatorAvatarUrl ? (

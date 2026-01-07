@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Download, Package, ArrowRight, Loader2, FileText } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import { useTranslation } from '../context/LanguageContext'
 import { checkoutAPI } from '../services/api'
 
 export default function CheckoutSuccess() {
     const [searchParams] = useSearchParams()
     const sessionId = searchParams.get('session_id')
     const { fetchCart } = useCart()
+    const { t } = useTranslation()
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -54,10 +56,10 @@ export default function CheckoutSuccess() {
                         <CheckCircle className="w-10 h-10 text-green-500" />
                     </div>
                     <h1 className="font-display text-4xl font-bold text-white mb-3">
-                        Paiement réussi !
+                        {t('checkoutSuccess.title')}
                     </h1>
                     <p className="text-gray-400 text-lg">
-                        Merci pour votre achat. Vos produits sont maintenant disponibles.
+                        {t('checkoutSuccess.description')}
                     </p>
                 </div>
 
@@ -65,13 +67,13 @@ export default function CheckoutSuccess() {
                 <div className="card mb-8">
                     <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
                         <Package className="w-5 h-5 text-hyt-accent" />
-                        Vos achats récents
+                        {t('checkoutSuccess.recentPurchases')}
                     </h2>
 
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-3">
                             <Loader2 className="w-6 h-6 text-hyt-accent animate-spin" />
-                            <p className="text-gray-400 text-sm">Chargement de vos achats...</p>
+                            <p className="text-gray-400 text-sm">{t('checkoutSuccess.loadingPurchases')}</p>
                         </div>
                     ) : purchases.length > 0 ? (
                         <div className="space-y-3">
@@ -91,7 +93,7 @@ export default function CheckoutSuccess() {
                                         className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
                                     >
                                         <Download className="w-4 h-4" />
-                                        Télécharger
+                                        {t('checkoutSuccess.download')}
                                     </Link>
                                 </div>
                             ))}
@@ -99,13 +101,13 @@ export default function CheckoutSuccess() {
                     ) : (
                         <div className="text-center py-6">
                             <p className="text-gray-400 mb-2">
-                                Vos achats apparaîtront dans quelques instants...
+                                {t('checkoutSuccess.purchasesAppearSoon')}
                             </p>
                             <button
                                 onClick={loadPurchases}
                                 className="text-hyt-accent hover:underline text-sm"
                             >
-                                Rafraîchir
+                                {t('checkoutSuccess.refresh')}
                             </button>
                         </div>
                     )}
@@ -116,10 +118,9 @@ export default function CheckoutSuccess() {
                     <div className="flex items-start gap-3">
                         <FileText className="w-5 h-5 text-hyt-accent flex-shrink-0 mt-0.5" />
                         <div>
-                            <p className="text-white font-medium">Facture envoyée</p>
+                            <p className="text-white font-medium">{t('checkoutSuccess.invoiceSent')}</p>
                             <p className="text-gray-400 text-sm">
-                                Une facture a été envoyée à votre adresse email.
-                                Vous pouvez également retrouver vos achats dans votre espace personnel.
+                                {t('checkoutSuccess.invoiceDescription')}
                             </p>
                         </div>
                     </div>
@@ -132,13 +133,13 @@ export default function CheckoutSuccess() {
                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                     >
                         <Package className="w-5 h-5" />
-                        Voir mes achats
+                        {t('checkoutSuccess.viewPurchases')}
                     </Link>
                     <Link
                         to="/models"
                         className="btn-primary flex-1 flex items-center justify-center gap-2"
                     >
-                        Continuer mes achats
+                        {t('checkoutSuccess.continueShopping')}
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                 </div>

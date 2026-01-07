@@ -6,21 +6,16 @@ import {
     User, Mail, Calendar, MessageSquare, Filter
 } from 'lucide-react'
 import { proposalsAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
-
-// Types de proposition
-const PROPOSAL_TYPES = [
-    { value: 'CATEGORY', label: 'Catégorie', icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/20' },
-    { value: 'TAG', label: 'Tag', icon: Tag, color: 'text-green-500', bg: 'bg-green-500/20' },
-    { value: 'VERSION', label: 'Version', icon: Package, color: 'text-purple-500', bg: 'bg-purple-500/20' }
-]
 
 // Badge de statut
 function StatusBadge({ status }) {
+    const { t } = useTranslation()
     const config = {
-        PENDING: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/20', label: 'En attente' },
-        APPROVED: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/20', label: 'Approuvée' },
-        REJECTED: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/20', label: 'Refusée' }
+        PENDING: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-500/20', label: t('proposals.status.pending') },
+        APPROVED: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/20', label: t('proposals.status.approved') },
+        REJECTED: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/20', label: t('proposals.status.rejected') }
     }
     const { icon: Icon, color, bg, label } = config[status] || config.PENDING
 
@@ -34,6 +29,7 @@ function StatusBadge({ status }) {
 
 // Modal de rejet
 function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [loading, setLoading] = useState(false)
 
@@ -61,7 +57,7 @@ function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <XCircle className="w-5 h-5 text-red-500" />
-                        Refuser la proposition
+                        {t('proposals.rejectModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -69,18 +65,18 @@ function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
                 </div>
 
                 <p className="text-gray-400 mb-4">
-                    Refuser la proposition <span className="text-white font-medium">"{proposalName}"</span>
+                    {t('proposals.rejectModal.description')} <span className="text-white font-medium">"{proposalName}"</span>
                 </p>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-sm text-gray-400 mb-2">
-                            Raison du refus (optionnel)
+                            {t('proposals.rejectModal.reasonLabel')}
                         </label>
                         <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            placeholder="Expliquez pourquoi cette proposition est refusée..."
+                            placeholder={t('proposals.rejectModal.reasonPlaceholder')}
                             rows={3}
                             className="input-field w-full resize-none"
                         />
@@ -88,7 +84,7 @@ function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
 
                     <div className="flex gap-3">
                         <button type="button" onClick={onClose} className="btn-ghost flex-1">
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -96,7 +92,7 @@ function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
                             className="btn-primary flex-1 bg-red-500 hover:bg-red-600 flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                            Refuser
+                            {t('proposals.actions.reject')}
                         </button>
                     </div>
                 </form>
@@ -107,12 +103,20 @@ function RejectModal({ isOpen, onClose, onConfirm, proposalName }) {
 
 // Composant principal
 export default function AdminProposals() {
+    const { t } = useTranslation()
     const [proposals, setProposals] = useState([])
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(null)
     const [statusFilter, setStatusFilter] = useState('PENDING')
     const [typeFilter, setTypeFilter] = useState('')
     const [rejectModal, setRejectModal] = useState(null)
+
+    // Types de proposition
+    const PROPOSAL_TYPES = [
+        { value: 'CATEGORY', label: t('proposals.types.category'), icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/20' },
+        { value: 'TAG', label: t('proposals.types.tag'), icon: Tag, color: 'text-green-500', bg: 'bg-green-500/20' },
+        { value: 'VERSION', label: t('proposals.types.version'), icon: Package, color: 'text-purple-500', bg: 'bg-purple-500/20' }
+    ]
 
     useEffect(() => {
         loadProposals()
@@ -128,7 +132,7 @@ export default function AdminProposals() {
             setProposals(data.proposals || [])
         } catch (error) {
             console.error('Failed to load proposals:', error)
-            toast.error('Erreur lors du chargement')
+            toast.error(t('proposals.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -138,10 +142,10 @@ export default function AdminProposals() {
         setProcessing(id)
         try {
             await proposalsAPI.approve(id)
-            toast.success('Proposition approuvée et ajoutée !')
+            toast.success(t('proposals.success.approved'))
             loadProposals()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'approbation')
+            toast.error(error.response?.data?.error || t('proposals.errors.approveFailed'))
         } finally {
             setProcessing(null)
         }
@@ -151,10 +155,10 @@ export default function AdminProposals() {
         setProcessing(id)
         try {
             await proposalsAPI.reject(id, reason)
-            toast.success('Proposition refusée')
+            toast.success(t('proposals.success.rejected'))
             loadProposals()
         } catch (error) {
-            toast.error('Erreur lors du refus')
+            toast.error(t('proposals.errors.rejectFailed'))
         } finally {
             setProcessing(null)
         }
@@ -169,7 +173,7 @@ export default function AdminProposals() {
                 <div>
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Lightbulb className="w-6 h-6 text-yellow-500" />
-                        Propositions vendeurs
+                        {t('proposals.title')}
                         {pendingCount > 0 && (
                             <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
                                 {pendingCount}
@@ -177,7 +181,7 @@ export default function AdminProposals() {
                         )}
                     </h2>
                     <p className="text-gray-400 text-sm">
-                        Gérez les propositions de catégories, tags et versions
+                        {t('proposals.subtitle')}
                     </p>
                 </div>
             </div>
@@ -186,7 +190,7 @@ export default function AdminProposals() {
             <div className="flex flex-wrap items-center gap-3 p-4 bg-hyt-card border border-hyt-border rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400">
                     <Filter className="w-4 h-4" />
-                    <span className="text-sm font-medium">Filtres:</span>
+                    <span className="text-sm font-medium">{t('proposals.filters.label')}:</span>
                 </div>
 
                 <select
@@ -194,10 +198,10 @@ export default function AdminProposals() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm"
                 >
-                    <option value="">Tous les statuts</option>
-                    <option value="PENDING">En attente</option>
-                    <option value="APPROVED">Approuvées</option>
-                    <option value="REJECTED">Refusées</option>
+                    <option value="">{t('proposals.filters.allStatuses')}</option>
+                    <option value="PENDING">{t('proposals.status.pending')}</option>
+                    <option value="APPROVED">{t('proposals.status.approved')}</option>
+                    <option value="REJECTED">{t('proposals.status.rejected')}</option>
                 </select>
 
                 <select
@@ -205,10 +209,10 @@ export default function AdminProposals() {
                     onChange={(e) => setTypeFilter(e.target.value)}
                     className="bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm"
                 >
-                    <option value="">Tous les types</option>
-                    <option value="CATEGORY">Catégories</option>
-                    <option value="TAG">Tags</option>
-                    <option value="VERSION">Versions</option>
+                    <option value="">{t('proposals.filters.allTypes')}</option>
+                    <option value="CATEGORY">{t('proposals.types.categories')}</option>
+                    <option value="TAG">{t('proposals.types.tags')}</option>
+                    <option value="VERSION">{t('proposals.types.versions')}</option>
                 </select>
             </div>
 
@@ -220,11 +224,11 @@ export default function AdminProposals() {
             ) : proposals.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Lightbulb className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucune proposition</p>
+                    <p className="text-white font-medium">{t('proposals.noProposals')}</p>
                     <p className="text-gray-400 text-sm mt-1">
                         {statusFilter === 'PENDING'
-                            ? 'Aucune proposition en attente de traitement'
-                            : 'Aucune proposition avec ces critères'}
+                            ? t('proposals.noPendingProposals')
+                            : t('proposals.noProposalsWithCriteria')}
                     </p>
                 </div>
             ) : (
@@ -267,7 +271,7 @@ export default function AdminProposals() {
                                             {proposal.game_name && (
                                                 <div className="flex items-center gap-1 text-gray-400 text-sm mb-2">
                                                     <Gamepad2 className="w-4 h-4" />
-                                                    <span>Pour: <span className="text-white">{proposal.game_name}</span></span>
+                                                    <span>{t('proposals.forGame')}: <span className="text-white">{proposal.game_name}</span></span>
                                                 </div>
                                             )}
 
@@ -307,7 +311,7 @@ export default function AdminProposals() {
                                             {proposal.rejection_reason && (
                                                 <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                                                     <p className="text-red-400 text-sm">
-                                                        <strong>Raison du refus:</strong> {proposal.rejection_reason}
+                                                        <strong>{t('proposals.rejectionReason')}:</strong> {proposal.rejection_reason}
                                                     </p>
                                                 </div>
                                             )}
@@ -326,7 +330,7 @@ export default function AdminProposals() {
                                                     ) : (
                                                         <CheckCircle className="w-4 h-4" />
                                                     )}
-                                                    Approuver
+                                                    {t('proposals.actions.approve')}
                                                 </button>
                                                 <button
                                                     onClick={() => setRejectModal(proposal)}
@@ -334,7 +338,7 @@ export default function AdminProposals() {
                                                     className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
                                                 >
                                                     <XCircle className="w-4 h-4" />
-                                                    Refuser
+                                                    {t('proposals.actions.reject')}
                                                 </button>
                                             </div>
                                         )}

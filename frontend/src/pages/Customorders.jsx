@@ -8,26 +8,28 @@ import {
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
-
-const statusConfig = {
-    PENDING: { label: 'En attente de validation', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
-    APPROVED: { label: 'Recherche de créateur', color: 'bg-blue-500/20 text-blue-400', icon: Users },
-    ASSIGNED: { label: 'Créateur assigné', color: 'bg-purple-500/20 text-purple-400', icon: CheckCircle },
-    IN_PROGRESS: { label: 'En cours', color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
-    AWAITING_FINAL_PAYMENT: { label: 'En attente paiement final', color: 'bg-orange-500/20 text-orange-400', icon: Euro },
-    COMPLETED: { label: 'Terminée', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
-    CANCELLED: { label: 'Annulée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-    REJECTED: { label: 'Refusée', color: 'bg-red-500/20 text-red-400', icon: XCircle },
-}
 
 export default function CustomOrders() {
     const { isAuthenticated } = useAuth()
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const [requests, setRequests] = useState([])
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('requests')
+
+    const statusConfig = {
+        PENDING: { label: t('customOrders.status.pending'), color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
+        APPROVED: { label: t('customOrders.status.approved'), color: 'bg-blue-500/20 text-blue-400', icon: Users },
+        ASSIGNED: { label: t('customOrders.status.assigned'), color: 'bg-purple-500/20 text-purple-400', icon: CheckCircle },
+        IN_PROGRESS: { label: t('customOrders.status.inProgress'), color: 'bg-hyt-accent/20 text-hyt-accent', icon: PenTool },
+        AWAITING_FINAL_PAYMENT: { label: t('customOrders.status.awaitingFinalPayment'), color: 'bg-orange-500/20 text-orange-400', icon: Euro },
+        COMPLETED: { label: t('customOrders.status.completed'), color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
+        CANCELLED: { label: t('customOrders.status.cancelled'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+        REJECTED: { label: t('customOrders.status.rejected'), color: 'bg-red-500/20 text-red-400', icon: XCircle },
+    }
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -47,7 +49,7 @@ export default function CustomOrders() {
             setOrders(ordersRes.data.orders || [])
         } catch (error) {
             console.error('Failed to load custom orders:', error)
-            toast.error('Erreur lors du chargement')
+            toast.error(t('customOrders.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -83,10 +85,10 @@ export default function CustomOrders() {
                 >
                     <div>
                         <h1 className="text-3xl font-display font-bold text-white mb-2">
-                            Commandes sur mesure
+                            {t('customOrders.title')}
                         </h1>
                         <p className="text-gray-400">
-                            Demandez une création personnalisée à nos créateurs
+                            {t('customOrders.subtitle')}
                         </p>
                     </div>
 
@@ -95,7 +97,7 @@ export default function CustomOrders() {
                         className="btn-primary flex items-center gap-2 w-fit"
                     >
                         <Plus className="w-5 h-5" />
-                        Nouvelle demande
+                        {t('customOrders.newRequest')}
                     </Link>
                 </motion.div>
 
@@ -108,35 +110,35 @@ export default function CustomOrders() {
                 >
                     <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                         <PenTool className="w-5 h-5 text-hyt-accent" />
-                        Comment ça fonctionne ?
+                        {t('customOrders.howItWorks.title')}
                     </h3>
                     <div className="grid sm:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-hyt-accent/20 flex items-center justify-center text-hyt-accent font-bold flex-shrink-0">1</div>
                             <div>
-                                <p className="font-medium text-white">Décrivez votre besoin</p>
-                                <p className="text-gray-400">Détaillez votre projet</p>
+                                <p className="font-medium text-white">{t('customOrders.howItWorks.step1.title')}</p>
+                                <p className="text-gray-400">{t('customOrders.howItWorks.step1.description')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-hyt-accent/20 flex items-center justify-center text-hyt-accent font-bold flex-shrink-0">2</div>
                             <div>
-                                <p className="font-medium text-white">Recevez des offres</p>
-                                <p className="text-gray-400">Nos créateurs vous proposent</p>
+                                <p className="font-medium text-white">{t('customOrders.howItWorks.step2.title')}</p>
+                                <p className="text-gray-400">{t('customOrders.howItWorks.step2.description')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-hyt-accent/20 flex items-center justify-center text-hyt-accent font-bold flex-shrink-0">3</div>
                             <div>
-                                <p className="font-medium text-white">Payez 50% d'acompte</p>
-                                <p className="text-gray-400">Le travail commence</p>
+                                <p className="font-medium text-white">{t('customOrders.howItWorks.step3.title')}</p>
+                                <p className="text-gray-400">{t('customOrders.howItWorks.step3.description')}</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-hyt-accent/20 flex items-center justify-center text-hyt-accent font-bold flex-shrink-0">4</div>
                             <div>
-                                <p className="font-medium text-white">Payez le solde</p>
-                                <p className="text-gray-400">Recevez vos fichiers</p>
+                                <p className="font-medium text-white">{t('customOrders.howItWorks.step4.title')}</p>
+                                <p className="text-gray-400">{t('customOrders.howItWorks.step4.description')}</p>
                             </div>
                         </div>
                     </div>
@@ -157,7 +159,7 @@ export default function CustomOrders() {
                                 : 'bg-hyt-card text-gray-400 hover:text-white'
                         }`}
                     >
-                        Mes demandes ({requests.length})
+                        {t('customOrders.tabs.myRequests')} ({requests.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('orders')}
@@ -167,7 +169,7 @@ export default function CustomOrders() {
                                 : 'bg-hyt-card text-gray-400 hover:text-white'
                         }`}
                     >
-                        Mes commandes ({orders.length})
+                        {t('customOrders.tabs.myOrders')} ({orders.length})
                     </button>
                 </motion.div>
 
@@ -182,14 +184,14 @@ export default function CustomOrders() {
                             >
                                 <PenTool className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold text-white mb-2">
-                                    Aucune demande
+                                    {t('customOrders.empty.noRequests')}
                                 </h3>
                                 <p className="text-gray-400 mb-6">
-                                    Vous n'avez pas encore fait de demande sur mesure
+                                    {t('customOrders.empty.noRequestsDescription')}
                                 </p>
                                 <Link to="/custom-orders/new" className="btn-primary inline-flex items-center gap-2">
                                     <Plus className="w-5 h-5" />
-                                    Créer ma première demande
+                                    {t('customOrders.empty.createFirst')}
                                 </Link>
                             </motion.div>
                         ) : (
@@ -252,7 +254,7 @@ export default function CustomOrders() {
                                                 {request.offers_count > 0 && (
                                                     <div className="text-center">
                                                         <p className="text-2xl font-bold text-hyt-accent">{request.offers_count}</p>
-                                                        <p className="text-xs text-gray-500">offre{request.offers_count > 1 ? 's' : ''}</p>
+                                                        <p className="text-xs text-gray-500">{t('customOrders.offers', { count: request.offers_count })}</p>
                                                     </div>
                                                 )}
                                                 <ArrowRight className="w-5 h-5 text-gray-500" />
@@ -273,10 +275,10 @@ export default function CustomOrders() {
                             >
                                 <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold text-white mb-2">
-                                    Aucune commande
+                                    {t('customOrders.empty.noOrders')}
                                 </h3>
                                 <p className="text-gray-400">
-                                    Vous n'avez pas encore de commande en cours
+                                    {t('customOrders.empty.noOrdersDescription')}
                                 </p>
                             </motion.div>
                         ) : (
@@ -315,14 +317,14 @@ export default function CustomOrders() {
                                                         )}
                                                     </div>
                                                     <span className="text-sm text-gray-400">
-                                                        par <span className="text-white">{order.creator_username}</span>
+                                                        {t('customOrders.by')} <span className="text-white">{order.creator_username}</span>
                                                     </span>
                                                 </div>
 
                                                 {/* Progress bar */}
                                                 <div className="mb-3">
                                                     <div className="flex items-center justify-between text-xs mb-1">
-                                                        <span className="text-gray-500">Progression</span>
+                                                        <span className="text-gray-500">{t('customOrders.progress')}</span>
                                                         <span className="text-white font-medium">{order.progress || 0}%</span>
                                                     </div>
                                                     <div className="h-2 bg-hyt-dark rounded-full overflow-hidden">
@@ -343,10 +345,10 @@ export default function CustomOrders() {
                                                         {new Date(order.created_at).toLocaleDateString('fr-FR')}
                                                     </span>
                                                     {order.first_payment_paid && !order.second_payment_paid && (
-                                                        <span className="text-orange-400">50% payé</span>
+                                                        <span className="text-orange-400">{t('customOrders.paid50')}</span>
                                                     )}
                                                     {order.second_payment_paid && (
-                                                        <span className="text-green-400">100% payé</span>
+                                                        <span className="text-green-400">{t('customOrders.paid100')}</span>
                                                     )}
                                                 </div>
                                             </div>

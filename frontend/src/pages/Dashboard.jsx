@@ -8,6 +8,7 @@ import {
     Search, Trash2, Gift
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI, customOrdersAPI } from '../services/api'
 import Loading from '../components/Loading'
 import SellerProposals from './SellerProposals'
@@ -18,12 +19,13 @@ import CreatorCustomOrders from './CreatorCustomOrders'
 
 export default function Dashboard() {
     const { user, isCreator } = useAuth()
+    const { t } = useTranslation()
     const [stats, setStats] = useState(null)
     const [recentSales, setRecentSales] = useState([])
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
     const [connectingStripe, setConnectingStripe] = useState(false)
-    const [activeTab, setActiveTab] = useState('overview') // overview, proposals, dependencies
+    const [activeTab, setActiveTab] = useState('overview')
     const [proposalsCount, setProposalsCount] = useState(0)
     const [customOrdersCount, setCustomOrdersCount] = useState(0)
 
@@ -74,11 +76,9 @@ export default function Dashboard() {
             const purchasesRes = await checkoutAPI.getPurchases()
             setPurchases(purchasesRes.data.purchases || [])
 
-            // Pour les créateurs OU les STAFF/ADMIN
             const canAccessCreatorFeatures = isCreator() || ['STAFF', 'ADMIN'].includes(user?.role)
 
             if (canAccessCreatorFeatures) {
-                // Stats vendeur (seulement pour vrais créateurs)
                 if (isCreator()) {
                     const [statsRes, salesRes] = await Promise.all([
                         sellerAPI.getStats(),
@@ -96,7 +96,6 @@ export default function Dashboard() {
                     }
                 }
 
-                // Commandes sur mesure (pour créateurs ET STAFF/ADMIN)
                 try {
                     const customRes = await customOrdersAPI.getAvailableRequests()
                     const available = (customRes.data.requests || []).filter(r => r.status === 'APPROVED').length
@@ -120,7 +119,7 @@ export default function Dashboard() {
                 window.location.href = data.url
             }
         } catch (error) {
-            toast.error('Erreur lors de la connexion à Stripe')
+            toast.error(t('dashboard.errors.stripeConnect'))
         } finally {
             setConnectingStripe(false)
         }
@@ -130,7 +129,7 @@ export default function Dashboard() {
         const file = e.target.files[0]
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                toast.error('Logo trop volumineux (max 2MB)')
+                toast.error(t('dashboard.dependencies.errors.logoTooLarge'))
                 return
             }
             setDepLogo(file)
@@ -141,7 +140,7 @@ export default function Dashboard() {
     const handleSubmitDepProposal = async (e) => {
         e.preventDefault()
         if (!depForm.name.trim() || !depForm.gameId) {
-            toast.error('Nom et jeu requis')
+            toast.error(t('dashboard.dependencies.errors.nameAndGameRequired'))
             return
         }
 
@@ -157,27 +156,27 @@ export default function Dashboard() {
             }
 
             await dependenciesAPI.propose(formData)
-            toast.success('Proposition envoyée !')
+            toast.success(t('dashboard.dependencies.success.proposed'))
             setShowDepModal(false)
             setDepForm({ name: '', description: '', websiteUrl: '', gameId: '' })
             setDepLogo(null)
             setDepLogoPreview(null)
             fetchDepProposals()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('dashboard.errors.generic'))
         } finally {
             setSubmittingDep(false)
         }
     }
 
     const handleDeleteDepProposal = async (id) => {
-        if (!confirm('Supprimer cette proposition ?')) return
+        if (!confirm(t('dashboard.dependencies.confirmDelete'))) return
         try {
             await dependenciesAPI.deleteProposal(id)
-            toast.success('Proposition supprimée')
+            toast.success(t('dashboard.dependencies.success.deleted'))
             fetchDepProposals()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('dashboard.errors.generic'))
         }
     }
 
@@ -192,17 +191,17 @@ export default function Dashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
                         <h1 className="font-display text-3xl font-bold text-white">
-                            Bonjour, {user?.username} 👋
+                            {t('dashboard.greeting', { username: user?.username })} 👋
                         </h1>
                         <p className="text-gray-500">
-                            Bienvenue sur votre tableau de bord
+                            {t('dashboard.welcomeMessage')}
                         </p>
                     </div>
 
                     {isCreator() && (
                         <Link to="/upload" className="btn-primary flex items-center gap-2">
                             <Upload className="w-5 h-5" />
-                            Ajouter un produit
+                            {t('dashboard.addProduct')}
                         </Link>
                     )}
                 </div>
@@ -218,7 +217,7 @@ export default function Dashboard() {
                                     : 'text-gray-400 hover:text-white'
                             }`}
                         >
-                            Vue d'ensemble
+                            {t('dashboard.tabs.overview')}
                             {activeTab === 'overview' && (
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                             )}
@@ -232,7 +231,7 @@ export default function Dashboard() {
                             }`}
                         >
                             <PenTool className="w-4 h-4" />
-                            Sur mesure
+                            {t('dashboard.tabs.customOrders')}
                             {customOrdersCount > 0 && (
                                 <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                                     {customOrdersCount}
@@ -251,7 +250,7 @@ export default function Dashboard() {
                             }`}
                         >
                             <Lightbulb className="w-4 h-4" />
-                            Propositions
+                            {t('dashboard.tabs.proposals')}
                             {proposalsCount > 0 && (
                                 <span className="bg-yellow-500 text-black text-xs font-bold px-1.5 py-0.5 rounded-full">
                                     {proposalsCount}
@@ -270,7 +269,7 @@ export default function Dashboard() {
                             }`}
                         >
                             <Link2 className="w-4 h-4" />
-                            Dépendances
+                            {t('dashboard.tabs.dependencies')}
                             {activeTab === 'dependencies' && (
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                             )}
@@ -284,7 +283,7 @@ export default function Dashboard() {
                             }`}
                         >
                             <Gift className="w-4 h-4" />
-                            Bundles
+                            {t('dashboard.tabs.bundles')}
                             {activeTab === 'bundles' && (
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-hyt-accent" />
                             )}
@@ -305,9 +304,9 @@ export default function Dashboard() {
                         {/* Header */}
                         <div className="flex items-center justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-white">Propositions de dépendances</h2>
+                                <h2 className="text-xl font-bold text-white">{t('dashboard.dependencies.title')}</h2>
                                 <p className="text-gray-400 text-sm">
-                                    Proposez de nouvelles dépendances pour les produits
+                                    {t('dashboard.dependencies.subtitle')}
                                 </p>
                             </div>
                             <button
@@ -315,7 +314,7 @@ export default function Dashboard() {
                                 className="btn-primary flex items-center gap-2"
                             >
                                 <Plus className="w-4 h-4" />
-                                Proposer
+                                {t('dashboard.dependencies.propose')}
                             </button>
                         </div>
 
@@ -324,11 +323,9 @@ export default function Dashboard() {
                             <div className="flex items-start gap-3">
                                 <Link2 className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="text-blue-400 font-medium">Qu'est-ce qu'une dépendance ?</p>
+                                    <p className="text-blue-400 font-medium">{t('dashboard.dependencies.whatIs.title')}</p>
                                     <p className="text-gray-400 text-sm mt-1">
-                                        Une dépendance est une ressource externe nécessaire pour faire fonctionner un produit
-                                        (ex: Fabric, Forge, OptiFine pour Minecraft). Proposez des dépendances manquantes
-                                        et notre équipe les ajoutera après validation.
+                                        {t('dashboard.dependencies.whatIs.description')}
                                     </p>
                                 </div>
                             </div>
@@ -342,9 +339,9 @@ export default function Dashboard() {
                         ) : depProposals.length === 0 ? (
                             <div className="card text-center py-12">
                                 <Link2 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                                <p className="text-gray-400 mb-2">Aucune proposition</p>
+                                <p className="text-gray-400 mb-2">{t('dashboard.dependencies.empty.title')}</p>
                                 <p className="text-gray-500 text-sm">
-                                    Proposez une dépendance manquante pour les produits
+                                    {t('dashboard.dependencies.empty.description')}
                                 </p>
                             </div>
                         ) : (
@@ -382,8 +379,8 @@ export default function Dashboard() {
                                                     {proposal.status === 'PENDING' && <Clock className="w-3 h-3" />}
                                                     {proposal.status === 'APPROVED' && <CheckCircle className="w-3 h-3" />}
                                                     {proposal.status === 'REJECTED' && <XCircle className="w-3 h-3" />}
-                                                    {proposal.status === 'PENDING' ? 'En attente' :
-                                                        proposal.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
+                                                    {proposal.status === 'PENDING' ? t('dashboard.dependencies.status.pending') :
+                                                        proposal.status === 'APPROVED' ? t('dashboard.dependencies.status.approved') : t('dashboard.dependencies.status.rejected')}
                                                 </span>
                                             </div>
                                             {proposal.description && (
@@ -391,11 +388,11 @@ export default function Dashboard() {
                                             )}
                                             {proposal.rejection_reason && (
                                                 <p className="text-sm text-red-400 mt-1">
-                                                    Raison: {proposal.rejection_reason}
+                                                    {t('dashboard.dependencies.reason')}: {proposal.rejection_reason}
                                                 </p>
                                             )}
                                             <p className="text-xs text-gray-500 mt-1">
-                                                Proposée le {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
+                                                {t('dashboard.dependencies.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
                                             </p>
                                         </div>
 
@@ -404,7 +401,7 @@ export default function Dashboard() {
                                             <button
                                                 onClick={() => handleDeleteDepProposal(proposal.id)}
                                                 className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                                title="Supprimer"
+                                                title={t('common.delete')}
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -421,7 +418,7 @@ export default function Dashboard() {
                                     <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                                         <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                             <Link2 className="w-5 h-5 text-hyt-accent" />
-                                            Proposer une dépendance
+                                            {t('dashboard.dependencies.modal.title')}
                                         </h3>
                                         <button onClick={() => setShowDepModal(false)} className="text-gray-400 hover:text-white">
                                             <X className="w-5 h-5" />
@@ -431,7 +428,7 @@ export default function Dashboard() {
                                     <form onSubmit={handleSubmitDepProposal} className="p-4 space-y-4">
                                         {/* Logo */}
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.logo')}</label>
                                             <div className="flex items-center gap-4">
                                                 <div
                                                     onClick={() => document.getElementById('dep-logo-input').click()}
@@ -444,8 +441,8 @@ export default function Dashboard() {
                                                     )}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
-                                                    <p>Cliquez pour uploader</p>
-                                                    <p className="text-xs">PNG, JPG (max 2MB)</p>
+                                                    <p>{t('dashboard.dependencies.modal.clickToUpload')}</p>
+                                                    <p className="text-xs">{t('dashboard.dependencies.modal.logoFormat')}</p>
                                                 </div>
                                             </div>
                                             <input
@@ -459,12 +456,12 @@ export default function Dashboard() {
 
                                         {/* Nom */}
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Nom *</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.name')} *</label>
                                             <input
                                                 type="text"
                                                 value={depForm.name}
                                                 onChange={(e) => setDepForm({ ...depForm, name: e.target.value })}
-                                                placeholder="Ex: Fabric, Forge, OptiFine..."
+                                                placeholder={t('dashboard.dependencies.modal.namePlaceholder')}
                                                 className="input-field w-full"
                                                 required
                                             />
@@ -472,14 +469,14 @@ export default function Dashboard() {
 
                                         {/* Jeu */}
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.game')} *</label>
                                             <select
                                                 value={depForm.gameId}
                                                 onChange={(e) => setDepForm({ ...depForm, gameId: e.target.value })}
                                                 className="input-field w-full"
                                                 required
                                             >
-                                                <option value="">Sélectionner un jeu</option>
+                                                <option value="">{t('dashboard.dependencies.modal.selectGame')}</option>
                                                 {games.map(game => (
                                                     <option key={game.id} value={game.id}>{game.name}</option>
                                                 ))}
@@ -488,11 +485,11 @@ export default function Dashboard() {
 
                                         {/* Description */}
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Description (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.description')}</label>
                                             <textarea
                                                 value={depForm.description}
                                                 onChange={(e) => setDepForm({ ...depForm, description: e.target.value })}
-                                                placeholder="Courte description..."
+                                                placeholder={t('dashboard.dependencies.modal.descriptionPlaceholder')}
                                                 rows={2}
                                                 className="input-field w-full resize-none"
                                             />
@@ -500,7 +497,7 @@ export default function Dashboard() {
 
                                         {/* Site web */}
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Site web (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.website')}</label>
                                             <input
                                                 type="url"
                                                 value={depForm.websiteUrl}
@@ -517,7 +514,7 @@ export default function Dashboard() {
                                                 onClick={() => setShowDepModal(false)}
                                                 className="btn-ghost flex-1"
                                             >
-                                                Annuler
+                                                {t('common.cancel')}
                                             </button>
                                             <button
                                                 type="submit"
@@ -529,7 +526,7 @@ export default function Dashboard() {
                                                 ) : (
                                                     <Check className="w-4 h-4" />
                                                 )}
-                                                Proposer
+                                                {t('dashboard.dependencies.propose')}
                                             </button>
                                         </div>
                                     </form>
@@ -549,8 +546,8 @@ export default function Dashboard() {
                                     <Package className="w-6 h-6 text-hyt-accent" />
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Mes achats</p>
-                                    <p className="font-semibold text-white">{purchases.length} produits</p>
+                                    <p className="text-gray-400 text-sm">{t('dashboard.quickActions.myPurchases')}</p>
+                                    <p className="font-semibold text-white">{t('dashboard.quickActions.productsCount', { count: purchases.length })}</p>
                                 </div>
                             </Link>
 
@@ -562,8 +559,8 @@ export default function Dashboard() {
                                     <FileText className="w-6 h-6 text-hyt-purple" />
                                 </div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Factures</p>
-                                    <p className="font-semibold text-white">Voir tout</p>
+                                    <p className="text-gray-400 text-sm">{t('dashboard.quickActions.invoices')}</p>
+                                    <p className="font-semibold text-white">{t('dashboard.quickActions.viewAll')}</p>
                                 </div>
                             </Link>
 
@@ -577,8 +574,8 @@ export default function Dashboard() {
                                             <ShoppingBag className="w-6 h-6 text-hyt-success" />
                                         </div>
                                         <div>
-                                            <p className="text-gray-400 text-sm">Mes produits</p>
-                                            <p className="font-semibold text-white">Gérer</p>
+                                            <p className="text-gray-400 text-sm">{t('dashboard.quickActions.myProducts')}</p>
+                                            <p className="font-semibold text-white">{t('dashboard.quickActions.manage')}</p>
                                         </div>
                                     </Link>
 
@@ -590,8 +587,8 @@ export default function Dashboard() {
                                             <Settings className="w-6 h-6 text-hyt-warning" />
                                         </div>
                                         <div>
-                                            <p className="text-gray-400 text-sm">Paramètres</p>
-                                            <p className="font-semibold text-white">Configurer</p>
+                                            <p className="text-gray-400 text-sm">{t('dashboard.quickActions.settings')}</p>
+                                            <p className="font-semibold text-white">{t('dashboard.quickActions.configure')}</p>
                                         </div>
                                     </Link>
                                 </>
@@ -609,7 +606,7 @@ export default function Dashboard() {
                                                 <DollarSign className="w-5 h-5 text-hyt-success" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">Revenus totaux</p>
+                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.totalRevenue')}</p>
                                         <p className="font-display text-2xl font-bold text-white">
                                             {(stats.totalEarnings / 100).toFixed(2)}€
                                         </p>
@@ -621,7 +618,7 @@ export default function Dashboard() {
                                                 <ShoppingBag className="w-5 h-5 text-hyt-accent" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">Ventes totales</p>
+                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.totalSales')}</p>
                                         <p className="font-display text-2xl font-bold text-white">
                                             {stats.salesCount}
                                         </p>
@@ -633,11 +630,11 @@ export default function Dashboard() {
                                                 <TrendingUp className="w-5 h-5 text-hyt-purple" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">Dernière vente</p>
+                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.lastSale')}</p>
                                         <p className="font-display text-lg font-bold text-white">
                                             {stats.lastSaleAt
                                                 ? new Date(stats.lastSaleAt).toLocaleDateString('fr-FR')
-                                                : 'Aucune'
+                                                : t('dashboard.stats.none')
                                             }
                                         </p>
                                     </div>
@@ -648,17 +645,17 @@ export default function Dashboard() {
                                                 <CreditCard className="w-5 h-5 text-hyt-warning" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">Dernier paiement</p>
+                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.lastPayout')}</p>
                                         <p className="font-display text-lg font-bold text-white">
                                             {stats.lastPayout
                                                 ? `${(stats.lastPayout.amount / 100).toFixed(2)}€`
-                                                : 'Aucun'
+                                                : t('dashboard.stats.none')
                                             }
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Custom Orders CTA - Affiché si des demandes sont disponibles */}
+                                {/* Custom Orders CTA */}
                                 {customOrdersCount > 0 && (
                                     <div
                                         onClick={() => setActiveTab('custom-orders')}
@@ -670,10 +667,10 @@ export default function Dashboard() {
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className="font-semibold text-white mb-1">
-                                                    {customOrdersCount} demande{customOrdersCount > 1 ? 's' : ''} sur mesure disponible{customOrdersCount > 1 ? 's' : ''}
+                                                    {t('dashboard.customOrdersCta.title', { count: customOrdersCount })}
                                                 </h3>
                                                 <p className="text-gray-400 text-sm">
-                                                    Des clients recherchent vos compétences ! Faites une offre et décrochez de nouvelles commandes.
+                                                    {t('dashboard.customOrdersCta.description')}
                                                 </p>
                                             </div>
                                             <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -691,9 +688,9 @@ export default function Dashboard() {
                                             <Lightbulb className="w-6 h-6 text-yellow-500" />
                                         </div>
                                         <div className="flex-1">
-                                            <h3 className="font-semibold text-white mb-1">Proposez vos idées</h3>
+                                            <h3 className="font-semibold text-white mb-1">{t('dashboard.proposalsCta.title')}</h3>
                                             <p className="text-gray-400 text-sm">
-                                                Suggérez de nouvelles catégories, tags ou versions pour enrichir la plateforme !
+                                                {t('dashboard.proposalsCta.description')}
                                             </p>
                                         </div>
                                         <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -708,16 +705,16 @@ export default function Dashboard() {
                                                 <CreditCard className="w-6 h-6 text-hyt-warning" />
                                             </div>
                                             <div className="flex-1">
-                                                <h3 className="font-semibold text-white mb-1">Configurez vos paiements</h3>
+                                                <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.title')}</h3>
                                                 <p className="text-gray-400 text-sm mb-4">
-                                                    Connectez votre compte Stripe pour recevoir vos paiements automatiquement.
+                                                    {t('dashboard.stripe.description')}
                                                 </p>
                                                 <button
                                                     onClick={handleConnectStripe}
                                                     disabled={connectingStripe}
                                                     className="btn-primary"
                                                 >
-                                                    {connectingStripe ? 'Connexion...' : 'Connecter Stripe'}
+                                                    {connectingStripe ? t('dashboard.stripe.connecting') : t('dashboard.stripe.connect')}
                                                 </button>
                                             </div>
                                         </div>
@@ -728,9 +725,9 @@ export default function Dashboard() {
                                 {recentSales.length > 0 && (
                                     <div className="card">
                                         <div className="flex items-center justify-between mb-6">
-                                            <h2 className="font-semibold text-white">Ventes récentes</h2>
+                                            <h2 className="font-semibold text-white">{t('dashboard.recentSales.title')}</h2>
                                             <Link to="/dashboard/sales" className="text-sm text-hyt-accent hover:underline">
-                                                Voir tout
+                                                {t('dashboard.recentSales.viewAll')}
                                             </Link>
                                         </div>
 
@@ -741,7 +738,7 @@ export default function Dashboard() {
                                                     className="flex items-center justify-between py-3 border-b border-hyt-border last:border-0"
                                                 >
                                                     <div>
-                                                        <p className="font-medium text-white">{sale.modelTitle || 'Produit'}</p>
+                                                        <p className="font-medium text-white">{sale.modelTitle || t('dashboard.recentSales.product')}</p>
                                                         <p className="text-sm text-gray-500">
                                                             {new Date(sale.createdAt).toLocaleDateString('fr-FR')}
                                                         </p>
@@ -761,9 +758,9 @@ export default function Dashboard() {
                         {!isCreator() && purchases.length > 0 && (
                             <div className="card">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h2 className="font-semibold text-white">Mes derniers achats</h2>
+                                    <h2 className="font-semibold text-white">{t('dashboard.recentPurchases.title')}</h2>
                                     <Link to="/purchases" className="text-sm text-hyt-accent hover:underline">
-                                        Voir tout
+                                        {t('dashboard.recentPurchases.viewAll')}
                                     </Link>
                                 </div>
 
@@ -802,13 +799,13 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-display text-xl font-bold text-white mb-2">
-                                            Devenez créateur
+                                            {t('dashboard.becomeCreator.title')}
                                         </h3>
                                         <p className="text-gray-400 mb-4">
-                                            Vendez vos créations et gagnez jusqu'à 90% sur chaque vente.
+                                            {t('dashboard.becomeCreator.description')}
                                         </p>
                                         <Link to="/become-creator" className="btn-primary">
-                                            En savoir plus
+                                            {t('dashboard.becomeCreator.learnMore')}
                                         </Link>
                                     </div>
                                 </div>

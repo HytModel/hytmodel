@@ -12,10 +12,12 @@ import {
 } from 'lucide-react'
 import { invoicesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function Invoices() {
     const { isCreator } = useAuth()
+    const { t } = useTranslation()
     const [buyerInvoices, setBuyerInvoices] = useState([])
     const [sellerInvoices, setSellerInvoices] = useState([])
     const [loading, setLoading] = useState(true)
@@ -43,7 +45,7 @@ export default function Invoices() {
             }
         } catch (error) {
             console.error('Failed to load invoices:', error)
-            toast.error('Erreur lors du chargement des factures')
+            toast.error(t('invoices.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
@@ -70,10 +72,10 @@ export default function Invoices() {
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
 
-            toast.success('Facture téléchargée')
+            toast.success(t('invoices.success.downloaded'))
         } catch (error) {
             console.error('Download failed:', error)
-            toast.error('Erreur lors du téléchargement')
+            toast.error(t('invoices.errors.downloadFailed'))
         } finally {
             setDownloading(null)
         }
@@ -91,14 +93,14 @@ export default function Invoices() {
                     className="mb-8"
                 >
                     <h1 className="text-3xl font-display font-bold text-white mb-2">
-                        Mes Factures
+                        {t('invoices.title')}
                     </h1>
                     <p className="text-gray-400">
-                        Consultez et téléchargez vos factures
+                        {t('invoices.subtitle')}
                     </p>
                 </motion.div>
 
-                {/* Stats - Sans les totaux */}
+                {/* Stats */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -112,7 +114,7 @@ export default function Invoices() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-white">{buyerInvoices.length}</p>
-                                <p className="text-sm text-gray-400">Factures d'achat</p>
+                                <p className="text-sm text-gray-400">{t('invoices.stats.purchaseInvoices')}</p>
                             </div>
                         </div>
                     </div>
@@ -125,7 +127,7 @@ export default function Invoices() {
                                 </div>
                                 <div>
                                     <p className="text-2xl font-bold text-white">{sellerInvoices.length}</p>
-                                    <p className="text-sm text-gray-400">Notes de paiement</p>
+                                    <p className="text-sm text-gray-400">{t('invoices.stats.paymentNotes')}</p>
                                 </div>
                             </div>
                         </div>
@@ -150,7 +152,7 @@ export default function Invoices() {
                         >
                             <span className="flex items-center gap-2">
                                 <ArrowUpRight className="w-4 h-4" />
-                                Mes achats
+                                {t('invoices.tabs.purchases')}
                             </span>
                         </button>
                         <button
@@ -163,7 +165,7 @@ export default function Invoices() {
                         >
                             <span className="flex items-center gap-2">
                                 <ArrowDownLeft className="w-4 h-4" />
-                                Mes ventes
+                                {t('invoices.tabs.sales')}
                             </span>
                         </button>
                     </motion.div>
@@ -193,12 +195,12 @@ export default function Invoices() {
                     >
                         <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-white mb-2">
-                            Aucune facture
+                            {t('invoices.empty.title')}
                         </h3>
                         <p className="text-gray-400">
                             {activeTab === 'buyer'
-                                ? 'Vous n\'avez pas encore de factures d\'achat'
-                                : 'Vous n\'avez pas encore de notes de paiement'
+                                ? t('invoices.empty.noPurchases')
+                                : t('invoices.empty.noSales')
                             }
                         </p>
                     </motion.div>
@@ -234,7 +236,7 @@ export default function Invoices() {
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-semibold text-white">
-                                            Facture #{invoice.invoice_number || invoice.id.slice(0, 8)}
+                                            {t('invoices.invoiceNumber')} #{invoice.invoice_number || invoice.id.slice(0, 8)}
                                         </h3>
                                         <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
                                             <Calendar className="w-4 h-4" />
@@ -253,7 +255,7 @@ export default function Invoices() {
                                         ) : (
                                             <Download className="w-4 h-4" />
                                         )}
-                                        Télécharger PDF
+                                        {t('invoices.downloadPdf')}
                                     </button>
                                 </div>
                             </motion.div>

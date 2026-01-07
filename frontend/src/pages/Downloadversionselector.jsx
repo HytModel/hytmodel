@@ -5,10 +5,12 @@ import {
     FileArchive, Star, Filter, X, CheckCircle, AlertCircle
 } from 'lucide-react'
 import { modelFileVersionsAPI, versionsAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 // Sélecteur de version pour le téléchargement
 export default function DownloadVersionSelector({ modelId, gameId, onDownload }) {
+    const { t } = useTranslation()
     const [versions, setVersions] = useState([])
     const [gameVersions, setGameVersions] = useState([])
     const [loading, setLoading] = useState(true)
@@ -79,7 +81,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
 
     const handleDownload = async () => {
         if (!selectedVersion) {
-            toast.error('Sélectionnez une version')
+            toast.error(t('downloadSelector.errors.selectVersion'))
             return
         }
 
@@ -100,10 +102,10 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                 link.remove()
                 window.URL.revokeObjectURL(url)
 
-                toast.success('Téléchargement démarré')
+                toast.success(t('downloadSelector.success.started'))
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur de téléchargement')
+            toast.error(error.response?.data?.error || t('downloadSelector.errors.downloadFailed'))
         } finally {
             setDownloading(false)
         }
@@ -138,7 +140,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                 ) : (
                     <Download className="w-5 h-5" />
                 )}
-                Télécharger
+                {t('downloadSelector.download')}
             </button>
         )
     }
@@ -150,14 +152,14 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                 <div>
                     <label className="block text-sm text-gray-400 mb-2 flex items-center gap-1">
                         <Filter className="w-4 h-4" />
-                        Filtrer par version du jeu
+                        {t('downloadSelector.filterByGameVersion')}
                     </label>
                     <select
                         value={filterGameVersion}
                         onChange={(e) => setFilterGameVersion(e.target.value)}
                         className="input-field w-full"
                     >
-                        <option value="">Toutes les versions</option>
+                        <option value="">{t('downloadSelector.allVersions')}</option>
                         {gameVersions.map(gv => (
                             <option key={gv.id} value={gv.id}>{gv.version}</option>
                         ))}
@@ -168,7 +170,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
             {/* Sélecteur de version du fichier */}
             <div className="relative">
                 <label className="block text-sm text-gray-400 mb-2">
-                    Version du fichier
+                    {t('downloadSelector.fileVersion')}
                 </label>
 
                 <button
@@ -185,7 +187,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                                     </span>
                                     {selectedVersion.is_latest && (
                                         <span className="px-1.5 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded">
-                                            Dernière
+                                            {t('downloadSelector.latest')}
                                         </span>
                                     )}
                                 </div>
@@ -195,7 +197,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                             </div>
                         </div>
                     ) : (
-                        <span className="text-gray-400">Sélectionner une version</span>
+                        <span className="text-gray-400">{t('downloadSelector.selectVersion')}</span>
                     )}
                     <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
                 </button>
@@ -212,13 +214,13 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                             {versions.length === 0 ? (
                                 <div className="p-4 text-center text-gray-400">
                                     <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                    <p>Aucune version compatible</p>
+                                    <p>{t('downloadSelector.noCompatibleVersion')}</p>
                                     {filterGameVersion && (
                                         <button
                                             onClick={() => setFilterGameVersion('')}
                                             className="mt-2 text-hyt-accent text-sm hover:underline"
                                         >
-                                            Voir toutes les versions
+                                            {t('downloadSelector.viewAllVersions')}
                                         </button>
                                     )}
                                 </div>
@@ -252,7 +254,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                                                 {version.is_latest && (
                                                     <span className="px-1.5 py-0.5 bg-hyt-accent/20 text-hyt-accent text-xs rounded flex items-center gap-1">
                                                         <Star className="w-3 h-3" />
-                                                        Dernière
+                                                        {t('downloadSelector.latest')}
                                                     </span>
                                                 )}
                                             </div>
@@ -307,7 +309,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                 <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <p className="text-xs text-green-400 font-medium mb-1 flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
-                        Compatible avec :
+                        {t('downloadSelector.compatibleWith')}
                     </p>
                     <div className="flex flex-wrap gap-1">
                         {selectedVersion.compatible_versions.map(cv => (
@@ -330,7 +332,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
                 ) : (
                     <Download className="w-5 h-5" />
                 )}
-                Télécharger v{selectedVersion?.version_number || '...'}
+                {t('downloadSelector.downloadVersion', { version: selectedVersion?.version_number || '...' })}
             </button>
         </div>
     )
@@ -338,6 +340,7 @@ export default function DownloadVersionSelector({ modelId, gameId, onDownload })
 
 // Composant simplifié pour afficher juste la liste des versions (sans téléchargement)
 export function VersionsList({ modelId }) {
+    const { t } = useTranslation()
     const [versions, setVersions] = useState([])
     const [loading, setLoading] = useState(true)
     const [expanded, setExpanded] = useState(false)
@@ -367,7 +370,7 @@ export function VersionsList({ modelId }) {
                 className="flex items-center gap-2 text-sm text-gray-400 hover:text-white"
             >
                 <Package className="w-4 h-4" />
-                {versions.length} versions disponibles
+                {t('downloadSelector.versionsAvailable', { count: versions.length })}
                 <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
             </button>
 
@@ -389,7 +392,7 @@ export function VersionsList({ modelId }) {
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium text-white">v{version.version_number}</span>
                                     {version.is_latest && (
-                                        <span className="text-xs text-hyt-accent">Dernière</span>
+                                        <span className="text-xs text-hyt-accent">{t('downloadSelector.latest')}</span>
                                     )}
                                 </div>
                                 <span className="text-xs text-gray-500">

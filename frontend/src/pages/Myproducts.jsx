@@ -8,25 +8,9 @@ import {
 } from 'lucide-react'
 import { modelsAPI, feedbackAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import Loading from '../components/Loading'
 import toast from 'react-hot-toast'
-
-// Labels pour les raisons de signalement
-const REASON_LABELS = {
-    BUG: 'Bug technique',
-    ERROR: 'Fichiers manquants',
-    MISLEADING: 'Description trompeuse',
-    COPYRIGHT: 'Violation de droits',
-    INAPPROPRIATE: 'Contenu inapproprié',
-    OTHER: 'Autre'
-}
-
-const STATUS_LABELS = {
-    PENDING: 'En attente de vérification',
-    REVIEWED: 'En cours d\'examen',
-    RESOLVED: 'Résolu',
-    DISMISSED: 'Rejeté (non fondé)'
-}
 
 const STATUS_COLORS = {
     PENDING: 'bg-yellow-500/20 text-yellow-500',
@@ -37,23 +21,33 @@ const STATUS_COLORS = {
 
 // Modal pour répondre à un signalement
 function ReportResponseModal({ report, onClose, onSubmit }) {
+    const { t } = useTranslation()
     const [response, setResponse] = useState('')
     const [sending, setSending] = useState(false)
+
+    const REASON_LABELS = {
+        BUG: t('myProducts.reports.reasons.bug'),
+        ERROR: t('myProducts.reports.reasons.error'),
+        MISLEADING: t('myProducts.reports.reasons.misleading'),
+        COPYRIGHT: t('myProducts.reports.reasons.copyright'),
+        INAPPROPRIATE: t('myProducts.reports.reasons.inappropriate'),
+        OTHER: t('myProducts.reports.reasons.other')
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!response.trim()) {
-            toast.error('Veuillez entrer une réponse')
+            toast.error(t('myProducts.reports.modal.errors.emptyResponse'))
             return
         }
 
         setSending(true)
         try {
             await onSubmit(report.id, response)
-            toast.success('Réponse envoyée')
+            toast.success(t('myProducts.reports.modal.success'))
             onClose()
         } catch (error) {
-            toast.error('Erreur lors de l\'envoi')
+            toast.error(t('myProducts.reports.modal.errors.sendFailed'))
         } finally {
             setSending(false)
         }
@@ -65,7 +59,7 @@ function ReportResponseModal({ report, onClose, onSubmit }) {
                 <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <MessageSquare className="w-5 h-5 text-hyt-accent" />
-                        Répondre au signalement
+                        {t('myProducts.reports.modal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -83,24 +77,24 @@ function ReportResponseModal({ report, onClose, onSubmit }) {
                                 {new Date(report.created_at).toLocaleDateString('fr-FR')}
                             </span>
                         </div>
-                        <p className="text-gray-300 text-sm">{report.description || 'Aucune description'}</p>
+                        <p className="text-gray-300 text-sm">{report.description || t('myProducts.reports.noDescription')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4">
                             <label className="block text-sm text-gray-400 mb-2">
-                                Votre réponse / argumentation
+                                {t('myProducts.reports.modal.responseLabel')}
                             </label>
                             <textarea
                                 value={response}
                                 onChange={(e) => setResponse(e.target.value)}
-                                placeholder="Expliquez pourquoi ce signalement n'est pas fondé, ou les actions que vous avez prises pour corriger le problème..."
+                                placeholder={t('myProducts.reports.modal.responsePlaceholder')}
                                 rows={5}
                                 className="input-field w-full resize-none"
                                 required
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                Cette réponse sera visible par l'équipe de modération.
+                                {t('myProducts.reports.modal.responseHint')}
                             </p>
                         </div>
 
@@ -110,7 +104,7 @@ function ReportResponseModal({ report, onClose, onSubmit }) {
                                 onClick={onClose}
                                 className="btn-ghost flex-1"
                             >
-                                Annuler
+                                {t('common.cancel')}
                             </button>
                             <button
                                 type="submit"
@@ -122,7 +116,7 @@ function ReportResponseModal({ report, onClose, onSubmit }) {
                                 ) : (
                                     <Send className="w-4 h-4" />
                                 )}
-                                Envoyer
+                                {t('myProducts.reports.modal.send')}
                             </button>
                         </div>
                     </form>
@@ -134,10 +128,27 @@ function ReportResponseModal({ report, onClose, onSubmit }) {
 
 // Composant pour afficher les signalements d'un produit
 function ProductReports({ productId, productTitle }) {
+    const { t } = useTranslation()
     const [reports, setReports] = useState([])
     const [loading, setLoading] = useState(true)
     const [expanded, setExpanded] = useState(false)
     const [responseModal, setResponseModal] = useState(null)
+
+    const REASON_LABELS = {
+        BUG: t('myProducts.reports.reasons.bug'),
+        ERROR: t('myProducts.reports.reasons.error'),
+        MISLEADING: t('myProducts.reports.reasons.misleading'),
+        COPYRIGHT: t('myProducts.reports.reasons.copyright'),
+        INAPPROPRIATE: t('myProducts.reports.reasons.inappropriate'),
+        OTHER: t('myProducts.reports.reasons.other')
+    }
+
+    const STATUS_LABELS = {
+        PENDING: t('myProducts.reports.status.pending'),
+        REVIEWED: t('myProducts.reports.status.reviewed'),
+        RESOLVED: t('myProducts.reports.status.resolved'),
+        DISMISSED: t('myProducts.reports.status.dismissed')
+    }
 
     useEffect(() => {
         fetchReports()
@@ -184,8 +195,8 @@ function ProductReports({ productId, productTitle }) {
                 <div className="flex items-center gap-2">
                     <Flag className={`w-4 h-4 ${hasActiveReports ? 'text-red-500' : 'text-gray-500'}`} />
                     <span className={`text-sm font-medium ${hasActiveReports ? 'text-red-400' : 'text-gray-400'}`}>
-                        {reports.length} signalement{reports.length > 1 ? 's' : ''}
-                        {hasActiveReports && ` (${pendingReports.length} en cours)`}
+                        {t('myProducts.reports.count', { count: reports.length })}
+                        {hasActiveReports && ` (${t('myProducts.reports.active', { count: pendingReports.length })})`}
                     </span>
                 </div>
                 {expanded ? (
@@ -228,7 +239,7 @@ function ProductReports({ productId, productTitle }) {
                                     {/* Note du staff si présente */}
                                     {report.staff_note && (
                                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 mb-2">
-                                            <p className="text-xs text-blue-400 font-medium mb-1">Note du staff :</p>
+                                            <p className="text-xs text-blue-400 font-medium mb-1">{t('myProducts.reports.staffNote')} :</p>
                                             <p className="text-sm text-blue-300">{report.staff_note}</p>
                                         </div>
                                     )}
@@ -236,10 +247,10 @@ function ProductReports({ productId, productTitle }) {
                                     {/* Réponse du vendeur si présente */}
                                     {report.seller_response && (
                                         <div className="bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg p-2 mb-2">
-                                            <p className="text-xs text-hyt-accent font-medium mb-1">Votre réponse :</p>
+                                            <p className="text-xs text-hyt-accent font-medium mb-1">{t('myProducts.reports.yourResponse')} :</p>
                                             <p className="text-sm text-gray-300">{report.seller_response}</p>
                                             <p className="text-xs text-gray-500 mt-1">
-                                                Envoyée le {new Date(report.seller_response_at).toLocaleDateString('fr-FR')}
+                                                {t('myProducts.reports.sentOn')} {new Date(report.seller_response_at).toLocaleDateString('fr-FR')}
                                             </p>
                                         </div>
                                     )}
@@ -252,7 +263,7 @@ function ProductReports({ productId, productTitle }) {
                                         className="flex-shrink-0 px-3 py-1.5 bg-hyt-accent/20 text-hyt-accent rounded-lg text-sm hover:bg-hyt-accent/30 transition-colors flex items-center gap-1"
                                     >
                                         <MessageSquare className="w-4 h-4" />
-                                        Répondre
+                                        {t('myProducts.reports.respond')}
                                     </button>
                                 )}
                             </div>
@@ -275,10 +286,11 @@ function ProductReports({ productId, productTitle }) {
 
 export default function MyProducts() {
     const { user } = useAuth()
+    const { t } = useTranslation()
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(null)
-    const [showReportsFor, setShowReportsFor] = useState({}) // Track which products show reports
+    const [showReportsFor, setShowReportsFor] = useState({})
 
     useEffect(() => {
         fetchMyProducts()
@@ -291,30 +303,29 @@ export default function MyProducts() {
             setProducts(myProducts)
         } catch (error) {
             console.error('Failed to fetch products:', error)
-            toast.error('Erreur lors du chargement des produits')
+            toast.error(t('myProducts.errors.loadFailed'))
         } finally {
             setLoading(false)
         }
     }
 
     const handleDelete = async (productId, productTitle) => {
-        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer "${productTitle}" ?`)) {
+        if (!window.confirm(t('myProducts.confirmDelete', { title: productTitle }))) {
             return
         }
 
         setDeleting(productId)
         try {
             await modelsAPI.delete(productId)
-            toast.success('Produit supprimé')
+            toast.success(t('myProducts.success.deleted'))
             fetchMyProducts()
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('myProducts.errors.deleteFailed'))
         } finally {
             setDeleting(null)
         }
     }
 
-    // Fonction pour obtenir l'URL complète de l'image
     const getImageUrl = (url) => {
         if (!url) return null
         if (url.startsWith('http')) return url
@@ -326,7 +337,7 @@ export default function MyProducts() {
             return (
                 <span className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-xs font-medium">
                     <EyeOff className="w-3 h-3" />
-                    Masqué
+                    {t('myProducts.status.hidden')}
                 </span>
             )
         }
@@ -336,21 +347,21 @@ export default function MyProducts() {
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
                         <CheckCircle className="w-3 h-3" />
-                        En ligne
+                        {t('myProducts.status.online')}
                     </span>
                 )
             case 'PENDING':
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
                         <Clock className="w-3 h-3" />
-                        En attente
+                        {t('myProducts.status.pending')}
                     </span>
                 )
             case 'REJECTED':
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-500 rounded-full text-xs font-medium">
                         <XCircle className="w-3 h-3" />
-                        Rejeté
+                        {t('myProducts.status.rejected')}
                     </span>
                 )
             default:
@@ -373,19 +384,19 @@ export default function MyProducts() {
                             className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Retour au dashboard
+                            {t('myProducts.backToDashboard')}
                         </Link>
                         <h1 className="font-display text-3xl font-bold text-white">
-                            Mes produits
+                            {t('myProducts.title')}
                         </h1>
                         <p className="text-gray-400 mt-1">
-                            {products.length} produit{products.length !== 1 ? 's' : ''}
+                            {t('myProducts.count', { count: products.length })}
                         </p>
                     </div>
 
                     <Link to="/upload" className="btn-primary flex items-center gap-2">
                         <Plus className="w-5 h-5" />
-                        Ajouter un produit
+                        {t('myProducts.addProduct')}
                     </Link>
                 </div>
 
@@ -398,7 +409,7 @@ export default function MyProducts() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-white">{products.length}</p>
-                                <p className="text-xs text-gray-400">Total</p>
+                                <p className="text-xs text-gray-400">{t('myProducts.stats.total')}</p>
                             </div>
                         </div>
                     </div>
@@ -411,7 +422,7 @@ export default function MyProducts() {
                                 <p className="text-2xl font-bold text-white">
                                     {products.filter(p => p.status === 'APPROVED' && !p.is_hidden).length}
                                 </p>
-                                <p className="text-xs text-gray-400">En ligne</p>
+                                <p className="text-xs text-gray-400">{t('myProducts.stats.online')}</p>
                             </div>
                         </div>
                     </div>
@@ -424,7 +435,7 @@ export default function MyProducts() {
                                 <p className="text-2xl font-bold text-white">
                                     {products.filter(p => p.status === 'PENDING').length}
                                 </p>
-                                <p className="text-xs text-gray-400">En attente</p>
+                                <p className="text-xs text-gray-400">{t('myProducts.stats.pending')}</p>
                             </div>
                         </div>
                     </div>
@@ -437,7 +448,7 @@ export default function MyProducts() {
                                 <p className="text-2xl font-bold text-white">
                                     {products.filter(p => p.is_hidden).length}
                                 </p>
-                                <p className="text-xs text-gray-400">Masqués</p>
+                                <p className="text-xs text-gray-400">{t('myProducts.stats.hidden')}</p>
                             </div>
                         </div>
                     </div>
@@ -448,14 +459,14 @@ export default function MyProducts() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                         <Package className="w-16 h-16 mx-auto text-gray-500 mb-4" />
                         <h3 className="text-xl font-semibold text-white mb-2">
-                            Aucun produit
+                            {t('myProducts.empty.title')}
                         </h3>
                         <p className="text-gray-400 mb-6">
-                            Vous n'avez pas encore ajouté de produits.
+                            {t('myProducts.empty.description')}
                         </p>
                         <Link to="/upload" className="btn-primary inline-flex items-center gap-2">
                             <Plus className="w-5 h-5" />
-                            Ajouter mon premier produit
+                            {t('myProducts.empty.addFirst')}
                         </Link>
                     </div>
                 ) : (
@@ -510,7 +521,7 @@ export default function MyProducts() {
                                             {product.download_count > 0 && (
                                                 <span className="text-gray-500 text-sm flex items-center gap-1">
                                                     <TrendingUp className="w-3 h-3" />
-                                                    {product.download_count} ventes
+                                                    {t('myProducts.sales', { count: product.download_count })}
                                                 </span>
                                             )}
                                         </div>
@@ -522,10 +533,10 @@ export default function MyProducts() {
                                                     <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                                                     <div>
                                                         <p className="text-sm font-medium text-yellow-500">
-                                                            Produit masqué par l'équipe
+                                                            {t('myProducts.messages.hiddenByTeam')}
                                                         </p>
                                                         <p className="text-sm text-yellow-400/80 mt-1">
-                                                            Raison : {product.hidden_reason}
+                                                            {t('myProducts.messages.reason')}: {product.hidden_reason}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -539,10 +550,10 @@ export default function MyProducts() {
                                                     <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                                                     <div>
                                                         <p className="text-sm font-medium text-red-500">
-                                                            Produit rejeté
+                                                            {t('myProducts.messages.rejected')}
                                                         </p>
                                                         <p className="text-sm text-red-400/80 mt-1">
-                                                            Ce produit n'a pas été approuvé par l'équipe de modération.
+                                                            {t('myProducts.messages.rejectedDescription')}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -555,7 +566,7 @@ export default function MyProducts() {
                                                 <div className="flex items-start gap-2">
                                                     <Clock className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
                                                     <p className="text-sm text-orange-400/80">
-                                                        En attente de validation par l'équipe.
+                                                        {t('myProducts.messages.pendingValidation')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -570,7 +581,7 @@ export default function MyProducts() {
                                         <Link
                                             to={`/models/${product.id}`}
                                             className="p-2 text-gray-400 hover:text-white transition-colors"
-                                            title="Voir"
+                                            title={t('myProducts.actions.view')}
                                         >
                                             <Eye className="w-5 h-5" />
                                         </Link>
@@ -578,7 +589,7 @@ export default function MyProducts() {
                                         <Link
                                             to={`/dashboard/models/${product.id}/edit`}
                                             className="p-2 text-gray-400 hover:text-hyt-accent transition-colors"
-                                            title="Modifier"
+                                            title={t('myProducts.actions.edit')}
                                         >
                                             <Edit className="w-5 h-5" />
                                         </Link>
@@ -587,7 +598,7 @@ export default function MyProducts() {
                                             onClick={() => handleDelete(product.id, product.title)}
                                             disabled={deleting === product.id}
                                             className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                                            title="Supprimer"
+                                            title={t('myProducts.actions.delete')}
                                         >
                                             {deleting === product.id ? (
                                                 <Loader2 className="w-5 h-5 animate-spin" />

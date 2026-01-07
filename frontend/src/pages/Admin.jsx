@@ -36,6 +36,7 @@ import {
     PenTool
 } from 'lucide-react'
 import { adminAPI, modelsAPI, dependenciesAPI, customOrdersAPI } from '../services/api'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 import AdminSellers from './AdminSellers'
 import AdminSettings from './AdminSettings'
@@ -52,6 +53,7 @@ const getImageUrl = (url) => {
 
 // Composant Stats Card
 function StatCard({ title, value, icon: Icon, color, trend }) {
+    const { t } = useTranslation()
     return (
         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
             <div className="flex items-start justify-between">
@@ -60,7 +62,7 @@ function StatCard({ title, value, icon: Icon, color, trend }) {
                     <p className="text-2xl font-bold text-white">{value}</p>
                     {trend && (
                         <p className={`text-sm mt-1 ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {trend > 0 ? '+' : ''}{trend}% vs mois dernier
+                            {trend > 0 ? '+' : ''}{trend}% {t('admin.stats.vsLastMonth')}
                         </p>
                     )}
                 </div>
@@ -89,6 +91,7 @@ function MiniStatCard({ title, value, icon: Icon, color }) {
 
 // Dashboard Overview - MODIFIÉ avec nouvelles stats
 function AdminOverview() {
+    const { t } = useTranslation()
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
     const [reportsCount, setReportsCount] = useState({ pending: 0, reviewed: 0, total: 0 })
@@ -164,30 +167,30 @@ function AdminOverview() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Vue d'ensemble</h2>
+            <h2 className="text-2xl font-bold text-white">{t('admin.overview.title')}</h2>
 
             {/* Stats principales - Revenus */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                    title="Revenus totaux"
+                    title={t('admin.stats.totalRevenue')}
                     value={`${((stats?.totalRevenue || 0) / 100).toFixed(2)} €`}
                     icon={DollarSign}
                     color="bg-green-500/20 text-green-500"
                 />
                 <StatCard
-                    title="Commission plateforme"
+                    title={t('admin.stats.platformCommission')}
                     value={`${((stats?.platformCommission || 0) / 100).toFixed(2)} €`}
                     icon={TrendingUp}
                     color="bg-hyt-accent/20 text-hyt-accent"
                 />
                 <StatCard
-                    title="Ventes"
+                    title={t('admin.stats.sales')}
                     value={stats?.salesCount || 0}
                     icon={Package}
                     color="bg-hyt-purple/20 text-hyt-purple"
                 />
                 <StatCard
-                    title="Vendeurs actifs"
+                    title={t('admin.stats.activeSellers')}
                     value={stats?.sellersCount || 0}
                     icon={Users}
                     color="bg-yellow-500/20 text-yellow-500"
@@ -197,37 +200,37 @@ function AdminOverview() {
             {/* Stats secondaires - Site & Signalements */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <MiniStatCard
-                    title="Visites"
+                    title={t('admin.stats.visits')}
                     value={siteStats.visits.toLocaleString()}
                     icon={Globe}
                     color="bg-blue-500/20 text-blue-500"
                 />
                 <MiniStatCard
-                    title="Téléchargements"
+                    title={t('admin.stats.downloads')}
                     value={siteStats.downloads.toLocaleString()}
                     icon={Download}
                     color="bg-green-500/20 text-green-500"
                 />
                 <MiniStatCard
-                    title="Temps moyen"
+                    title={t('admin.stats.avgTime')}
                     value={siteStats.avgTime}
                     icon={Timer}
                     color="bg-purple-500/20 text-purple-500"
                 />
                 <MiniStatCard
-                    title="Signalements"
+                    title={t('admin.stats.reports')}
                     value={reportsCount.pending}
                     icon={Flag}
                     color="bg-red-500/20 text-red-500"
                 />
                 <MiniStatCard
-                    title="Sur mesure"
+                    title={t('admin.stats.customOrders')}
                     value={customOrdersCount}
                     icon={PenTool}
                     color="bg-orange-500/20 text-orange-500"
                 />
                 <MiniStatCard
-                    title="Total signalés"
+                    title={t('admin.stats.totalReports')}
                     value={reportsCount.total}
                     icon={AlertTriangle}
                     color="bg-gray-500/20 text-gray-400"
@@ -246,10 +249,10 @@ function AdminOverview() {
                                     </div>
                                     <div>
                                         <p className="text-red-400 font-medium">
-                                            {reportsCount.pending} signalement{reportsCount.pending > 1 ? 's' : ''} en attente
+                                            {t('admin.alerts.pendingReports', { count: reportsCount.pending })}
                                         </p>
                                         <p className="text-red-400/70 text-sm">
-                                            Des produits ont été signalés et nécessitent votre attention
+                                            {t('admin.alerts.reportsNeedAttention')}
                                         </p>
                                     </div>
                                 </div>
@@ -257,7 +260,7 @@ function AdminOverview() {
                                     to="/admin/feedback"
                                     className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
                                 >
-                                    Voir les signalements
+                                    {t('admin.alerts.viewReports')}
                                 </Link>
                             </div>
                         </div>
@@ -272,10 +275,10 @@ function AdminOverview() {
                                     </div>
                                     <div>
                                         <p className="text-orange-400 font-medium">
-                                            {customOrdersCount} demande{customOrdersCount > 1 ? 's' : ''} sur mesure en attente
+                                            {t('admin.alerts.pendingCustomOrders', { count: customOrdersCount })}
                                         </p>
                                         <p className="text-orange-400/70 text-sm">
-                                            Des clients attendent la validation de leur demande
+                                            {t('admin.alerts.customOrdersNeedValidation')}
                                         </p>
                                     </div>
                                 </div>
@@ -283,7 +286,7 @@ function AdminOverview() {
                                     to="/admin/custom-orders"
                                     className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
                                 >
-                                    Voir les demandes
+                                    {t('admin.alerts.viewRequests')}
                                 </Link>
                             </div>
                         </div>
@@ -294,28 +297,28 @@ function AdminOverview() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Quick Actions */}
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Actions rapides</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">{t('admin.quickActions.title')}</h3>
                     <div className="grid grid-cols-2 gap-3">
                         <Link
                             to="/admin/pending"
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                         >
                             <Clock className="w-5 h-5 text-yellow-500" />
-                            <span className="text-white">Produits en attente</span>
+                            <span className="text-white">{t('admin.quickActions.pendingProducts')}</span>
                         </Link>
                         <Link
                             to="/admin/users"
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                         >
                             <Users className="w-5 h-5 text-hyt-accent" />
-                            <span className="text-white">Utilisateurs</span>
+                            <span className="text-white">{t('admin.quickActions.users')}</span>
                         </Link>
                         <Link
                             to="/admin/custom-orders"
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors relative"
                         >
                             <PenTool className="w-5 h-5 text-orange-500" />
-                            <span className="text-white">Sur mesure</span>
+                            <span className="text-white">{t('admin.quickActions.customOrders')}</span>
                             {customOrdersCount > 0 && (
                                 <span className="absolute top-2 right-2 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                                     {customOrdersCount}
@@ -327,7 +330,7 @@ function AdminOverview() {
                             className="flex items-center gap-3 p-4 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                         >
                             <BarChart3 className="w-5 h-5 text-green-500" />
-                            <span className="text-white">Vendeurs</span>
+                            <span className="text-white">{t('admin.quickActions.sellers')}</span>
                         </Link>
                     </div>
                 </div>
@@ -335,36 +338,36 @@ function AdminOverview() {
                 {/* Signalements récents */}
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white">Signalements</h3>
+                        <h3 className="text-lg font-semibold text-white">{t('admin.reportsSection.title')}</h3>
                         <Link to="/admin/feedback" className="text-sm text-hyt-accent hover:underline">
-                            Voir tout →
+                            {t('admin.reportsSection.viewAll')} →
                         </Link>
                     </div>
                     {reportsCount.total === 0 ? (
                         <div className="text-center py-8">
                             <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
-                            <p className="text-gray-400">Aucun signalement</p>
+                            <p className="text-gray-400">{t('admin.reportsSection.noReports')}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                                    <span className="text-gray-300">En attente</span>
+                                    <span className="text-gray-300">{t('admin.reportsSection.pending')}</span>
                                 </div>
                                 <span className="text-white font-bold">{reportsCount.pending}</span>
                             </div>
                             <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                    <span className="text-gray-300">En cours d'examen</span>
+                                    <span className="text-gray-300">{t('admin.reportsSection.underReview')}</span>
                                 </div>
                                 <span className="text-white font-bold">{reportsCount.reviewed}</span>
                             </div>
                             <div className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                                    <span className="text-gray-300">Total traités</span>
+                                    <span className="text-gray-300">{t('admin.reportsSection.processed')}</span>
                                 </div>
                                 <span className="text-white font-bold">{reportsCount.total - reportsCount.pending - reportsCount.reviewed}</span>
                             </div>
@@ -378,6 +381,7 @@ function AdminOverview() {
 
 // Composant pour afficher une valeur modifiée avec surbrillance
 function ModifiedValue({ label, oldValue, newValue, type = 'text' }) {
+    const { t } = useTranslation()
     if (!oldValue && !newValue) return null
 
     const hasChanged = oldValue !== newValue && oldValue !== undefined && oldValue !== null
@@ -416,12 +420,12 @@ function ModifiedValue({ label, oldValue, newValue, type = 'text' }) {
             <span className="text-gray-500 text-xs">{label}:</span>
             <div className="mt-1 space-y-1">
                 <div className="flex items-start gap-1">
-                    <span className="text-red-400 text-xs">Avant:</span>
-                    <span className="line-through text-red-400/70 text-xs">{oldValue || '(vide)'}</span>
+                    <span className="text-red-400 text-xs">{t('admin.modifications.before')}:</span>
+                    <span className="line-through text-red-400/70 text-xs">{oldValue || t('admin.modifications.empty')}</span>
                 </div>
                 <div className="flex items-start gap-1">
-                    <span className="text-green-400 text-xs">Après:</span>
-                    <span className="bg-green-500/20 text-green-400 px-1 rounded text-xs">{newValue || '(vide)'}</span>
+                    <span className="text-green-400 text-xs">{t('admin.modifications.after')}:</span>
+                    <span className="bg-green-500/20 text-green-400 px-1 rounded text-xs">{newValue || t('admin.modifications.empty')}</span>
                 </div>
             </div>
         </div>
@@ -430,27 +434,28 @@ function ModifiedValue({ label, oldValue, newValue, type = 'text' }) {
 
 // Modal de détail des modifications
 function ModificationDetailModal({ model, onClose }) {
+    const { t } = useTranslation()
     const prev = model.previous_values || {}
 
     const changes = []
 
     if (prev.title !== undefined && prev.title !== model.title) {
-        changes.push({ label: 'Titre', old: prev.title, new: model.title })
+        changes.push({ label: t('admin.modifications.fields.title'), old: prev.title, new: model.title })
     }
     if (prev.description !== undefined && prev.description !== model.description) {
-        changes.push({ label: 'Description', old: prev.description, new: model.description, isLong: true })
+        changes.push({ label: t('admin.modifications.fields.description'), old: prev.description, new: model.description, isLong: true })
     }
     if (prev.price !== undefined && parseFloat(prev.price) !== parseFloat(model.price)) {
-        changes.push({ label: 'Prix', old: `${parseFloat(prev.price).toFixed(2)}€`, new: `${parseFloat(model.price).toFixed(2)}€` })
+        changes.push({ label: t('admin.modifications.fields.price'), old: `${parseFloat(prev.price).toFixed(2)}€`, new: `${parseFloat(model.price).toFixed(2)}€` })
     }
     if (prev.youtube_url !== model.youtube_url) {
-        changes.push({ label: 'YouTube', old: prev.youtube_url || '(aucune)', new: model.youtube_url || '(aucune)' })
+        changes.push({ label: 'YouTube', old: prev.youtube_url || t('admin.modifications.none'), new: model.youtube_url || t('admin.modifications.none') })
     }
     if (prev.game_id !== model.game_id) {
-        changes.push({ label: 'Jeu', old: 'Changé', new: model.game_name || 'N/A' })
+        changes.push({ label: t('admin.modifications.fields.game'), old: t('admin.modifications.changed'), new: model.game_name || 'N/A' })
     }
     if (prev.category_id !== model.category_id) {
-        changes.push({ label: 'Catégorie', old: 'Changée', new: model.category_name || 'N/A' })
+        changes.push({ label: t('admin.modifications.fields.category'), old: t('admin.modifications.changed'), new: model.category_name || 'N/A' })
     }
 
     return (
@@ -459,7 +464,7 @@ function ModificationDetailModal({ model, onClose }) {
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Eye className="w-5 h-5 text-blue-500" />
-                        Détail des modifications
+                        {t('admin.modifications.detailTitle')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -468,19 +473,19 @@ function ModificationDetailModal({ model, onClose }) {
 
                 <div className="mb-4">
                     <h4 className="text-lg font-medium text-white mb-2">{model.title}</h4>
-                    <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
+                    <p className="text-gray-400 text-sm">{t('admin.products.by')} {model.creator_username}</p>
                 </div>
 
                 {changes.length === 0 ? (
                     <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center">
                         <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                        <p className="text-green-400">Nouveau produit - Pas de modifications</p>
+                        <p className="text-green-400">{t('admin.modifications.newProduct')}</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                             <p className="text-blue-400 text-sm font-medium">
-                                {changes.length} modification{changes.length > 1 ? 's' : ''} détectée{changes.length > 1 ? 's' : ''}
+                                {t('admin.modifications.changesDetected', { count: changes.length })}
                             </p>
                         </div>
 
@@ -489,15 +494,15 @@ function ModificationDetailModal({ model, onClose }) {
                                 <p className="text-gray-400 text-xs font-medium mb-2">{change.label}</p>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-red-400 text-xs mb-1">Avant</p>
+                                        <p className="text-red-400 text-xs mb-1">{t('admin.modifications.before')}</p>
                                         <p className={`text-red-300 ${change.isLong ? 'text-xs' : 'text-sm'} bg-red-500/10 p-2 rounded line-through`}>
-                                            {change.old || '(vide)'}
+                                            {change.old || t('admin.modifications.empty')}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-green-400 text-xs mb-1">Après</p>
+                                        <p className="text-green-400 text-xs mb-1">{t('admin.modifications.after')}</p>
                                         <p className={`text-green-300 ${change.isLong ? 'text-xs' : 'text-sm'} bg-green-500/10 p-2 rounded`}>
-                                            {change.new || '(vide)'}
+                                            {change.new || t('admin.modifications.empty')}
                                         </p>
                                     </div>
                                 </div>
@@ -508,14 +513,14 @@ function ModificationDetailModal({ model, onClose }) {
 
                 {model.previous_hidden_reason && (
                     <div className="mt-4 bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
-                        <p className="text-orange-400 text-sm font-medium mb-1">Raison du masquage précédent :</p>
+                        <p className="text-orange-400 text-sm font-medium mb-1">{t('admin.modifications.previousHiddenReason')}:</p>
                         <p className="text-orange-300 text-sm">{model.previous_hidden_reason}</p>
                     </div>
                 )}
 
                 <div className="mt-6 flex justify-end">
                     <button onClick={onClose} className="btn-ghost">
-                        Fermer
+                        {t('common.close')}
                     </button>
                 </div>
             </div>
@@ -525,6 +530,7 @@ function ModificationDetailModal({ model, onClose }) {
 
 // Pending Models
 function PendingModels({ onCountChange }) {
+    const { t } = useTranslation()
     const [models, setModels] = useState([])
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(null)
@@ -554,10 +560,10 @@ function PendingModels({ onCountChange }) {
         setProcessing(modelId)
         try {
             await modelsAPI.approve(modelId)
-            toast.success('Produit approuvé')
+            toast.success(t('admin.products.success.approved'))
             loadPendingModels()
         } catch (error) {
-            toast.error('Erreur lors de l\'approbation')
+            toast.error(t('admin.products.errors.approveFailed'))
         } finally {
             setProcessing(null)
         }
@@ -567,10 +573,10 @@ function PendingModels({ onCountChange }) {
         setProcessing(modelId)
         try {
             await modelsAPI.reject(modelId)
-            toast.success('Produit rejeté')
+            toast.success(t('admin.products.success.rejected'))
             loadPendingModels()
         } catch (error) {
-            toast.error('Erreur lors du rejet')
+            toast.error(t('admin.products.errors.rejectFailed'))
         } finally {
             setProcessing(null)
         }
@@ -603,13 +609,13 @@ function PendingModels({ onCountChange }) {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Produits en attente</h2>
+            <h2 className="text-2xl font-bold text-white">{t('admin.pending.title')}</h2>
 
             {models.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucun produit en attente</p>
-                    <p className="text-gray-400 text-sm mt-1">Tous les produits ont été traités</p>
+                    <p className="text-white font-medium">{t('admin.pending.noPending')}</p>
+                    <p className="text-gray-400 text-sm mt-1">{t('admin.pending.allProcessed')}</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -649,27 +655,27 @@ function PendingModels({ onCountChange }) {
                                             {model.modification_reason === 'HIDDEN_CORRECTION' ? (
                                                 <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
                                                     <AlertTriangle className="w-3 h-3" />
-                                                    Corrigé
+                                                    {t('admin.pending.badges.corrected')}
                                                 </span>
                                             ) : model.modification_reason === 'CREATOR_UPDATE' ? (
                                                 <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded-full text-xs font-medium">
                                                     <Clock className="w-3 h-3" />
-                                                    Modifié
+                                                    {t('admin.pending.badges.modified')}
                                                 </span>
                                             ) : (
                                                 <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
                                                     <CheckCircle className="w-3 h-3" />
-                                                    Nouveau
+                                                    {t('admin.pending.badges.new')}
                                                 </span>
                                             )}
                                             {isModified && changeCount > 0 && (
                                                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium">
-                                                    {changeCount} modif{changeCount > 1 ? 's' : ''}
+                                                    {changeCount} {t('admin.pending.modifs', { count: changeCount })}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <p className="text-gray-400 text-sm">Par {model.creator_username}</p>
+                                        <p className="text-gray-400 text-sm">{t('admin.products.by')} {model.creator_username}</p>
 
                                         <div className="flex flex-wrap gap-4 mt-2">
                                             <span className="text-hyt-accent font-medium">
@@ -686,18 +692,18 @@ function PendingModels({ onCountChange }) {
                                         {isModified && model.previous_values && (
                                             <div className="mt-3 p-3 bg-hyt-dark/50 rounded-lg border border-hyt-border">
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <p className="text-xs text-gray-400 font-medium">Aperçu des modifications :</p>
+                                                    <p className="text-xs text-gray-400 font-medium">{t('admin.pending.modificationsPreview')}:</p>
                                                     <button
                                                         onClick={() => setSelectedModel(model)}
                                                         className="text-xs text-hyt-accent hover:underline"
                                                     >
-                                                        Voir tout →
+                                                        {t('admin.pending.viewAll')} →
                                                     </button>
                                                 </div>
                                                 <div className="space-y-2 text-xs">
                                                     {model.previous_values.title !== model.title && (
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-gray-500">Titre:</span>
+                                                            <span className="text-gray-500">{t('admin.modifications.fields.title')}:</span>
                                                             <span className="line-through text-red-400">{model.previous_values.title}</span>
                                                             <span className="text-green-400">→</span>
                                                             <span className="bg-green-500/20 text-green-400 px-1 rounded">{model.title}</span>
@@ -705,7 +711,7 @@ function PendingModels({ onCountChange }) {
                                                     )}
                                                     {model.previous_values.price !== undefined && parseFloat(model.previous_values.price) !== parseFloat(model.price) && (
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-gray-500">Prix:</span>
+                                                            <span className="text-gray-500">{t('admin.modifications.fields.price')}:</span>
                                                             <span className="line-through text-red-400">{parseFloat(model.previous_values.price).toFixed(2)}€</span>
                                                             <span className="text-green-400">→</span>
                                                             <span className="bg-green-500/20 text-green-400 px-1 rounded">{parseFloat(model.price).toFixed(2)}€</span>
@@ -713,7 +719,7 @@ function PendingModels({ onCountChange }) {
                                                     )}
                                                     {model.previous_values.description !== model.description && (
                                                         <div className="text-yellow-400">
-                                                            📝 Description modifiée
+                                                            📝 {t('admin.pending.descriptionModified')}
                                                         </div>
                                                     )}
                                                 </div>
@@ -723,7 +729,7 @@ function PendingModels({ onCountChange }) {
                                         {model.modification_reason === 'HIDDEN_CORRECTION' && model.previous_hidden_reason && (
                                             <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                                                 <p className="text-xs text-orange-400">
-                                                    <strong>Ancienne raison du masquage :</strong> {model.previous_hidden_reason}
+                                                    <strong>{t('admin.pending.previousHiddenReason')}:</strong> {model.previous_hidden_reason}
                                                 </p>
                                             </div>
                                         )}
@@ -735,7 +741,7 @@ function PendingModels({ onCountChange }) {
                                                 <button
                                                     onClick={() => setSelectedModel(model)}
                                                     className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                                    title="Voir les modifications"
+                                                    title={t('admin.pending.viewModifications')}
                                                 >
                                                     <Eye className="w-5 h-5" />
                                                 </button>
@@ -743,7 +749,7 @@ function PendingModels({ onCountChange }) {
                                             <Link
                                                 to={`/models/${model.id}`}
                                                 className="p-2 text-gray-400 hover:text-white transition-colors"
-                                                title="Voir le produit"
+                                                title={t('admin.products.view')}
                                             >
                                                 <Package className="w-5 h-5" />
                                             </Link>
@@ -758,7 +764,7 @@ function PendingModels({ onCountChange }) {
                                             ) : (
                                                 <CheckCircle className="w-4 h-4" />
                                             )}
-                                            Approuver
+                                            {t('admin.products.approve')}
                                         </button>
                                         <button
                                             onClick={() => handleReject(model.id)}
@@ -766,7 +772,7 @@ function PendingModels({ onCountChange }) {
                                             className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 w-full justify-center"
                                         >
                                             <XCircle className="w-4 h-4" />
-                                            Rejeter
+                                            {t('admin.products.reject')}
                                         </button>
                                     </div>
                                 </div>
@@ -788,6 +794,7 @@ function PendingModels({ onCountChange }) {
 
 // Users Management
 function UsersManagement() {
+    const { t } = useTranslation()
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -820,30 +827,30 @@ function UsersManagement() {
         try {
             if (isBanned) {
                 await adminAPI.unbanUser(userId)
-                toast.success('Utilisateur débanni')
+                toast.success(t('admin.users.success.unbanned'))
             } else {
                 await adminAPI.banUser(userId)
-                toast.success('Utilisateur banni')
+                toast.success(t('admin.users.success.banned'))
             }
             loadUsers()
         } catch (error) {
-            toast.error('Erreur')
+            toast.error(t('admin.users.errors.banFailed'))
         }
     }
 
     const handleRoleChange = async (userId, newRole) => {
         try {
             await adminAPI.setRole(userId, newRole)
-            toast.success('Rôle modifié')
+            toast.success(t('admin.users.success.roleChanged'))
             loadUsers()
         } catch (error) {
-            toast.error('Erreur lors du changement de rôle')
+            toast.error(t('admin.users.errors.roleChangeFailed'))
         }
     }
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Gestion des utilisateurs</h2>
+            <h2 className="text-2xl font-bold text-white">{t('admin.users.title')}</h2>
 
             <div className="flex flex-col sm:flex-row gap-4">
                 <form onSubmit={handleSearch} className="flex-1">
@@ -851,7 +858,7 @@ function UsersManagement() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Rechercher un utilisateur..."
+                            placeholder={t('admin.users.searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="input-field pl-12 w-full"
@@ -863,7 +870,7 @@ function UsersManagement() {
                     onChange={(e) => setRoleFilter(e.target.value)}
                     className="input-field w-full sm:w-48"
                 >
-                    <option value="">Tous les rôles</option>
+                    <option value="">{t('admin.users.allRoles')}</option>
                     <option value="USER">User</option>
                     <option value="CREATOR">Creator</option>
                     <option value="STAFF">Staff</option>
@@ -880,11 +887,11 @@ function UsersManagement() {
                     <table className="w-full">
                         <thead>
                         <tr className="border-b border-hyt-border">
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Utilisateur</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Email</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Rôle</th>
-                            <th className="text-left py-4 px-4 text-gray-400 font-medium">Inscription</th>
-                            <th className="text-right py-4 px-4 text-gray-400 font-medium">Actions</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('admin.users.table.user')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('admin.users.table.email')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('admin.users.table.role')}</th>
+                            <th className="text-left py-4 px-4 text-gray-400 font-medium">{t('admin.users.table.registered')}</th>
+                            <th className="text-right py-4 px-4 text-gray-400 font-medium">{t('admin.users.table.actions')}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -925,7 +932,7 @@ function UsersManagement() {
                                                 : 'bg-red-500/20 text-red-500 hover:bg-red-500/30'
                                         }`}
                                     >
-                                        {user.is_banned ? 'Débannir' : 'Bannir'}
+                                        {user.is_banned ? t('admin.users.unban') : t('admin.users.ban')}
                                     </button>
                                 </td>
                             </tr>
@@ -940,13 +947,14 @@ function UsersManagement() {
 
 // Modal pour cacher un produit avec raison
 function HideModelModal({ model, onClose, onConfirm }) {
+    const { t } = useTranslation()
     const [reason, setReason] = useState('')
     const [loading, setLoading] = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!reason.trim()) {
-            toast.error('Veuillez entrer une raison')
+            toast.error(t('admin.products.errors.reasonRequired'))
             return
         }
 
@@ -955,7 +963,7 @@ function HideModelModal({ model, onClose, onConfirm }) {
             await onConfirm(model.id, reason)
             onClose()
         } catch (error) {
-            toast.error('Erreur lors du masquage')
+            toast.error(t('admin.products.errors.hideFailed'))
         } finally {
             setLoading(false)
         }
@@ -967,7 +975,7 @@ function HideModelModal({ model, onClose, onConfirm }) {
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <EyeOff className="w-5 h-5 text-yellow-500" />
-                        Masquer le produit
+                        {t('admin.products.hideModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -975,19 +983,18 @@ function HideModelModal({ model, onClose, onConfirm }) {
                 </div>
 
                 <p className="text-gray-400 mb-4">
-                    Vous allez masquer <span className="text-white font-medium">"{model.title}"</span>.
-                    Le vendeur sera notifié de la raison.
+                    {t('admin.products.hideModal.description', { title: model.title })}
                 </p>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-sm text-gray-400 mb-2">
-                            Raison du masquage *
+                            {t('admin.products.hideModal.reasonLabel')} *
                         </label>
                         <textarea
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            placeholder="Ex: Contenu inapproprié, droits d'auteur, qualité insuffisante..."
+                            placeholder={t('admin.products.hideModal.reasonPlaceholder')}
                             rows={4}
                             className="input-field w-full resize-none"
                             required
@@ -1000,7 +1007,7 @@ function HideModelModal({ model, onClose, onConfirm }) {
                             onClick={onClose}
                             className="btn-ghost flex-1"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -1012,7 +1019,7 @@ function HideModelModal({ model, onClose, onConfirm }) {
                             ) : (
                                 <EyeOff className="w-4 h-4" />
                             )}
-                            Masquer
+                            {t('admin.products.hide')}
                         </button>
                     </div>
                 </form>
@@ -1023,6 +1030,7 @@ function HideModelModal({ model, onClose, onConfirm }) {
 
 // Modal de confirmation pour supprimer
 function DeleteModelModal({ model, onClose, onConfirm }) {
+    const { t } = useTranslation()
     const [loading, setLoading] = useState(false)
 
     const handleConfirm = async () => {
@@ -1031,7 +1039,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
             await onConfirm(model.id)
             onClose()
         } catch (error) {
-            toast.error('Erreur lors de la suppression')
+            toast.error(t('admin.products.errors.deleteFailed'))
         } finally {
             setLoading(false)
         }
@@ -1043,7 +1051,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <Trash2 className="w-5 h-5 text-red-500" />
-                        Supprimer le produit
+                        {t('admin.products.deleteModal.title')}
                     </h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-5 h-5" />
@@ -1051,9 +1059,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
                 </div>
 
                 <p className="text-gray-400 mb-6">
-                    Êtes-vous sûr de vouloir supprimer définitivement
-                    <span className="text-white font-medium"> "{model.title}"</span> ?
-                    Cette action est irréversible.
+                    {t('admin.products.deleteModal.description', { title: model.title })}
                 </p>
 
                 <div className="flex gap-3">
@@ -1062,7 +1068,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
                         onClick={onClose}
                         className="btn-ghost flex-1"
                     >
-                        Annuler
+                        {t('common.cancel')}
                     </button>
                     <button
                         onClick={handleConfirm}
@@ -1074,7 +1080,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
                         ) : (
                             <Trash2 className="w-4 h-4" />
                         )}
-                        Supprimer
+                        {t('admin.products.delete')}
                     </button>
                 </div>
             </div>
@@ -1084,6 +1090,7 @@ function DeleteModelModal({ model, onClose, onConfirm }) {
 
 // Admin Models Management
 function AdminModels() {
+    const { t } = useTranslation()
     const [models, setModels] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -1121,7 +1128,7 @@ function AdminModels() {
     const handleHide = async (modelId, reason) => {
         try {
             await modelsAPI.hide(modelId, reason)
-            toast.success('Produit masqué - Le vendeur sera notifié')
+            toast.success(t('admin.products.success.hidden'))
             loadModels()
         } catch (error) {
             throw error
@@ -1132,10 +1139,10 @@ function AdminModels() {
         setProcessing(modelId)
         try {
             await modelsAPI.unhide(modelId)
-            toast.success('Produit réaffiché')
+            toast.success(t('admin.products.success.unhidden'))
             loadModels()
         } catch (error) {
-            toast.error('Erreur lors du réaffichage')
+            toast.error(t('admin.products.errors.unhideFailed'))
         } finally {
             setProcessing(null)
         }
@@ -1144,7 +1151,7 @@ function AdminModels() {
     const handleDelete = async (modelId) => {
         try {
             await modelsAPI.delete(modelId)
-            toast.success('Produit supprimé')
+            toast.success(t('admin.products.success.deleted'))
             loadModels()
         } catch (error) {
             throw error
@@ -1155,10 +1162,10 @@ function AdminModels() {
         setProcessing(modelId)
         try {
             await modelsAPI.approve(modelId)
-            toast.success('Produit approuvé')
+            toast.success(t('admin.products.success.approved'))
             loadModels()
         } catch (error) {
-            toast.error('Erreur lors de l\'approbation')
+            toast.error(t('admin.products.errors.approveFailed'))
         } finally {
             setProcessing(null)
         }
@@ -1168,10 +1175,10 @@ function AdminModels() {
         setProcessing(modelId)
         try {
             await modelsAPI.reject(modelId)
-            toast.success('Produit rejeté')
+            toast.success(t('admin.products.success.rejected'))
             loadModels()
         } catch (error) {
-            toast.error('Erreur lors du rejet')
+            toast.error(t('admin.products.errors.rejectFailed'))
         } finally {
             setProcessing(null)
         }
@@ -1182,7 +1189,7 @@ function AdminModels() {
             return (
                 <span className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-xs font-medium">
                     <EyeOff className="w-3 h-3" />
-                    Masqué
+                    {t('admin.products.status.hidden')}
                 </span>
             )
         }
@@ -1192,21 +1199,21 @@ function AdminModels() {
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
                         <CheckCircle className="w-3 h-3" />
-                        Approuvé
+                        {t('admin.products.status.approved')}
                     </span>
                 )
             case 'PENDING':
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 text-orange-500 rounded-full text-xs font-medium">
                         <Clock className="w-3 h-3" />
-                        En attente
+                        {t('admin.products.status.pending')}
                     </span>
                 )
             case 'REJECTED':
                 return (
                     <span className="flex items-center gap-1 px-2 py-1 bg-red-500/20 text-red-500 rounded-full text-xs font-medium">
                         <XCircle className="w-3 h-3" />
-                        Rejeté
+                        {t('admin.products.status.rejected')}
                     </span>
                 )
             default:
@@ -1222,8 +1229,8 @@ function AdminModels() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Gestion des produits</h2>
-                <span className="text-gray-400">{filteredModels.length} produit(s)</span>
+                <h2 className="text-2xl font-bold text-white">{t('admin.products.title')}</h2>
+                <span className="text-gray-400">{t('admin.products.count', { count: filteredModels.length })}</span>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -1232,7 +1239,7 @@ function AdminModels() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Rechercher par titre ou créateur..."
+                            placeholder={t('admin.products.searchPlaceholder')}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="input-field pl-12 w-full"
@@ -1244,10 +1251,10 @@ function AdminModels() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="input-field w-full sm:w-48"
                 >
-                    <option value="">Tous les statuts</option>
-                    <option value="APPROVED">Approuvés</option>
-                    <option value="PENDING">En attente</option>
-                    <option value="REJECTED">Rejetés</option>
+                    <option value="">{t('admin.products.allStatuses')}</option>
+                    <option value="APPROVED">{t('admin.products.status.approved')}</option>
+                    <option value="PENDING">{t('admin.products.status.pending')}</option>
+                    <option value="REJECTED">{t('admin.products.status.rejected')}</option>
                 </select>
             </div>
 
@@ -1258,9 +1265,9 @@ function AdminModels() {
             ) : filteredModels.length === 0 ? (
                 <div className="bg-hyt-card border border-hyt-border rounded-xl p-12 text-center">
                     <Package className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-white font-medium">Aucun produit trouvé</p>
+                    <p className="text-white font-medium">{t('admin.products.noProducts')}</p>
                     <p className="text-gray-400 text-sm mt-1">
-                        {searchQuery ? 'Essayez avec d\'autres termes' : 'Aucun produit dans la base de données'}
+                        {searchQuery ? t('admin.products.tryOtherTerms') : t('admin.products.noProductsInDb')}
                     </p>
                 </div>
             ) : (
@@ -1295,7 +1302,7 @@ function AdminModels() {
                                         {getStatusBadge(model)}
                                     </div>
                                     <p className="text-gray-400 text-sm">
-                                        Par <span className="text-hyt-accent">{model.creator_username || 'Inconnu'}</span>
+                                        {t('admin.products.by')} <span className="text-hyt-accent">{model.creator_username || t('admin.products.unknown')}</span>
                                     </p>
                                     <p className="text-white font-medium">
                                         {parseFloat(model.price).toFixed(2)} €
@@ -1303,7 +1310,7 @@ function AdminModels() {
                                     {model.is_hidden && model.hidden_reason && (
                                         <div className="mt-2 flex items-start gap-2 text-sm text-yellow-500">
                                             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                            <span>Raison: {model.hidden_reason}</span>
+                                            <span>{t('admin.products.reason')}: {model.hidden_reason}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1312,7 +1319,7 @@ function AdminModels() {
                                     <Link
                                         to={`/models/${model.id}`}
                                         className="p-2 text-gray-400 hover:text-white transition-colors"
-                                        title="Voir"
+                                        title={t('admin.products.view')}
                                     >
                                         <Eye className="w-5 h-5" />
                                     </Link>
@@ -1329,7 +1336,7 @@ function AdminModels() {
                                                 ) : (
                                                     <CheckCircle className="w-4 h-4" />
                                                 )}
-                                                <span className="hidden sm:inline">Approuver</span>
+                                                <span className="hidden sm:inline">{t('admin.products.approve')}</span>
                                             </button>
                                             <button
                                                 onClick={() => handleReject(model.id)}
@@ -1337,7 +1344,7 @@ function AdminModels() {
                                                 className="bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors disabled:opacity-50"
                                             >
                                                 <XCircle className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Rejeter</span>
+                                                <span className="hidden sm:inline">{t('admin.products.reject')}</span>
                                             </button>
                                         </>
                                     )}
@@ -1354,7 +1361,7 @@ function AdminModels() {
                                                 ) : (
                                                     <Eye className="w-4 h-4" />
                                                 )}
-                                                <span className="hidden sm:inline">Réafficher</span>
+                                                <span className="hidden sm:inline">{t('admin.products.unhide')}</span>
                                             </button>
                                         ) : (
                                             <button
@@ -1362,7 +1369,7 @@ function AdminModels() {
                                                 className="bg-yellow-500 hover:bg-yellow-600 text-black py-2 px-3 rounded-lg flex items-center gap-1 text-sm transition-colors"
                                             >
                                                 <EyeOff className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Masquer</span>
+                                                <span className="hidden sm:inline">{t('admin.products.hide')}</span>
                                             </button>
                                         )
                                     )}
@@ -1370,7 +1377,7 @@ function AdminModels() {
                                     <button
                                         onClick={() => setDeleteModal(model)}
                                         className="p-2 text-red-500 hover:text-red-400 transition-colors"
-                                        title="Supprimer"
+                                        title={t('admin.products.delete')}
                                     >
                                         <Trash2 className="w-5 h-5" />
                                     </button>
@@ -1402,6 +1409,7 @@ function AdminModels() {
 
 // Main Admin Component
 export default function Admin() {
+    const { t } = useTranslation()
     const location = useLocation()
     const [pendingCount, setPendingCount] = useState(0)
     const [proposalsCount, setProposalsCount] = useState(0)
@@ -1453,35 +1461,35 @@ export default function Admin() {
     }
 
     const navItems = [
-        { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+        { path: '/admin', icon: LayoutDashboard, label: t('admin.nav.dashboard'), exact: true },
         {
             path: '/admin/pending',
             icon: Clock,
-            label: 'En attente',
+            label: t('admin.nav.pending'),
             badge: pendingCount > 0 ? pendingCount : null,
             badgeColor: 'bg-yellow-500 text-black'
         },
-        { path: '/admin/analytics', icon: PieChart, label: 'Analytics' },
-        { path: '/admin/users', icon: Users, label: 'Utilisateurs' },
-        { path: '/admin/sellers', icon: BarChart3, label: 'Vendeurs' },
-        { path: '/admin/models', icon: Package, label: 'Produits' },
+        { path: '/admin/analytics', icon: PieChart, label: t('admin.nav.analytics') },
+        { path: '/admin/users', icon: Users, label: t('admin.nav.users') },
+        { path: '/admin/sellers', icon: BarChart3, label: t('admin.nav.sellers') },
+        { path: '/admin/models', icon: Package, label: t('admin.nav.products') },
         {
             path: '/admin/custom-orders',
             icon: PenTool,
-            label: 'Sur mesure',
+            label: t('admin.nav.customOrders'),
             badge: customOrdersCount > 0 ? customOrdersCount : null,
             badgeColor: 'bg-orange-500 text-white'
         },
         {
             path: '/admin/feedback',
             icon: MessageSquare,
-            label: 'Feedback',
+            label: t('admin.nav.feedback'),
             badges: [
                 proposalsCount > 0 ? { count: proposalsCount, color: 'bg-blue-500 text-white' } : null,
                 reportsCount > 0 ? { count: reportsCount, color: 'bg-red-500 text-white' } : null,
             ].filter(Boolean)
         },
-        { path: '/admin/settings', icon: Settings, label: 'Paramètres' },
+        { path: '/admin/settings', icon: Settings, label: t('admin.nav.settings') },
     ]
 
     return (
@@ -1495,7 +1503,7 @@ export default function Admin() {
                         className="lg:w-64 flex-shrink-0"
                     >
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-4 sticky top-24">
-                            <h2 className="text-lg font-bold text-white mb-4 px-2">Administration</h2>
+                            <h2 className="text-lg font-bold text-white mb-4 px-2">{t('admin.sidebar.title')}</h2>
                             <nav className="space-y-1">
                                 {navItems.map((item) => {
                                     const isActive = item.exact

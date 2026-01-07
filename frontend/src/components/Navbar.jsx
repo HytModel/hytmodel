@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
+import { useTranslation } from '../context/LanguageContext'
 import {
     Menu, X, ShoppingCart, User, LogOut, Settings,
     LayoutDashboard, Package, ChevronDown,
     Upload, FileText, MessageCircle, ExternalLink,
     Bell, Check, CheckCheck, Trash2, AlertTriangle,
-    CheckCircle, Info, XCircle, PenTool
+    CheckCircle, Info, XCircle, PenTool, Globe
 } from 'lucide-react'
 import { notificationsAPI } from '../services/api'
 
@@ -34,16 +35,25 @@ const NOTIFICATION_COLORS = {
     default: 'text-gray-400 bg-gray-500/20'
 }
 
+// Langues disponibles
+const LANGUAGES = [
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+    { code: 'en', label: 'English', flag: '🇬🇧' }
+]
+
 export default function Navbar() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
     const [notifMenuOpen, setNotifMenuOpen] = useState(false)
+    const [langMenuOpen, setLangMenuOpen] = useState(false)
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
     const { user, isAuthenticated, logout, isCreator, isStaff, isAdmin } = useAuth()
     const { itemCount } = useCart()
+    const { t, language, setLanguage } = useTranslation()
     const navigate = useNavigate()
     const notifRef = useRef(null)
+    const langRef = useRef(null)
 
     // Charger les notifications
     useEffect(() => {
@@ -60,6 +70,9 @@ export default function Navbar() {
         const handleClickOutside = (event) => {
             if (notifRef.current && !notifRef.current.contains(event.target)) {
                 setNotifMenuOpen(false)
+            }
+            if (langRef.current && !langRef.current.contains(event.target)) {
+                setLangMenuOpen(false)
             }
         }
         document.addEventListener('mousedown', handleClickOutside)
@@ -114,10 +127,10 @@ export default function Navbar() {
         const hours = Math.floor(diff / 3600000)
         const days = Math.floor(diff / 86400000)
 
-        if (minutes < 1) return "À l'instant"
-        if (minutes < 60) return `Il y a ${minutes}m`
-        if (hours < 24) return `Il y a ${hours}h`
-        return `Il y a ${days}j`
+        if (minutes < 1) return t('nav.timeAgo.now')
+        if (minutes < 60) return t('nav.timeAgo.minutes', { count: minutes })
+        if (hours < 24) return t('nav.timeAgo.hours', { count: hours })
+        return t('nav.timeAgo.days', { count: days })
     }
 
     const handleLogout = () => {
@@ -126,9 +139,16 @@ export default function Navbar() {
         setUserMenuOpen(false)
     }
 
+    const handleLanguageChange = (langCode) => {
+        setLanguage(langCode)
+        setLangMenuOpen(false)
+    }
+
+    const currentLang = LANGUAGES.find(l => l.code === language) || LANGUAGES[0]
+
     const navLinks = [
-        { to: '/models', label: 'Produits', external: false },
-        { to: '/custom-orders', label: 'Sur mesure', external: false, icon: PenTool },
+        { to: '/models', label: t('nav.products'), external: false },
+        { to: '/custom-orders', label: t('nav.customOrders'), external: false, icon: PenTool },
         { to: 'https://discord.gg/3VJQZ6sjRR', label: 'Discord', external: true },
     ]
 
@@ -180,6 +200,42 @@ export default function Navbar() {
 
                     {/* Right Side */}
                     <div className="hidden md:flex items-center gap-3">
+                        {/* Language Selector */}
+                        <div className="relative" ref={langRef}>
+                            <button
+                                onClick={() => {
+                                    setLangMenuOpen(!langMenuOpen)
+                                    setUserMenuOpen(false)
+                                    setNotifMenuOpen(false)
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-hyt-card"
+                            >
+                                <Globe className="w-4 h-4" />
+                                <span className="text-sm">{currentLang.flag}</span>
+                                <ChevronDown className={`w-3 h-3 transition-transform ${langMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {langMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-40 py-2 bg-hyt-card border border-hyt-border rounded-xl shadow-xl animate-fade-in">
+                                    {LANGUAGES.map(lang => (
+                                        <button
+                                            key={lang.code}
+                                            onClick={() => handleLanguageChange(lang.code)}
+                                            className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                                                language === lang.code
+                                                    ? 'text-hyt-accent bg-hyt-accent/10'
+                                                    : 'text-gray-300 hover:bg-hyt-border/50 hover:text-white'
+                                            }`}
+                                        >
+                                            <span>{lang.flag}</span>
+                                            <span>{lang.label}</span>
+                                            {language === lang.code && <Check className="w-4 h-4 ml-auto" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {isAuthenticated ? (
                             <>
                                 {/* Upload Button for Creators */}
@@ -189,7 +245,7 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-4 py-2 text-hyt-accent border border-hyt-accent/30 rounded-lg hover:bg-hyt-accent/10 transition-all"
                                     >
                                         <Upload className="w-4 h-4" />
-                                        <span className="font-medium">Upload</span>
+                                        <span className="font-medium">{t('nav.upload')}</span>
                                     </Link>
                                 )}
 
@@ -199,6 +255,7 @@ export default function Navbar() {
                                         onClick={() => {
                                             setNotifMenuOpen(!notifMenuOpen)
                                             setUserMenuOpen(false)
+                                            setLangMenuOpen(false)
                                         }}
                                         className="relative p-2 text-gray-400 hover:text-white transition-colors"
                                     >
@@ -215,14 +272,14 @@ export default function Navbar() {
                                         <div className="absolute right-0 mt-2 w-80 bg-hyt-card border border-hyt-border rounded-xl shadow-xl animate-fade-in overflow-hidden">
                                             {/* Header */}
                                             <div className="flex items-center justify-between px-4 py-3 border-b border-hyt-border">
-                                                <h3 className="font-semibold text-white">Notifications</h3>
+                                                <h3 className="font-semibold text-white">{t('nav.notifications')}</h3>
                                                 {unreadCount > 0 && (
                                                     <button
                                                         onClick={handleMarkAllAsRead}
                                                         className="text-xs text-hyt-accent hover:underline flex items-center gap-1"
                                                     >
                                                         <CheckCheck className="w-3 h-3" />
-                                                        Tout marquer lu
+                                                        {t('nav.markAllRead')}
                                                     </button>
                                                 )}
                                             </div>
@@ -232,7 +289,7 @@ export default function Navbar() {
                                                 {notifications.length === 0 ? (
                                                     <div className="px-4 py-8 text-center">
                                                         <Bell className="w-10 h-10 text-gray-600 mx-auto mb-2" />
-                                                        <p className="text-gray-500 text-sm">Aucune notification</p>
+                                                        <p className="text-gray-500 text-sm">{t('nav.noNotifications')}</p>
                                                     </div>
                                                 ) : (
                                                     notifications.slice(0, 10).map((notif) => {
@@ -278,7 +335,7 @@ export default function Navbar() {
                                                                             {notifLink && (
                                                                                 <span className="text-xs text-hyt-accent flex items-center gap-1">
                                                                                     <ExternalLink className="w-3 h-3" />
-                                                                                    Voir
+                                                                                    {t('nav.view')}
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -288,7 +345,7 @@ export default function Navbar() {
                                                                             <button
                                                                                 onClick={() => handleMarkAsRead(notif.id)}
                                                                                 className="p-1 text-gray-500 hover:text-hyt-accent transition-colors"
-                                                                                title="Marquer comme lu"
+                                                                                title={t('nav.markAsRead')}
                                                                             >
                                                                                 <Check className="w-4 h-4" />
                                                                             </button>
@@ -296,7 +353,7 @@ export default function Navbar() {
                                                                         <button
                                                                             onClick={() => handleDeleteNotification(notif.id)}
                                                                             className="p-1 text-gray-500 hover:text-red-500 transition-colors"
-                                                                            title="Supprimer"
+                                                                            title={t('nav.delete')}
                                                                         >
                                                                             <Trash2 className="w-4 h-4" />
                                                                         </button>
@@ -316,7 +373,7 @@ export default function Navbar() {
                                                         onClick={() => setNotifMenuOpen(false)}
                                                         className="text-sm text-hyt-accent hover:underline"
                                                     >
-                                                        Voir toutes les notifications
+                                                        {t('nav.viewAllNotifications')}
                                                     </Link>
                                                 </div>
                                             )}
@@ -340,6 +397,7 @@ export default function Navbar() {
                                         onClick={() => {
                                             setUserMenuOpen(!userMenuOpen)
                                             setNotifMenuOpen(false)
+                                            setLangMenuOpen(false)
                                         }}
                                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-hyt-card transition-colors"
                                     >
@@ -397,7 +455,7 @@ export default function Navbar() {
                                                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                 >
                                                     <User className="w-4 h-4" />
-                                                    Mon profil
+                                                    {t('nav.myProfile')}
                                                 </Link>
 
                                                 {/* Dashboard - Seulement pour Créateurs et Staff */}
@@ -408,7 +466,7 @@ export default function Navbar() {
                                                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                     >
                                                         <LayoutDashboard className="w-4 h-4" />
-                                                        Dashboard
+                                                        {t('nav.dashboard')}
                                                     </Link>
                                                 )}
 
@@ -420,7 +478,7 @@ export default function Navbar() {
                                                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                     >
                                                         <Package className="w-4 h-4" />
-                                                        Ma boutique
+                                                        {t('nav.myShop')}
                                                     </Link>
                                                 )}
 
@@ -432,7 +490,7 @@ export default function Navbar() {
                                                         className="flex items-center gap-3 px-4 py-2 text-sm text-hyt-accent hover:bg-hyt-accent/10 transition-colors"
                                                     >
                                                         <Upload className="w-4 h-4" />
-                                                        Devenir créateur
+                                                        {t('nav.becomeCreator')}
                                                     </Link>
                                                 )}
 
@@ -442,7 +500,7 @@ export default function Navbar() {
                                                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                 >
                                                     <ShoppingCart className="w-4 h-4" />
-                                                    Mes achats
+                                                    {t('nav.myPurchases')}
                                                 </Link>
 
                                                 {/* Commandes sur mesure - AJOUTÉ */}
@@ -452,7 +510,7 @@ export default function Navbar() {
                                                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                 >
                                                     <PenTool className="w-4 h-4" />
-                                                    Commandes sur mesure
+                                                    {t('nav.customOrders')}
                                                 </Link>
 
                                                 <Link
@@ -461,7 +519,7 @@ export default function Navbar() {
                                                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                 >
                                                     <FileText className="w-4 h-4" />
-                                                    Factures
+                                                    {t('nav.invoices')}
                                                 </Link>
 
                                                 {isStaff() && (
@@ -471,7 +529,7 @@ export default function Navbar() {
                                                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-hyt-border/50 hover:text-white transition-colors"
                                                     >
                                                         <Settings className="w-4 h-4" />
-                                                        Administration
+                                                        {t('nav.administration')}
                                                     </Link>
                                                 )}
                                             </div>
@@ -482,7 +540,7 @@ export default function Navbar() {
                                                     className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                                                 >
                                                     <LogOut className="w-4 h-4" />
-                                                    Déconnexion
+                                                    {t('nav.logout')}
                                                 </button>
                                             </div>
                                         </div>
@@ -492,10 +550,10 @@ export default function Navbar() {
                         ) : (
                             <>
                                 <Link to="/login" className="btn-ghost">
-                                    Connexion
+                                    {t('nav.login')}
                                 </Link>
                                 <Link to="/register" className="btn-primary">
-                                    Inscription
+                                    {t('nav.register')}
                                 </Link>
                             </>
                         )}
@@ -515,6 +573,29 @@ export default function Navbar() {
             {mobileMenuOpen && (
                 <div className="md:hidden bg-hyt-card border-t border-hyt-border animate-fade-in">
                     <div className="px-4 py-4 space-y-2">
+                        {/* Language Selector Mobile */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-hyt-dark rounded-lg mb-2">
+                            <span className="text-sm text-gray-400 flex items-center gap-2">
+                                <Globe className="w-4 h-4" />
+                                {t('nav.language')}
+                            </span>
+                            <div className="flex gap-2">
+                                {LANGUAGES.map(lang => (
+                                    <button
+                                        key={lang.code}
+                                        onClick={() => handleLanguageChange(lang.code)}
+                                        className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                                            language === lang.code
+                                                ? 'bg-hyt-accent text-black'
+                                                : 'bg-hyt-border text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {lang.flag} {lang.code.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {navLinks.map(link => (
                             link.external ? (
                                 <a
@@ -577,7 +658,7 @@ export default function Navbar() {
                                     className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
                                     <User className="w-4 h-4" />
-                                    Mon profil
+                                    {t('nav.myProfile')}
                                 </Link>
 
                                 {/* Notifications Mobile */}
@@ -588,7 +669,7 @@ export default function Navbar() {
                                 >
                                     <span className="flex items-center gap-2">
                                         <Bell className="w-4 h-4" />
-                                        Notifications
+                                        {t('nav.notifications')}
                                     </span>
                                     {unreadCount > 0 && (
                                         <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
@@ -604,7 +685,7 @@ export default function Navbar() {
                                 >
                                     <span className="flex items-center gap-2">
                                         <ShoppingCart className="w-4 h-4" />
-                                        Panier
+                                        {t('nav.cart')}
                                     </span>
                                     {itemCount > 0 && (
                                         <span className="px-2 py-0.5 text-xs font-bold bg-hyt-accent text-hyt-dark rounded-full">
@@ -621,7 +702,7 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
                                         <LayoutDashboard className="w-4 h-4" />
-                                        Dashboard
+                                        {t('nav.dashboard')}
                                     </Link>
                                 )}
 
@@ -633,7 +714,7 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
                                         <Package className="w-4 h-4" />
-                                        Ma boutique
+                                        {t('nav.myShop')}
                                     </Link>
                                 )}
 
@@ -645,7 +726,7 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-4 py-3 text-hyt-accent hover:bg-hyt-accent/10 rounded-lg"
                                     >
                                         <Upload className="w-4 h-4" />
-                                        Devenir créateur
+                                        {t('nav.becomeCreator')}
                                     </Link>
                                 )}
 
@@ -655,7 +736,7 @@ export default function Navbar() {
                                     className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
                                     <ShoppingCart className="w-4 h-4" />
-                                    Mes achats
+                                    {t('nav.myPurchases')}
                                 </Link>
 
                                 {/* Commandes sur mesure Mobile - AJOUTÉ */}
@@ -665,7 +746,7 @@ export default function Navbar() {
                                     className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
                                     <PenTool className="w-4 h-4" />
-                                    Commandes sur mesure
+                                    {t('nav.customOrders')}
                                 </Link>
 
                                 <Link
@@ -674,7 +755,7 @@ export default function Navbar() {
                                     className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                 >
                                     <FileText className="w-4 h-4" />
-                                    Factures
+                                    {t('nav.invoices')}
                                 </Link>
 
                                 {isStaff() && (
@@ -684,7 +765,7 @@ export default function Navbar() {
                                         className="flex items-center gap-2 px-4 py-3 text-gray-400 hover:text-white rounded-lg hover:bg-hyt-border/50"
                                     >
                                         <Settings className="w-4 h-4" />
-                                        Administration
+                                        {t('nav.administration')}
                                     </Link>
                                 )}
 
@@ -696,7 +777,7 @@ export default function Navbar() {
                                     className="w-full flex items-center gap-2 px-4 py-3 text-left text-red-400 rounded-lg hover:bg-red-500/10"
                                 >
                                     <LogOut className="w-4 h-4" />
-                                    Déconnexion
+                                    {t('nav.logout')}
                                 </button>
                             </>
                         ) : (
@@ -706,14 +787,14 @@ export default function Navbar() {
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="block w-full text-center btn-secondary"
                                 >
-                                    Connexion
+                                    {t('nav.login')}
                                 </Link>
                                 <Link
                                     to="/register"
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="block w-full text-center btn-primary"
                                 >
-                                    Inscription
+                                    {t('nav.register')}
                                 </Link>
                             </div>
                         )}

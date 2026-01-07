@@ -8,9 +8,11 @@ import {
 } from 'lucide-react'
 import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, dependenciesAPI, modelFileVersionsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function Upload() {
+    const { t } = useTranslation()
     const navigate = useNavigate()
     const { user, isCreator } = useAuth()
     const fileInputRef = useRef(null)
@@ -62,7 +64,7 @@ export default function Upload() {
 
     useEffect(() => {
         if (!isCreator()) {
-            toast.error('Vous devez être créateur pour ajouter des produits')
+            toast.error(t('upload.errors.mustBeCreator'))
             navigate('/')
             return
         }
@@ -88,7 +90,6 @@ export default function Upload() {
         }
     }, [gameId])
 
-    // Charger les versions quand un produit est sélectionné
     useEffect(() => {
         if (depSelectedItem && depActiveTab === 'product') {
             loadProductVersions(depSelectedItem.id)
@@ -170,12 +171,10 @@ export default function Upload() {
         }
     }
 
-    // Filtrer les dépendances prédéfinies
     const filteredAvailableDeps = availableDeps
         .filter(d => !selectedDependencies.some(sd => sd.type === 'dependency' && sd.id === d.id))
         .filter(d => !depSearchQuery || d.name.toLowerCase().includes(depSearchQuery.toLowerCase()))
 
-    // Filtrer les produits
     const filteredAvailableProducts = availableProducts
         .filter(p => !selectedDependencies.some(sd => sd.type === 'product' && sd.id === p.id))
         .filter(p => !productSearchQuery || p.title.toLowerCase().includes(productSearchQuery.toLowerCase()))
@@ -191,7 +190,7 @@ export default function Upload() {
                 isRequired: depIsRequired,
                 note: depNote
             }])
-            toast.success('Dépendance ajoutée')
+            toast.success(t('upload.dependencies.success.added'))
         } else if (depActiveTab === 'product' && depSelectedItem) {
             let finalVersionInfo = depVersionInfo
             if (selectedProductVersion) {
@@ -200,7 +199,7 @@ export default function Upload() {
                     finalVersionInfo = version.version_name || `v${version.version_number}`
                 }
             } else if (productVersions.length > 0 && !depVersionInfo) {
-                finalVersionInfo = 'Dernière version'
+                finalVersionInfo = t('upload.dependencies.latestVersion')
             }
 
             setSelectedDependencies(prev => [...prev, {
@@ -215,7 +214,7 @@ export default function Upload() {
                 isRequired: depIsRequired,
                 note: depNote
             }])
-            toast.success('Dépendance ajoutée')
+            toast.success(t('upload.dependencies.success.added'))
         } else if (depActiveTab === 'propose' && proposalName) {
             try {
                 const formData = new FormData()
@@ -223,13 +222,13 @@ export default function Upload() {
                 formData.append('gameId', gameId)
                 if (proposalLogo) formData.append('logo', proposalLogo)
                 await dependenciesAPI.propose(formData)
-                toast.success('Proposition envoyée ! Elle sera examinée par l\'équipe.')
+                toast.success(t('upload.dependencies.success.proposed'))
             } catch (error) {
-                toast.error(error.response?.data?.error || 'Erreur')
+                toast.error(error.response?.data?.error || t('common.error'))
                 return
             }
         } else {
-            toast.error('Sélectionnez une dépendance')
+            toast.error(t('upload.dependencies.errors.selectDep'))
             return
         }
 
@@ -255,7 +254,6 @@ export default function Upload() {
         setDepActiveTab('predefined')
     }
 
-    // File handling
     const handleFileDrop = (e) => {
         e.preventDefault()
         setDragActive(false)
@@ -272,11 +270,10 @@ export default function Upload() {
         }
     }
 
-    // Image handling avec validation de taille
     const handleImageSelect = (e) => {
         const files = Array.from(e.target.files)
         if (images.length + files.length > 10) {
-            toast.error('Maximum 10 images autorisées')
+            toast.error(t('upload.images.errors.maxImages'))
             return
         }
 
@@ -286,7 +283,7 @@ export default function Upload() {
         const processFiles = async () => {
             for (const file of files) {
                 if (file.size > 5 * 1024 * 1024) {
-                    toast.error(`${file.name} est trop lourd (max 5MB)`)
+                    toast.error(t('upload.images.errors.tooLarge', { name: file.name }))
                     hasError = true
                     continue
                 }
@@ -296,14 +293,14 @@ export default function Upload() {
                     img.onload = () => {
                         URL.revokeObjectURL(img.src)
                         if (img.width < 400 || img.height < 400) {
-                            toast.error(`${file.name} est trop petit (minimum 400x400 pixels)`)
+                            toast.error(t('upload.images.errors.tooSmall', { name: file.name }))
                             resolve(false)
                         } else {
                             resolve(true)
                         }
                     }
                     img.onerror = () => {
-                        toast.error(`${file.name} n'est pas une image valide`)
+                        toast.error(t('upload.images.errors.invalid', { name: file.name }))
                         resolve(false)
                     }
                     img.src = URL.createObjectURL(file)
@@ -360,32 +357,32 @@ export default function Upload() {
         e.preventDefault()
 
         if (!file) {
-            toast.error('Veuillez sélectionner un fichier')
+            toast.error(t('upload.errors.selectFile'))
             return
         }
 
         if (!title.trim()) {
-            toast.error('Veuillez entrer un titre')
+            toast.error(t('upload.errors.enterTitle'))
             return
         }
 
         if (!price || parseFloat(price) < 5) {
-            toast.error('Le prix minimum est de 5€')
+            toast.error(t('upload.errors.minPrice'))
             return
         }
 
         if (!gameId) {
-            toast.error('Veuillez sélectionner un jeu')
+            toast.error(t('upload.errors.selectGame'))
             return
         }
 
         if (!categoryId) {
-            toast.error('Veuillez sélectionner une catégorie')
+            toast.error(t('upload.errors.selectCategory'))
             return
         }
 
         if (youtubeUrl && !isValidYoutubeUrl(youtubeUrl)) {
-            toast.error('URL YouTube invalide')
+            toast.error(t('upload.errors.invalidYoutube'))
             return
         }
 
@@ -437,11 +434,11 @@ export default function Upload() {
                 }
             }
 
-            toast.success('Produit ajouté avec succès ! Il sera visible après validation.')
+            toast.success(t('upload.success'))
             navigate('/dashboard/models')
         } catch (error) {
             console.error('Upload failed:', error)
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'upload')
+            toast.error(error.response?.data?.error || t('upload.errors.uploadFailed'))
         } finally {
             setUploading(false)
         }
@@ -452,10 +449,10 @@ export default function Upload() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <h1 className="font-display text-3xl font-bold text-white mb-2">
-                        Ajouter un produit
+                        {t('upload.title')}
                     </h1>
                     <p className="text-gray-400">
-                        Partagez votre création avec la communauté
+                        {t('upload.subtitle')}
                     </p>
                 </div>
 
@@ -464,7 +461,7 @@ export default function Upload() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <FileArchive className="w-5 h-5" />
-                            Fichier du produit *
+                            {t('upload.file.title')} *
                         </h3>
 
                         <div
@@ -509,10 +506,10 @@ export default function Upload() {
                                 <>
                                     <UploadIcon className="w-12 h-12 mx-auto text-gray-500 mb-4" />
                                     <p className="text-white font-medium mb-1">
-                                        Glissez votre fichier ici
+                                        {t('upload.file.dragHere')}
                                     </p>
                                     <p className="text-sm text-gray-400">
-                                        ou cliquez pour parcourir (.zip, .rar, .fbx, .obj, .blend)
+                                        {t('upload.file.orClick')}
                                     </p>
                                 </>
                             )}
@@ -523,20 +520,18 @@ export default function Upload() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <Image className="w-5 h-5" />
-                            Images du produit
+                            {t('upload.images.title')}
                             <span className="text-sm text-gray-400 font-normal">
                                 ({images.length}/10)
                             </span>
                         </h3>
 
                         <p className="text-gray-400 text-sm mb-2">
-                            Ajoutez jusqu'à 10 images. Cliquez sur une image pour la définir comme image principale.
+                            {t('upload.images.hint')}
                         </p>
                         <div className="bg-hyt-dark/50 border border-hyt-border rounded-lg p-3 mb-4">
                             <p className="text-xs text-gray-500">
-                                <span className="text-hyt-accent font-medium">📐 Recommandations :</span> Format carré ou 4:3,
-                                dimensions idéales <span className="text-white">1200x1200 px</span> ou <span className="text-white">1200x900 px</span>.
-                                Minimum 400x400 px, maximum 5 MB par image.
+                                <span className="text-hyt-accent font-medium">📐 {t('upload.images.recommendations')} :</span> {t('upload.images.recommendationsText')}
                             </p>
                         </div>
 
@@ -560,7 +555,7 @@ export default function Upload() {
                                     {img.isPrimary && (
                                         <div className="absolute top-2 left-2 px-2 py-1 bg-hyt-accent text-black text-xs font-bold rounded">
                                             <Star className="w-3 h-3 inline mr-1" />
-                                            Principale
+                                            {t('upload.images.primary')}
                                         </div>
                                     )}
 
@@ -575,7 +570,7 @@ export default function Upload() {
                                     {!img.isPrimary && (
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <span className="text-white text-xs font-medium">
-                                                Définir comme principale
+                                                {t('upload.images.setAsPrimary')}
                                             </span>
                                         </div>
                                     )}
@@ -589,7 +584,7 @@ export default function Upload() {
                                     className="aspect-square rounded-lg border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex flex-col items-center justify-center gap-2 transition-colors"
                                 >
                                     <Plus className="w-8 h-8 text-gray-500" />
-                                    <span className="text-xs text-gray-500">Ajouter</span>
+                                    <span className="text-xs text-gray-500">{t('upload.images.add')}</span>
                                 </button>
                             )}
                         </div>
@@ -608,27 +603,27 @@ export default function Upload() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Tag className="w-5 h-5" />
-                            Informations
+                            {t('upload.info.title')}
                         </h3>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Titre *</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('upload.info.productTitle')} *</label>
                             <input
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Ex: Pack de textures HD"
+                                placeholder={t('upload.info.titlePlaceholder')}
                                 className="input-field w-full"
                                 required
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-400 mb-2">Description</label>
+                            <label className="block text-sm text-gray-400 mb-2">{t('upload.info.description')}</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Décrivez votre produit..."
+                                placeholder={t('upload.info.descriptionPlaceholder')}
                                 rows={4}
                                 className="input-field w-full resize-none"
                             />
@@ -637,7 +632,7 @@ export default function Upload() {
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
                                 <DollarSign className="w-4 h-4 inline mr-1" />
-                                Prix (€) * <span className="text-xs text-gray-500">(minimum 5€)</span>
+                                {t('upload.info.price')} * <span className="text-xs text-gray-500">({t('upload.info.minPrice')})</span>
                             </label>
                             <input
                                 type="number"
@@ -656,8 +651,8 @@ export default function Upload() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <Youtube className="w-5 h-5 text-red-500" />
-                            Vidéo YouTube
-                            <span className="text-sm text-gray-400 font-normal">(optionnel)</span>
+                            {t('upload.youtube.title')}
+                            <span className="text-sm text-gray-400 font-normal">({t('common.optional')})</span>
                         </h3>
 
                         <input
@@ -675,13 +670,13 @@ export default function Upload() {
                         {youtubeUrl && !isValidYoutubeUrl(youtubeUrl) && (
                             <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
                                 <AlertCircle className="w-4 h-4" />
-                                URL YouTube invalide
+                                {t('upload.youtube.invalid')}
                             </p>
                         )}
 
                         {youtubeUrl && isValidYoutubeUrl(youtubeUrl) && getYoutubeVideoId(youtubeUrl) && (
                             <div className="mt-4">
-                                <p className="text-sm text-gray-400 mb-2">Aperçu :</p>
+                                <p className="text-sm text-gray-400 mb-2">{t('upload.youtube.preview')} :</p>
                                 <div className="aspect-video rounded-lg overflow-hidden bg-black">
                                     <iframe
                                         src={`https://www.youtube.com/embed/${getYoutubeVideoId(youtubeUrl)}`}
@@ -697,19 +692,19 @@ export default function Upload() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Gamepad2 className="w-5 h-5" />
-                            Jeu & Catégorie
+                            {t('upload.gameCategory.title')}
                         </h3>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Jeu *</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('upload.gameCategory.game')} *</label>
                                 <select
                                     value={gameId}
                                     onChange={(e) => setGameId(e.target.value)}
                                     className="input-field w-full"
                                     required
                                 >
-                                    <option value="">Sélectionner un jeu</option>
+                                    <option value="">{t('upload.gameCategory.selectGame')}</option>
                                     {games.map(game => (
                                         <option key={game.id} value={game.id}>{game.name}</option>
                                     ))}
@@ -717,7 +712,7 @@ export default function Upload() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-2">Catégorie *</label>
+                                <label className="block text-sm text-gray-400 mb-2">{t('upload.gameCategory.category')} *</label>
                                 <select
                                     value={categoryId}
                                     onChange={(e) => setCategoryId(e.target.value)}
@@ -725,7 +720,7 @@ export default function Upload() {
                                     required
                                     disabled={!gameId}
                                 >
-                                    <option value="">Sélectionner une catégorie</option>
+                                    <option value="">{t('upload.gameCategory.selectCategory')}</option>
                                     {categories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
@@ -736,7 +731,7 @@ export default function Upload() {
                         {versions.length > 0 && (
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">
-                                    Versions compatibles
+                                    {t('upload.gameCategory.compatibleVersions')}
                                 </label>
                                 <div className="flex flex-wrap gap-2">
                                     {versions.map(version => (
@@ -804,10 +799,10 @@ export default function Upload() {
                                 <div>
                                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                         <Link2 className="w-5 h-5 text-hyt-accent" />
-                                        Dépendances
+                                        {t('upload.dependencies.title')}
                                     </h3>
                                     <p className="text-sm text-gray-400">
-                                        Produits ou ressources requis pour que votre produit fonctionne
+                                        {t('upload.dependencies.subtitle')}
                                     </p>
                                 </div>
                                 <button
@@ -816,16 +811,16 @@ export default function Upload() {
                                     className="btn-primary flex items-center gap-2"
                                 >
                                     <Plus className="w-4 h-4" />
-                                    Ajouter
+                                    {t('upload.dependencies.add')}
                                 </button>
                             </div>
 
                             {selectedDependencies.length === 0 ? (
                                 <div className="bg-hyt-dark border border-dashed border-hyt-border rounded-xl p-6 text-center">
                                     <Link2 className="w-10 h-10 text-gray-500 mx-auto mb-3" />
-                                    <p className="text-gray-400">Aucune dépendance</p>
+                                    <p className="text-gray-400">{t('upload.dependencies.none')}</p>
                                     <p className="text-gray-500 text-sm mt-1">
-                                        Ajoutez des dépendances si votre produit en nécessite d'autres
+                                        {t('upload.dependencies.noneHint')}
                                     </p>
                                 </div>
                             ) : (
@@ -850,19 +845,19 @@ export default function Upload() {
                                                     <span className={`px-2 py-0.5 text-xs rounded ${
                                                         dep.isRequired ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
                                                     }`}>
-                                                        {dep.isRequired ? 'Requis' : 'Recommandé'}
+                                                        {dep.isRequired ? t('upload.dependencies.required') : t('upload.dependencies.recommended')}
                                                     </span>
                                                     {dep.type === 'product' && (
                                                         <span className="px-2 py-0.5 text-xs bg-hyt-accent/20 text-hyt-accent rounded">
-                                                            Produit du site
+                                                            {t('upload.dependencies.siteProduct')}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {dep.versionInfo && (
-                                                    <p className="text-sm text-gray-400">Version: {dep.versionInfo}</p>
+                                                    <p className="text-sm text-gray-400">{t('upload.dependencies.version')}: {dep.versionInfo}</p>
                                                 )}
                                                 {dep.creator && (
-                                                    <p className="text-xs text-gray-500">par {dep.creator}</p>
+                                                    <p className="text-xs text-gray-500">{t('upload.dependencies.by')} {dep.creator}</p>
                                                 )}
                                             </div>
                                             <button
@@ -886,7 +881,7 @@ export default function Upload() {
                             onClick={() => navigate(-1)}
                             className="btn-ghost"
                         >
-                            Annuler
+                            {t('common.cancel')}
                         </button>
 
                         <button
@@ -897,12 +892,12 @@ export default function Upload() {
                             {uploading ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                    Upload en cours...
+                                    {t('upload.uploading')}
                                 </>
                             ) : (
                                 <>
                                     <UploadIcon className="w-5 h-5" />
-                                    Ajouter le produit
+                                    {t('upload.submit')}
                                 </>
                             )}
                         </button>
@@ -916,7 +911,7 @@ export default function Upload() {
                             <div className="flex items-center justify-between p-4 border-b border-hyt-border">
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                     <Link2 className="w-5 h-5 text-hyt-accent" />
-                                    Ajouter une dépendance
+                                    {t('upload.dependencies.modal.title')}
                                 </h3>
                                 <button type="button" onClick={closeDepModal} className="text-gray-400 hover:text-white">
                                     <X className="w-5 h-5" />
@@ -932,7 +927,7 @@ export default function Upload() {
                                         depActiveTab === 'predefined' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
                                     }`}
                                 >
-                                    Prédéfinies
+                                    {t('upload.dependencies.modal.tabs.predefined')}
                                 </button>
                                 <button
                                     type="button"
@@ -941,7 +936,7 @@ export default function Upload() {
                                         depActiveTab === 'product' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
                                     }`}
                                 >
-                                    Produit du site
+                                    {t('upload.dependencies.modal.tabs.product')}
                                 </button>
                                 <button
                                     type="button"
@@ -950,7 +945,7 @@ export default function Upload() {
                                         depActiveTab === 'propose' ? 'text-hyt-accent border-b-2 border-hyt-accent' : 'text-gray-400'
                                     }`}
                                 >
-                                    Proposer
+                                    {t('upload.dependencies.modal.tabs.propose')}
                                 </button>
                             </div>
 
@@ -961,19 +956,18 @@ export default function Upload() {
                                         {filteredAvailableDeps.length === 0 && availableDeps.length === 0 ? (
                                             <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
                                                 <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                                <p>Aucune dépendance disponible pour ce jeu</p>
-                                                <p className="text-sm mt-1">Proposez-en une dans l'onglet "Proposer"</p>
+                                                <p>{t('upload.dependencies.modal.noPredefined')}</p>
+                                                <p className="text-sm mt-1">{t('upload.dependencies.modal.proposeHint')}</p>
                                             </div>
                                         ) : (
                                             <>
-                                                {/* Recherche */}
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                                                     <input
                                                         type="text"
                                                         value={depSearchQuery}
                                                         onChange={(e) => setDepSearchQuery(e.target.value)}
-                                                        placeholder="Rechercher une dépendance..."
+                                                        placeholder={t('upload.dependencies.modal.searchDep')}
                                                         className="input-field w-full pl-10"
                                                     />
                                                     {depSearchQuery && (
@@ -987,11 +981,10 @@ export default function Upload() {
                                                     )}
                                                 </div>
 
-                                                {/* Liste des dépendances */}
                                                 <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
                                                     {filteredAvailableDeps.length === 0 ? (
                                                         <div className="text-center py-4 text-gray-500">
-                                                            <p>Aucune dépendance trouvée pour "{depSearchQuery}"</p>
+                                                            <p>{t('upload.dependencies.modal.noDepFound', { query: depSearchQuery })}</p>
                                                         </div>
                                                     ) : (
                                                         filteredAvailableDeps.map(dep => (
@@ -1028,7 +1021,6 @@ export default function Upload() {
                                                     )}
                                                 </div>
 
-                                                {/* Dépendance sélectionnée */}
                                                 {depSelectedItem && depActiveTab === 'predefined' && (
                                                     <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-lg bg-hyt-card flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -1058,18 +1050,17 @@ export default function Upload() {
                                         {filteredAvailableProducts.length === 0 && availableProducts.length === 0 ? (
                                             <div className="text-center py-4 text-gray-500 bg-hyt-dark rounded-lg">
                                                 <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                                <p>Aucun autre produit disponible pour ce jeu</p>
+                                                <p>{t('upload.dependencies.modal.noProducts')}</p>
                                             </div>
                                         ) : !depSelectedItem ? (
                                             <>
-                                                {/* Recherche */}
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                                                     <input
                                                         type="text"
                                                         value={productSearchQuery}
                                                         onChange={(e) => setProductSearchQuery(e.target.value)}
-                                                        placeholder="Rechercher un produit..."
+                                                        placeholder={t('upload.dependencies.modal.searchProduct')}
                                                         className="input-field w-full pl-10"
                                                     />
                                                     {productSearchQuery && (
@@ -1083,11 +1074,10 @@ export default function Upload() {
                                                     )}
                                                 </div>
 
-                                                {/* Liste des produits */}
                                                 <div className="max-h-60 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
                                                     {filteredAvailableProducts.length === 0 ? (
                                                         <div className="text-center py-4 text-gray-500">
-                                                            <p>Aucun produit trouvé {productSearchQuery && `pour "${productSearchQuery}"`}</p>
+                                                            <p>{t('upload.dependencies.modal.noProductFound')} {productSearchQuery && `"${productSearchQuery}"`}</p>
                                                         </div>
                                                     ) : (
                                                         filteredAvailableProducts.map(product => (
@@ -1109,7 +1099,7 @@ export default function Upload() {
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="font-medium text-white truncate">{product.title}</p>
                                                                     <p className="text-xs text-gray-500">
-                                                                        par {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
+                                                                        {t('upload.dependencies.by')} {product.creator_username} • {parseFloat(product.price).toFixed(2)}€
                                                                     </p>
                                                                 </div>
                                                             </button>
@@ -1118,9 +1108,7 @@ export default function Upload() {
                                                 </div>
                                             </>
                                         ) : (
-                                            /* Produit sélectionné - Afficher versions */
                                             <div className="space-y-4">
-                                                {/* Aperçu produit sélectionné */}
                                                 <div className="p-3 bg-hyt-accent/10 border border-hyt-accent/30 rounded-lg flex items-center gap-3">
                                                     <div className="w-14 h-14 rounded-lg bg-hyt-dark overflow-hidden flex-shrink-0">
                                                         {depSelectedItem.thumbnail_url ? (
@@ -1133,7 +1121,7 @@ export default function Upload() {
                                                     </div>
                                                     <div className="flex-1">
                                                         <p className="font-medium text-white">{depSelectedItem.title}</p>
-                                                        <p className="text-sm text-gray-400">par {depSelectedItem.creator_username}</p>
+                                                        <p className="text-sm text-gray-400">{t('upload.dependencies.by')} {depSelectedItem.creator_username}</p>
                                                         <p className="text-xs text-hyt-accent">{parseFloat(depSelectedItem.price).toFixed(2)}€</p>
                                                     </div>
                                                     <button type="button" onClick={() => { setDepSelectedItem(null); setSelectedProductVersion(null) }} className="p-2 text-gray-400 hover:text-white hover:bg-hyt-dark rounded-lg">
@@ -1141,27 +1129,25 @@ export default function Upload() {
                                                     </button>
                                                 </div>
 
-                                                {/* Sélection de version */}
                                                 <div>
                                                     <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
                                                         <Layers className="w-4 h-4" />
-                                                        Sélectionner une version
+                                                        {t('upload.dependencies.modal.selectVersion')}
                                                     </label>
 
                                                     {loadingVersions ? (
                                                         <div className="flex items-center justify-center gap-2 text-gray-500 py-6 bg-hyt-dark rounded-lg">
                                                             <Loader2 className="w-5 h-5 animate-spin" />
-                                                            <span>Chargement des versions...</span>
+                                                            <span>{t('upload.dependencies.modal.loadingVersions')}</span>
                                                         </div>
                                                     ) : productVersions.length === 0 ? (
                                                         <div className="text-center py-4 bg-hyt-dark rounded-lg">
                                                             <Layers className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                                                            <p className="text-gray-400">Aucune version disponible</p>
-                                                            <p className="text-xs text-gray-500 mt-1">La dernière version sera utilisée par défaut</p>
+                                                            <p className="text-gray-400">{t('upload.dependencies.modal.noVersions')}</p>
+                                                            <p className="text-xs text-gray-500 mt-1">{t('upload.dependencies.modal.latestByDefault')}</p>
                                                         </div>
                                                     ) : (
                                                         <div className="max-h-48 overflow-y-auto space-y-2 border border-hyt-border rounded-lg p-2 bg-hyt-dark/50">
-                                                            {/* Option: Dernière version */}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setSelectedProductVersion(null)}
@@ -1175,8 +1161,8 @@ export default function Upload() {
                                                                     <Layers className="w-5 h-5 text-green-400" />
                                                                 </div>
                                                                 <div className="flex-1">
-                                                                    <p className="font-medium text-white">Dernière version</p>
-                                                                    <p className="text-xs text-gray-500">Toujours à jour automatiquement</p>
+                                                                    <p className="font-medium text-white">{t('upload.dependencies.latestVersion')}</p>
+                                                                    <p className="text-xs text-gray-500">{t('upload.dependencies.modal.autoUpdate')}</p>
                                                                 </div>
                                                                 {selectedProductVersion === null && (
                                                                     <div className="w-6 h-6 rounded-full bg-hyt-accent flex items-center justify-center flex-shrink-0">
@@ -1185,7 +1171,6 @@ export default function Upload() {
                                                                 )}
                                                             </button>
 
-                                                            {/* Liste des versions */}
                                                             {productVersions.map((version, index) => (
                                                                 <button
                                                                     key={version.id}
@@ -1211,7 +1196,7 @@ export default function Upload() {
                                                                             </p>
                                                                             {index === 0 && (
                                                                                 <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
-                                                                                    Actuelle
+                                                                                    {t('upload.dependencies.modal.current')}
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -1239,21 +1224,21 @@ export default function Upload() {
                                     <>
                                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                                             <p className="text-sm text-blue-400">
-                                                Proposez une nouvelle dépendance. Elle sera examinée par notre équipe avant d'être ajoutée.
+                                                {t('upload.dependencies.modal.proposeInfo')}
                                             </p>
                                         </div>
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Nom de la dépendance *</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('upload.dependencies.modal.depName')} *</label>
                                             <input
                                                 type="text"
                                                 value={proposalName}
                                                 onChange={(e) => setProposalName(e.target.value)}
-                                                placeholder="Ex: Fabric, Forge, OptiFine..."
+                                                placeholder={t('upload.dependencies.modal.depNamePlaceholder')}
                                                 className="input-field w-full"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Logo (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('upload.dependencies.modal.logo')} ({t('common.optional')})</label>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -1268,12 +1253,12 @@ export default function Upload() {
                                 {depActiveTab !== 'propose' && depSelectedItem && (
                                     <>
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Version requise (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('upload.dependencies.modal.requiredVersion')} ({t('common.optional')})</label>
                                             <input
                                                 type="text"
                                                 value={depVersionInfo}
                                                 onChange={(e) => setDepVersionInfo(e.target.value)}
-                                                placeholder="Ex: 1.20+, 2.0.0 minimum..."
+                                                placeholder={t('upload.dependencies.modal.requiredVersionPlaceholder')}
                                                 className="input-field w-full"
                                             />
                                         </div>
@@ -1286,8 +1271,8 @@ export default function Upload() {
                                                     depIsRequired ? 'border-red-500 bg-red-500/10 text-red-400' : 'border-hyt-border text-gray-400'
                                                 }`}
                                             >
-                                                <p className="font-medium">Requis</p>
-                                                <p className="text-xs opacity-70">Obligatoire</p>
+                                                <p className="font-medium">{t('upload.dependencies.required')}</p>
+                                                <p className="text-xs opacity-70">{t('upload.dependencies.mandatory')}</p>
                                             </button>
                                             <button
                                                 type="button"
@@ -1296,18 +1281,18 @@ export default function Upload() {
                                                     !depIsRequired ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400' : 'border-hyt-border text-gray-400'
                                                 }`}
                                             >
-                                                <p className="font-medium">Recommandé</p>
-                                                <p className="text-xs opacity-70">Optionnel</p>
+                                                <p className="font-medium">{t('upload.dependencies.recommended')}</p>
+                                                <p className="text-xs opacity-70">{t('upload.dependencies.optional')}</p>
                                             </button>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm text-gray-400 mb-2">Note (optionnel)</label>
+                                            <label className="block text-sm text-gray-400 mb-2">{t('upload.dependencies.modal.note')} ({t('common.optional')})</label>
                                             <input
                                                 type="text"
                                                 value={depNote}
                                                 onChange={(e) => setDepNote(e.target.value)}
-                                                placeholder="Information supplémentaire..."
+                                                placeholder={t('upload.dependencies.modal.notePlaceholder')}
                                                 className="input-field w-full"
                                             />
                                         </div>
@@ -1317,7 +1302,7 @@ export default function Upload() {
                                 {/* Boutons */}
                                 <div className="flex gap-3 pt-2">
                                     <button type="button" onClick={closeDepModal} className="btn-ghost flex-1">
-                                        Annuler
+                                        {t('common.cancel')}
                                     </button>
                                     <button
                                         type="button"
@@ -1326,7 +1311,7 @@ export default function Upload() {
                                         className="btn-primary flex-1 flex items-center justify-center gap-2"
                                     >
                                         <Plus className="w-4 h-4" />
-                                        {depActiveTab === 'propose' ? 'Proposer' : 'Ajouter'}
+                                        {depActiveTab === 'propose' ? t('upload.dependencies.modal.propose') : t('upload.dependencies.add')}
                                     </button>
                                 </div>
                             </div>

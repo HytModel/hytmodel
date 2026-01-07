@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 import {
     WithdrawModal,
@@ -25,19 +26,8 @@ const getImageUrl = (url) => {
     return `http://localhost:3001${url}`
 }
 
-const orderStatusConfig = {
-    AWAITING_PAYMENT: { label: 'En attente de paiement', color: 'bg-yellow-500/20 text-yellow-400', icon: CreditCard },
-    IN_PROGRESS: { label: 'En cours', color: 'bg-blue-500/20 text-blue-400', icon: Clock },
-    PENDING_REVIEW: { label: 'En attente de validation', color: 'bg-purple-500/20 text-purple-400', icon: Eye },
-    AWAITING_FINAL_PAYMENT: { label: 'Paiement final requis', color: 'bg-orange-500/20 text-orange-400', icon: CreditCard },
-    COMPLETED: { label: 'Terminée', color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
-    DISPUTED: { label: 'Litige', color: 'bg-red-500/20 text-red-400', icon: AlertTriangle },
-    CANCELLED: { label: 'Annulée', color: 'bg-gray-500/20 text-gray-400', icon: XCircle },
-    REFUNDED: { label: 'Remboursée', color: 'bg-gray-500/20 text-gray-400', icon: XCircle },
-}
-
 // Composant Message
-function MessageBubble({ message, isOwn }) {
+function MessageBubble({ message, isOwn, t }) {
     const attachments = typeof message.attachments === 'string'
         ? JSON.parse(message.attachments)
         : message.attachments || []
@@ -98,7 +88,7 @@ function MessageBubble({ message, isOwn }) {
                         ) : null}
                         <span className="text-sm text-gray-400">{message.sender_username}</span>
                         {isConversationMessage && (
-                            <span className="text-xs text-gray-600">(avant commande)</span>
+                            <span className="text-xs text-gray-600">({t('orderDetail.beforeOrder')})</span>
                         )}
                     </div>
                 )}
@@ -123,7 +113,7 @@ function MessageBubble({ message, isOwn }) {
                                     }`}
                                 >
                                     <FileText className="w-4 h-4" />
-                                    {file.originalname || `Fichier ${i + 1}`}
+                                    {file.originalname || `${t('orderDetail.file')} ${i + 1}`}
                                 </a>
                             ))}
                         </div>
@@ -141,8 +131,20 @@ export default function CustomOrderDetail() {
     const { id } = useParams()
     const navigate = useNavigate()
     const { user } = useAuth()
+    const { t } = useTranslation()
     const messagesEndRef = useRef(null)
     const fileInputRef = useRef(null)
+
+    const orderStatusConfig = {
+        AWAITING_PAYMENT: { label: t('orderDetail.status.awaitingPayment'), color: 'bg-yellow-500/20 text-yellow-400', icon: CreditCard },
+        IN_PROGRESS: { label: t('orderDetail.status.inProgress'), color: 'bg-blue-500/20 text-blue-400', icon: Clock },
+        PENDING_REVIEW: { label: t('orderDetail.status.pendingReview'), color: 'bg-purple-500/20 text-purple-400', icon: Eye },
+        AWAITING_FINAL_PAYMENT: { label: t('orderDetail.status.awaitingFinalPayment'), color: 'bg-orange-500/20 text-orange-400', icon: CreditCard },
+        COMPLETED: { label: t('orderDetail.status.completed'), color: 'bg-green-500/20 text-green-400', icon: CheckCircle },
+        DISPUTED: { label: t('orderDetail.status.disputed'), color: 'bg-red-500/20 text-red-400', icon: AlertTriangle },
+        CANCELLED: { label: t('orderDetail.status.cancelled'), color: 'bg-gray-500/20 text-gray-400', icon: XCircle },
+        REFUNDED: { label: t('orderDetail.status.refunded'), color: 'bg-gray-500/20 text-gray-400', icon: XCircle },
+    }
 
     const [order, setOrder] = useState(null)
     const [messages, setMessages] = useState([])
@@ -198,17 +200,15 @@ export default function CustomOrderDetail() {
             const { data } = await customOrdersAPI.getOrder(id)
             console.log('Load order data:', data)
             setOrder(data.order)
-            // Prendre les messages soit de data.messages, soit de data.order.messages
             const msgs = data.messages || data.order?.messages || []
             console.log('Messages loaded:', msgs.length)
             setMessages(msgs)
 
-            // Charger les correctifs si en litige
             if (data.order?.status === 'DISPUTED') {
                 loadFixes()
             }
         } catch (error) {
-            toast.error('Commande non trouvée')
+            toast.error(t('orderDetail.errors.notFound'))
             navigate('/custom-orders')
         } finally {
             setLoading(false)
@@ -228,7 +228,6 @@ export default function CustomOrderDetail() {
         if (!id) return
         try {
             const { data } = await customOrdersAPI.getOrder(id)
-            // Prendre les messages soit de data.messages, soit de data.order.messages
             const msgs = data.messages || data.order?.messages || []
             setMessages(msgs)
             setOrder(data.order)
@@ -251,10 +250,9 @@ export default function CustomOrderDetail() {
             await customOrdersAPI.sendOrderMessage(id, formData)
             setNewMessage('')
             setAttachments([])
-            // Recharger les messages pour avoir la bonne structure
             await loadMessages()
         } catch (error) {
-            toast.error('Erreur lors de l\'envoi')
+            toast.error(t('orderDetail.errors.sendFailed'))
         } finally {
             setSending(false)
         }
@@ -263,89 +261,81 @@ export default function CustomOrderDetail() {
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files)
         if (files.length + attachments.length > 5) {
-            toast.error('Maximum 5 fichiers')
+            toast.error(t('orderDetail.errors.maxFiles'))
             return
         }
         setAttachments([...attachments, ...files])
     }
 
-    // Créateur ajoute des fichiers de livraison
     const handleDeliveryFileChange = (e) => {
         const files = Array.from(e.target.files)
         setDeliveryFiles(prev => [...prev, ...files])
     }
 
-    // Créateur livre la commande avec fichiers
     const handleDeliver = async () => {
         if (deliveryFiles.length === 0) {
-            toast.error('Veuillez ajouter au moins un fichier à livrer')
+            toast.error(t('orderDetail.errors.noDeliveryFiles'))
             return
         }
         setShowDeliveryModal(true)
     }
 
-    // Confirmation de livraison
     const confirmDeliver = async () => {
         setActionLoading(true)
         try {
             const formData = new FormData()
-            formData.append('message', deliveryMessage || 'Livraison effectuée !')
+            formData.append('message', deliveryMessage || t('orderDetail.delivery.defaultMessage'))
             deliveryFiles.forEach(file => formData.append('files', file))
 
             await customOrdersAPI.deliverOrderWithFiles(id, formData)
-            toast.success('Commande livrée !')
+            toast.success(t('orderDetail.success.delivered'))
             setDeliveryFiles([])
             setDeliveryMessage('')
             setShowDeliveryModal(false)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la livraison')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.deliveryFailed'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client valide la livraison
     const handleApprove = async () => {
         setShowApproveModal(true)
     }
 
-    // Confirmation validation
     const confirmApprove = async () => {
         setActionLoading(true)
         try {
             await customOrdersAPI.approveDelivery(id)
-            toast.success('Livraison validée !')
+            toast.success(t('orderDetail.success.approved'))
             setShowApproveModal(false)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client demande des révisions
     const handleRequestRevision = async () => {
         setShowRevisionModal(true)
     }
 
-    // Confirmation révision
     const confirmRevision = async (reason) => {
         setActionLoading(true)
         try {
             await customOrdersAPI.requestRevision(id, { reason })
-            toast.success('Demande de révision envoyée')
+            toast.success(t('orderDetail.success.revisionRequested'))
             setShowRevisionModal(false)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client paye l'acompte (50%)
     const handlePayFirst = async () => {
         setActionLoading(true)
         try {
@@ -354,12 +344,11 @@ export default function CustomOrderDetail() {
                 window.location.href = data.url
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la redirection vers le paiement')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.paymentRedirect'))
             setActionLoading(false)
         }
     }
 
-    // Client paye le solde (50%)
     const handlePayFinal = async () => {
         setActionLoading(true)
         try {
@@ -368,55 +357,50 @@ export default function CustomOrderDetail() {
                 window.location.href = data.url
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de la redirection vers le paiement')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.paymentRedirect'))
             setActionLoading(false)
         }
     }
 
-    // Client se rétracte (25% remboursé, 20% au créateur)
     const handleWithdraw = async () => {
         setShowWithdrawModal(true)
     }
 
-    // Confirmation rétractation
     const confirmWithdraw = async (reason) => {
         setActionLoading(true)
         try {
             const { data } = await customOrdersAPI.withdrawOrder(id, { reason })
-            toast.success(`Rétractation effectuée. Remboursement: ${data.client_refund.toFixed(2)}€`)
+            toast.success(t('orderDetail.success.withdrawn', { amount: data.client_refund.toFixed(2) }))
             setShowWithdrawModal(false)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client ouvre une réclamation
     const handleOpenClaim = async () => {
         setShowClaimModal(true)
     }
 
-    // Confirmation réclamation
     const confirmClaim = async (reason) => {
         setActionLoading(true)
         try {
             await customOrdersAPI.openClaim(id, { reason })
-            toast.success('Réclamation envoyée. Le créateur et notre équipe ont été notifiés.')
+            toast.success(t('orderDetail.success.claimOpened'))
             setShowClaimModal(false)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Créateur envoie un correctif
     const handleSendFix = async () => {
         if (fixFiles.length === 0) {
-            toast.error('Veuillez ajouter des fichiers corrigés')
+            toast.error(t('orderDetail.errors.noFixFiles'))
             return
         }
 
@@ -427,61 +411,57 @@ export default function CustomOrderDetail() {
             fixFiles.forEach(file => formData.append('files', file))
 
             await customOrdersAPI.sendFix(id, formData)
-            toast.success('Correctif envoyé au client')
+            toast.success(t('orderDetail.success.fixSent'))
             setFixFiles([])
             setFixMessage('')
             loadOrder()
             loadFixes()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client accepte un correctif
     const handleAcceptFix = (fix) => {
         setSelectedFix(fix)
         setShowAcceptFixModal(true)
     }
 
-    // Confirmation accepter correctif
     const confirmAcceptFix = async () => {
         if (!selectedFix) return
 
         setActionLoading(true)
         try {
             await customOrdersAPI.acceptFix(id, selectedFix.id)
-            toast.success('Correctif accepté ! Réclamation clôturée.')
+            toast.success(t('orderDetail.success.fixAccepted'))
             setShowAcceptFixModal(false)
             setSelectedFix(null)
             loadOrder()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
     }
 
-    // Client refuse un correctif
     const handleRejectFix = (fix) => {
         setSelectedFix(fix)
         setShowRejectFixModal(true)
     }
 
-    // Confirmation refuser correctif
     const confirmRejectFix = async (feedback) => {
         if (!selectedFix) return
 
         setActionLoading(true)
         try {
             await customOrdersAPI.rejectFix(id, selectedFix.id, { feedback })
-            toast.success('Feedback envoyé au créateur')
+            toast.success(t('orderDetail.success.feedbackSent'))
             setShowRejectFixModal(false)
             setSelectedFix(null)
             loadFixes()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur')
+            toast.error(error.response?.data?.error || t('orderDetail.errors.generic'))
         } finally {
             setActionLoading(false)
         }
@@ -514,14 +494,14 @@ export default function CustomOrderDetail() {
                         className="flex items-center gap-2 text-gray-400 hover:text-white mb-4"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour
+                        {t('common.back')}
                     </button>
 
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-white">{order.request_title}</h1>
                             <p className="text-gray-400">
-                                Commande avec {isClient ? order.creator_username : order.client_username}
+                                {t('orderDetail.orderWith')} {isClient ? order.creator_username : order.client_username}
                             </p>
                         </div>
                         <span className={`px-4 py-2 rounded-full flex items-center gap-2 ${statusCfg.color}`}>
@@ -539,7 +519,7 @@ export default function CustomOrderDetail() {
                             {messages.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                                     <MessageSquare className="w-12 h-12 mb-4" />
-                                    <p>Aucun message</p>
+                                    <p>{t('orderDetail.noMessages')}</p>
                                 </div>
                             ) : (
                                 <>
@@ -548,6 +528,7 @@ export default function CustomOrderDetail() {
                                             key={msg.id}
                                             message={msg}
                                             isOwn={msg.sender_id === user?.id}
+                                            t={t}
                                         />
                                     ))}
                                     <div ref={messagesEndRef} />
@@ -563,7 +544,7 @@ export default function CustomOrderDetail() {
                                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
                                         <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
                                         <p className="text-red-400 text-sm">
-                                            Litige en cours - Continuez à communiquer pour résoudre le problème
+                                            {t('orderDetail.disputeBanner')}
                                         </p>
                                     </div>
                                 )}
@@ -602,7 +583,7 @@ export default function CustomOrderDetail() {
                                     <textarea
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
-                                        placeholder="Écrivez votre message..."
+                                        placeholder={t('orderDetail.messagePlaceholder')}
                                         rows={1}
                                         className="flex-1 bg-hyt-dark border border-hyt-border rounded-lg px-4 py-2 text-white placeholder-gray-500 resize-none focus:outline-none focus:border-hyt-accent"
                                         onKeyDown={(e) => {
@@ -628,21 +609,21 @@ export default function CustomOrderDetail() {
                     <div className="space-y-4">
                         {/* Infos commande */}
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-4">
-                            <h3 className="font-semibold text-white mb-4">Détails</h3>
+                            <h3 className="font-semibold text-white mb-4">{t('orderDetail.details')}</h3>
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Prix total</span>
+                                    <span className="text-gray-400">{t('orderDetail.totalPrice')}</span>
                                     <span className="text-white font-medium">{Number(order.total_price).toFixed(2)}€</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Acompte (50%)</span>
+                                    <span className="text-gray-400">{t('orderDetail.deposit')}</span>
                                     <span className={order.first_payment_paid ? 'text-green-400' : 'text-yellow-400'}>
                                         {Number(order.first_payment_amount).toFixed(2)}€
-                                        {order.first_payment_paid ? ' ✓' : ' (en attente)'}
+                                        {order.first_payment_paid ? ' ✓' : ` (${t('orderDetail.pending')})`}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-400">Solde (50%)</span>
+                                    <span className="text-gray-400">{t('orderDetail.balance')}</span>
                                     <span className={order.second_payment_paid ? 'text-green-400' : 'text-gray-400'}>
                                         {Number(order.second_payment_amount).toFixed(2)}€
                                         {order.second_payment_paid ? ' ✓' : ''}
@@ -650,7 +631,7 @@ export default function CustomOrderDetail() {
                                 </div>
                                 {order.estimated_delivery && (
                                     <div className="flex justify-between">
-                                        <span className="text-gray-400">Livraison estimée</span>
+                                        <span className="text-gray-400">{t('orderDetail.estimatedDelivery')}</span>
                                         <span className="text-white">
                                             {new Date(order.estimated_delivery).toLocaleDateString('fr-FR')}
                                         </span>
@@ -659,16 +640,15 @@ export default function CustomOrderDetail() {
                             </div>
                         </div>
 
-                        {/* Actions selon le statut */}
                         {/* Client: Payer l'acompte */}
                         {isClient && order.status === 'AWAITING_PAYMENT' && !order.first_payment_paid && (
                             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-yellow-400 mb-2 flex items-center gap-2">
                                     <CreditCard className="w-5 h-5" />
-                                    Paiement requis
+                                    {t('orderDetail.paymentRequired.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    Payez l'acompte de 50% pour démarrer la commande
+                                    {t('orderDetail.paymentRequired.description')}
                                 </p>
                                 <button
                                     onClick={handlePayFirst}
@@ -676,7 +656,7 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-primary flex items-center justify-center gap-2"
                                 >
                                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                                    Payer {Number(order.first_payment_amount).toFixed(2)}€
+                                    {t('orderDetail.pay')} {Number(order.first_payment_amount).toFixed(2)}€
                                 </button>
                             </div>
                         )}
@@ -686,15 +666,13 @@ export default function CustomOrderDetail() {
                             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-blue-400 mb-2 flex items-center gap-2">
                                     <Package className="w-5 h-5" />
-                                    Livrer la commande
+                                    {t('orderDetail.deliver.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    Uploadez vos fichiers finaux puis livrez
+                                    {t('orderDetail.deliver.description')}
                                 </p>
 
-                                {/* Zone d'upload */}
                                 <div className="space-y-3">
-                                    {/* Fichiers sélectionnés */}
                                     {deliveryFiles.length > 0 && (
                                         <div className="space-y-2">
                                             {deliveryFiles.map((file, i) => (
@@ -715,14 +693,13 @@ export default function CustomOrderDetail() {
                                         </div>
                                     )}
 
-                                    {/* Bouton ajouter fichiers */}
                                     <button
                                         type="button"
                                         onClick={() => deliveryFileInputRef.current?.click()}
                                         className="w-full btn-ghost border-2 border-dashed border-hyt-border hover:border-blue-500 py-4 flex items-center justify-center gap-2"
                                     >
                                         <Upload className="w-5 h-5" />
-                                        {deliveryFiles.length > 0 ? 'Ajouter d\'autres fichiers' : 'Sélectionner les fichiers'}
+                                        {deliveryFiles.length > 0 ? t('orderDetail.deliver.addMore') : t('orderDetail.deliver.selectFiles')}
                                     </button>
                                     <input
                                         ref={deliveryFileInputRef}
@@ -732,16 +709,14 @@ export default function CustomOrderDetail() {
                                         className="hidden"
                                     />
 
-                                    {/* Message de livraison */}
                                     <textarea
                                         value={deliveryMessage}
                                         onChange={(e) => setDeliveryMessage(e.target.value)}
-                                        placeholder="Message de livraison (optionnel)..."
+                                        placeholder={t('orderDetail.deliver.messagePlaceholder')}
                                         rows={2}
                                         className="w-full bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white placeholder-gray-500 resize-none text-sm"
                                     />
 
-                                    {/* Bouton livrer */}
                                     <button
                                         onClick={handleDeliver}
                                         disabled={actionLoading || deliveryFiles.length === 0}
@@ -752,7 +727,7 @@ export default function CustomOrderDetail() {
                                         ) : (
                                             <CheckCircle className="w-4 h-4" />
                                         )}
-                                        Livrer ({deliveryFiles.length} fichier{deliveryFiles.length > 1 ? 's' : ''})
+                                        {t('orderDetail.deliver.button', { count: deliveryFiles.length })}
                                     </button>
                                 </div>
                             </div>
@@ -763,10 +738,10 @@ export default function CustomOrderDetail() {
                             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-purple-400 mb-2 flex items-center gap-2">
                                     <Eye className="w-5 h-5" />
-                                    Livraison reçue
+                                    {t('orderDetail.review.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    Vérifiez le travail et validez ou demandez des modifications
+                                    {t('orderDetail.review.description')}
                                 </p>
                                 <div className="space-y-2">
                                     <button
@@ -775,14 +750,14 @@ export default function CustomOrderDetail() {
                                         className="w-full btn-primary flex items-center justify-center gap-2"
                                     >
                                         <CheckCircle className="w-4 h-4" />
-                                        Valider
+                                        {t('orderDetail.review.validate')}
                                     </button>
                                     <button
                                         onClick={handleRequestRevision}
                                         disabled={actionLoading}
                                         className="w-full btn-ghost flex items-center justify-center gap-2"
                                     >
-                                        Demander des révisions
+                                        {t('orderDetail.review.requestRevisions')}
                                     </button>
                                 </div>
                             </div>
@@ -793,10 +768,10 @@ export default function CustomOrderDetail() {
                             <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-orange-400 mb-2 flex items-center gap-2">
                                     <CreditCard className="w-5 h-5" />
-                                    Paiement final
+                                    {t('orderDetail.finalPayment.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    Payez le solde pour finaliser la commande et accéder aux fichiers
+                                    {t('orderDetail.finalPayment.description')}
                                 </p>
                                 <button
                                     onClick={handlePayFinal}
@@ -804,7 +779,7 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-primary flex items-center justify-center gap-2"
                                 >
                                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                                    Payer {Number(order.second_payment_amount).toFixed(2)}€
+                                    {t('orderDetail.pay')} {Number(order.second_payment_amount).toFixed(2)}€
                                 </button>
                             </div>
                         )}
@@ -814,14 +789,14 @@ export default function CustomOrderDetail() {
                             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-red-400 mb-2 flex items-center gap-2">
                                     <AlertTriangle className="w-5 h-5" />
-                                    Rétractation
+                                    {t('orderDetail.withdraw.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-2">
-                                    Vous pouvez annuler la commande en cours.
+                                    {t('orderDetail.withdraw.description')}
                                 </p>
                                 <ul className="text-xs text-gray-500 mb-4 space-y-1">
-                                    <li>• Vous récupérez 25% de l'acompte</li>
-                                    <li>• Le créateur reçoit 20% (travail effectué)</li>
+                                    <li>• {t('orderDetail.withdraw.refund25')}</li>
+                                    <li>• {t('orderDetail.withdraw.creator20')}</li>
                                 </ul>
                                 <button
                                     onClick={handleWithdraw}
@@ -829,24 +804,24 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-ghost border border-red-500/50 text-red-400 hover:bg-red-500/10 flex items-center justify-center gap-2"
                                 >
                                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                                    Me rétracter
+                                    {t('orderDetail.withdraw.button')}
                                 </button>
                             </div>
                         )}
 
-                        {/* Client: Signaler un problème (après livraison ou même après résolution) */}
+                        {/* Client: Signaler un problème */}
                         {isClient && ['COMPLETED', 'AWAITING_FINAL_PAYMENT', 'PENDING_REVIEW'].includes(order.status) && !order.has_active_claim && (
                             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-yellow-400 mb-2 flex items-center gap-2">
                                     <AlertTriangle className="w-5 h-5" />
-                                    Un problème ?
+                                    {t('orderDetail.problem.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    Si les fichiers ne fonctionnent pas correctement, signalez-le.
+                                    {t('orderDetail.problem.description')}
                                 </p>
                                 {order.claim_count > 0 && (
                                     <p className="text-gray-500 text-xs mb-3">
-                                        {order.claim_count} réclamation{order.claim_count > 1 ? 's' : ''} précédente{order.claim_count > 1 ? 's' : ''} résolue{order.claim_count > 1 ? 's' : ''}
+                                        {t('orderDetail.problem.previousClaims', { count: order.claim_count })}
                                     </p>
                                 )}
                                 <button
@@ -854,7 +829,7 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-ghost border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 flex items-center justify-center gap-2"
                                 >
                                     <AlertTriangle className="w-4 h-4" />
-                                    Signaler un problème
+                                    {t('orderDetail.problem.button')}
                                 </button>
                             </div>
                         )}
@@ -864,12 +839,12 @@ export default function CustomOrderDetail() {
                             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-red-400 mb-2 flex items-center gap-2">
                                     <AlertTriangle className="w-5 h-5" />
-                                    Réclamation en cours
+                                    {t('orderDetail.claim.title')}
                                 </h3>
                                 <p className="text-gray-400 text-sm">
                                     {isCreator
-                                        ? "Le client a signalé un problème. Veuillez envoyer un correctif."
-                                        : "Votre réclamation est en cours de traitement."
+                                        ? t('orderDetail.claim.creatorMessage')
+                                        : t('orderDetail.claim.clientMessage')
                                     }
                                 </p>
                             </div>
@@ -880,7 +855,7 @@ export default function CustomOrderDetail() {
                             <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-blue-400 mb-4 flex items-center gap-2">
                                     <Download className="w-5 h-5" />
-                                    Correctifs reçus ({fixes.length})
+                                    {t('orderDetail.fixes.title', { count: fixes.length })}
                                 </h3>
                                 <div className="space-y-4">
                                     {fixes.map((fix) => {
@@ -889,7 +864,7 @@ export default function CustomOrderDetail() {
                                             <div key={fix.id} className="bg-hyt-dark rounded-lg p-3">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className="text-white font-medium text-sm">
-                                                        Version {fix.version}
+                                                        {t('orderDetail.fixes.version')} {fix.version}
                                                     </span>
                                                     <span className="text-xs text-gray-500">
                                                         {new Date(fix.created_at).toLocaleString('fr-FR')}
@@ -900,7 +875,6 @@ export default function CustomOrderDetail() {
                                                     <p className="text-gray-400 text-sm mb-3">{fix.message}</p>
                                                 )}
 
-                                                {/* Fichiers téléchargeables */}
                                                 <div className="space-y-2 mb-3">
                                                     {fixFiles.map((file, i) => (
                                                         <a
@@ -918,21 +892,19 @@ export default function CustomOrderDetail() {
                                                     ))}
                                                 </div>
 
-                                                {/* Statut du correctif */}
                                                 {fix.is_accepted === true && (
                                                     <div className="text-green-400 text-sm flex items-center gap-1">
                                                         <CheckCircle className="w-4 h-4" />
-                                                        Accepté
+                                                        {t('orderDetail.fixes.accepted')}
                                                     </div>
                                                 )}
                                                 {fix.is_accepted === false && (
                                                     <div className="text-red-400 text-sm flex items-center gap-1">
                                                         <XCircle className="w-4 h-4" />
-                                                        Refusé {fix.client_feedback && `- ${fix.client_feedback}`}
+                                                        {t('orderDetail.fixes.rejected')} {fix.client_feedback && `- ${fix.client_feedback}`}
                                                     </div>
                                                 )}
 
-                                                {/* Boutons d'action si pas encore traité */}
                                                 {fix.is_accepted === null && (
                                                     <div className="flex gap-2 mt-3">
                                                         <button
@@ -941,7 +913,7 @@ export default function CustomOrderDetail() {
                                                             className="flex-1 btn-primary text-sm py-2 flex items-center justify-center gap-1"
                                                         >
                                                             <CheckCircle className="w-4 h-4" />
-                                                            Accepter
+                                                            {t('orderDetail.fixes.accept')}
                                                         </button>
                                                         <button
                                                             onClick={() => handleRejectFix(fix)}
@@ -949,7 +921,7 @@ export default function CustomOrderDetail() {
                                                             className="flex-1 btn-ghost border border-red-500/50 text-red-400 text-sm py-2 flex items-center justify-center gap-1"
                                                         >
                                                             <XCircle className="w-4 h-4" />
-                                                            Refuser
+                                                            {t('orderDetail.fixes.reject')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -960,15 +932,14 @@ export default function CustomOrderDetail() {
                             </div>
                         )}
 
-                        {/* Créateur: Envoyer correctif (si litige) */}
+                        {/* Créateur: Envoyer correctif */}
                         {isCreator && order.status === 'DISPUTED' && (
                             <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-orange-400 mb-2 flex items-center gap-2">
                                     <Upload className="w-5 h-5" />
-                                    Envoyer un correctif
+                                    {t('orderDetail.sendFix.title')}
                                 </h3>
                                 <div className="space-y-3">
-                                    {/* Fichiers correctifs */}
                                     {fixFiles.length > 0 && (
                                         <div className="space-y-2">
                                             {fixFiles.map((file, i) => (
@@ -992,7 +963,7 @@ export default function CustomOrderDetail() {
                                         className="w-full btn-ghost border-2 border-dashed border-hyt-border hover:border-orange-500 py-3 flex items-center justify-center gap-2"
                                     >
                                         <Upload className="w-5 h-5" />
-                                        {fixFiles.length > 0 ? 'Ajouter des fichiers' : 'Sélectionner fichiers corrigés'}
+                                        {fixFiles.length > 0 ? t('orderDetail.sendFix.addFiles') : t('orderDetail.sendFix.selectFiles')}
                                     </button>
                                     <input
                                         ref={fixFileInputRef}
@@ -1005,7 +976,7 @@ export default function CustomOrderDetail() {
                                     <textarea
                                         value={fixMessage}
                                         onChange={(e) => setFixMessage(e.target.value)}
-                                        placeholder="Expliquez les corrections apportées..."
+                                        placeholder={t('orderDetail.sendFix.messagePlaceholder')}
                                         rows={2}
                                         className="w-full bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white placeholder-gray-500 resize-none text-sm"
                                     />
@@ -1016,7 +987,7 @@ export default function CustomOrderDetail() {
                                         className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                        Envoyer le correctif
+                                        {t('orderDetail.sendFix.button')}
                                     </button>
                                 </div>
                             </div>
@@ -1027,7 +998,7 @@ export default function CustomOrderDetail() {
                             <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
                                 <h3 className="font-semibold text-green-400 mb-4 flex items-center gap-2">
                                     <Download className="w-5 h-5" />
-                                    Fichiers finaux
+                                    {t('orderDetail.finalFiles')}
                                 </h3>
                                 <div className="space-y-2">
                                     {finalFiles.map((file, i) => (
@@ -1052,9 +1023,9 @@ export default function CustomOrderDetail() {
                         {order.status === 'COMPLETED' && (
                             <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
                                 <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-2" />
-                                <p className="text-green-400 font-medium">Commande terminée !</p>
+                                <p className="text-green-400 font-medium">{t('orderDetail.completed.title')}</p>
                                 <p className="text-gray-400 text-sm mt-1">
-                                    Merci pour votre confiance
+                                    {t('orderDetail.completed.thanks')}
                                 </p>
                             </div>
                         )}

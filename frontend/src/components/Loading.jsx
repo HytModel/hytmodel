@@ -1,14 +1,18 @@
 import React from 'react'
 import { Loader2 } from 'lucide-react'
+import { useTranslation } from '../context/LanguageContext'
 
-export default function Loading({ text = 'Chargement...', fullScreen = false }) {
+export default function Loading({ text, fullScreen = false }) {
+    const { t } = useTranslation()
+    const displayText = text || t('common.loading')
+
     const content = (
         <div className="flex flex-col items-center justify-center gap-4">
             <div className="relative">
                 <div className="w-12 h-12 rounded-full border-2 border-hyt-border" />
                 <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-hyt-accent border-t-transparent animate-spin" />
             </div>
-            <p className="text-gray-400 font-medium">{text}</p>
+            <p className="text-gray-400 font-medium">{displayText}</p>
         </div>
     )
 

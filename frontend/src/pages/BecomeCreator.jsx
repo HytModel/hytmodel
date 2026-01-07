@@ -8,11 +8,13 @@ import {
 } from 'lucide-react'
 import { creatorRequestAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function BecomeCreator() {
     const navigate = useNavigate()
     const { user, loading, isCreator } = useAuth()
+    const { t } = useTranslation()
 
     const [pageLoading, setPageLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
@@ -66,12 +68,12 @@ export default function BecomeCreator() {
         e.preventDefault()
 
         if (!message.trim()) {
-            toast.error('Veuillez vous présenter')
+            toast.error(t('becomeCreator.errors.presentRequired'))
             return
         }
 
         if (!portfolioDescription.trim()) {
-            toast.error('Veuillez décrire votre travail')
+            toast.error(t('becomeCreator.errors.workDescriptionRequired'))
             return
         }
 
@@ -88,10 +90,10 @@ export default function BecomeCreator() {
                 )
             })
 
-            toast.success('Demande envoyée avec succès !')
+            toast.success(t('becomeCreator.success.requestSent'))
             checkExistingRequest()
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erreur lors de l\'envoi')
+            toast.error(error.response?.data?.error || t('becomeCreator.errors.sendFailed'))
         } finally {
             setSubmitting(false)
         }
@@ -116,7 +118,7 @@ export default function BecomeCreator() {
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Retour à l'accueil
+                        {t('becomeCreator.backToHome')}
                     </Link>
 
                     <div className="bg-hyt-card border border-hyt-border rounded-2xl p-8 text-center">
@@ -126,14 +128,13 @@ export default function BecomeCreator() {
                                     <Clock className="w-8 h-8 text-yellow-500" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-white mb-2">
-                                    Demande en cours d'examen
+                                    {t('becomeCreator.status.pendingTitle')}
                                 </h2>
                                 <p className="text-gray-400 mb-4">
-                                    Votre demande a été soumise le {new Date(existingRequest.created_at).toLocaleDateString('fr-FR')}.
-                                    Notre équipe l'examine actuellement.
+                                    {t('becomeCreator.status.pendingDescription', { date: new Date(existingRequest.created_at).toLocaleDateString('fr-FR') })}
                                 </p>
                                 <p className="text-gray-500 text-sm">
-                                    Vous recevrez une réponse dans les prochains jours.
+                                    {t('becomeCreator.status.pendingHint')}
                                 </p>
                             </>
                         ) : existingRequest.status === 'APPROVED' ? (
@@ -142,14 +143,14 @@ export default function BecomeCreator() {
                                     <CheckCircle className="w-8 h-8 text-green-500" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-white mb-2">
-                                    Félicitations ! 🎉
+                                    {t('becomeCreator.status.approvedTitle')}
                                 </h2>
                                 <p className="text-gray-400 mb-6">
-                                    Votre demande a été approuvée ! Vous pouvez maintenant vendre sur HytModel.
+                                    {t('becomeCreator.status.approvedDescription')}
                                 </p>
                                 <Link to="/dashboard" className="btn-primary inline-flex items-center gap-2">
                                     <Store className="w-5 h-5" />
-                                    Accéder à mon dashboard
+                                    {t('becomeCreator.status.goToDashboard')}
                                 </Link>
                             </>
                         ) : existingRequest.status === 'REJECTED' ? (
@@ -158,26 +159,26 @@ export default function BecomeCreator() {
                                     <XCircle className="w-8 h-8 text-red-500" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-white mb-2">
-                                    Demande refusée
+                                    {t('becomeCreator.status.rejectedTitle')}
                                 </h2>
                                 <p className="text-gray-400 mb-4">
-                                    Malheureusement, votre demande n'a pas été acceptée.
+                                    {t('becomeCreator.status.rejectedDescription')}
                                 </p>
                                 {existingRequest.rejection_reason && (
                                     <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-left">
-                                        <p className="text-sm text-red-400 font-medium mb-1">Raison :</p>
+                                        <p className="text-sm text-red-400 font-medium mb-1">{t('becomeCreator.status.reason')} :</p>
                                         <p className="text-red-300">{existingRequest.rejection_reason}</p>
                                     </div>
                                 )}
                                 <p className="text-gray-500 text-sm mb-6">
-                                    Vous pouvez améliorer votre portfolio et soumettre une nouvelle demande.
+                                    {t('becomeCreator.status.rejectedHint')}
                                 </p>
                                 <button
                                     onClick={() => setExistingRequest(null)}
                                     className="btn-primary inline-flex items-center gap-2"
                                 >
                                     <Send className="w-5 h-5" />
-                                    Faire une nouvelle demande
+                                    {t('becomeCreator.status.newRequest')}
                                 </button>
                             </>
                         ) : null}
@@ -195,7 +196,7 @@ export default function BecomeCreator() {
                     className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Retour à l'accueil
+                    {t('becomeCreator.backToHome')}
                 </Link>
 
                 {/* Header */}
@@ -204,11 +205,10 @@ export default function BecomeCreator() {
                         <Store className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="font-display text-4xl font-bold text-white mb-4">
-                        Devenir vendeur
+                        {t('becomeCreator.title')}
                     </h1>
                     <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                        Rejoignez notre communauté de créateurs et vendez vos créations sur HytModel.
-                        Remplissez ce formulaire pour soumettre votre candidature.
+                        {t('becomeCreator.subtitle')}
                     </p>
                 </div>
 
@@ -220,40 +220,40 @@ export default function BecomeCreator() {
                                 <Users className="w-5 h-5 text-gray-400" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white">Non-affilié</h3>
-                                <p className="text-xs text-gray-500">Vendeur standard</p>
+                                <h3 className="font-semibold text-white">{t('becomeCreator.types.nonAffiliated.title')}</h3>
+                                <p className="text-xs text-gray-500">{t('becomeCreator.types.nonAffiliated.subtitle')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                             <Percent className="w-4 h-4 text-hyt-accent" />
                             <span className="text-2xl font-bold text-white">85%</span>
-                            <span className="text-gray-400 text-sm">de vos revenus</span>
+                            <span className="text-gray-400 text-sm">{t('becomeCreator.types.ofRevenue')}</span>
                         </div>
                         <p className="text-gray-500 text-sm">
-                            Commission plateforme : 15%
+                            {t('becomeCreator.types.commission', { percent: '15' })}
                         </p>
                     </div>
 
                     <div className="bg-hyt-card border border-hyt-accent/50 rounded-xl p-6 relative overflow-hidden">
                         <div className="absolute top-2 right-2 px-2 py-0.5 bg-hyt-accent text-black text-xs font-bold rounded">
-                            POPULAIRE
+                            {t('becomeCreator.types.popular')}
                         </div>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-lg bg-hyt-accent/20 flex items-center justify-center">
                                 <Star className="w-5 h-5 text-hyt-accent" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white">Affilié</h3>
-                                <p className="text-xs text-gray-500">Partenaire officiel</p>
+                                <h3 className="font-semibold text-white">{t('becomeCreator.types.affiliated.title')}</h3>
+                                <p className="text-xs text-gray-500">{t('becomeCreator.types.affiliated.subtitle')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                             <Percent className="w-4 h-4 text-hyt-accent" />
                             <span className="text-2xl font-bold text-hyt-accent">90%</span>
-                            <span className="text-gray-400 text-sm">de vos revenus</span>
+                            <span className="text-gray-400 text-sm">{t('becomeCreator.types.ofRevenue')}</span>
                         </div>
                         <p className="text-gray-500 text-sm">
-                            Commission plateforme : 10%
+                            {t('becomeCreator.types.commission', { percent: '10' })}
                         </p>
                     </div>
 
@@ -263,17 +263,17 @@ export default function BecomeCreator() {
                                 <DollarSign className="w-5 h-5 text-purple-400" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-white">HytStudio</h3>
-                                <p className="text-xs text-gray-500">Équipe interne</p>
+                                <h3 className="font-semibold text-white">{t('becomeCreator.types.hytStudio.title')}</h3>
+                                <p className="text-xs text-gray-500">{t('becomeCreator.types.hytStudio.subtitle')}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                             <Percent className="w-4 h-4 text-purple-400" />
                             <span className="text-2xl font-bold text-purple-400">100%</span>
-                            <span className="text-gray-400 text-sm">pour la plateforme</span>
+                            <span className="text-gray-400 text-sm">{t('becomeCreator.types.forPlatform')}</span>
                         </div>
                         <p className="text-gray-500 text-sm">
-                            Créations officielles HytModel
+                            {t('becomeCreator.types.hytStudio.description')}
                         </p>
                     </div>
                 </div>
@@ -284,12 +284,12 @@ export default function BecomeCreator() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <FileText className="w-5 h-5" />
-                            Présentez-vous *
+                            {t('becomeCreator.form.presentYourself')} *
                         </h3>
                         <textarea
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Parlez-nous de vous, de votre parcours et de vos motivations pour rejoindre HytModel..."
+                            placeholder={t('becomeCreator.form.presentPlaceholder')}
                             rows={4}
                             className="input-field w-full resize-none"
                             required
@@ -300,12 +300,12 @@ export default function BecomeCreator() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 space-y-4">
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Upload className="w-5 h-5" />
-                            Votre portfolio *
+                            {t('becomeCreator.form.yourPortfolio')} *
                         </h3>
 
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
-                                Lien vers votre portfolio (optionnel)
+                                {t('becomeCreator.form.portfolioUrlLabel')}
                             </label>
                             <div className="relative">
                                 <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -321,12 +321,12 @@ export default function BecomeCreator() {
 
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
-                                Décrivez votre travail et vos créations *
+                                {t('becomeCreator.form.workDescriptionLabel')} *
                             </label>
                             <textarea
                                 value={portfolioDescription}
                                 onChange={(e) => setPortfolioDescription(e.target.value)}
-                                placeholder="Décrivez les types de créations que vous réalisez, vos spécialités, les logiciels que vous utilisez..."
+                                placeholder={t('becomeCreator.form.workDescriptionPlaceholder')}
                                 rows={4}
                                 className="input-field w-full resize-none"
                                 required
@@ -335,12 +335,12 @@ export default function BecomeCreator() {
 
                         <div>
                             <label className="block text-sm text-gray-400 mb-2">
-                                Expérience (optionnel)
+                                {t('becomeCreator.form.experienceLabel')}
                             </label>
                             <textarea
                                 value={experience}
                                 onChange={(e) => setExperience(e.target.value)}
-                                placeholder="Combien d'années d'expérience avez-vous ? Avez-vous déjà vendu sur d'autres plateformes ?"
+                                placeholder={t('becomeCreator.form.experiencePlaceholder')}
                                 rows={3}
                                 className="input-field w-full resize-none"
                             />
@@ -351,7 +351,7 @@ export default function BecomeCreator() {
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <Globe className="w-5 h-5" />
-                            Réseaux sociaux (optionnel)
+                            {t('becomeCreator.form.socialNetworks')}
                         </h3>
 
                         <div className="grid sm:grid-cols-2 gap-4">
@@ -391,7 +391,7 @@ export default function BecomeCreator() {
                                     type="url"
                                     value={socialLinks.website}
                                     onChange={(e) => setSocialLinks(prev => ({ ...prev, website: e.target.value }))}
-                                    placeholder="Site web"
+                                    placeholder={t('becomeCreator.form.website')}
                                     className="input-field w-full pl-12"
                                 />
                             </div>
@@ -404,13 +404,10 @@ export default function BecomeCreator() {
                             <AlertTriangle className="w-5 h-5 text-hyt-accent flex-shrink-0 mt-0.5" />
                             <div className="text-sm">
                                 <p className="text-hyt-accent font-medium mb-1">
-                                    Important
+                                    {t('becomeCreator.important.title')}
                                 </p>
                                 <p className="text-gray-400">
-                                    Votre demande sera examinée par notre équipe dans les plus brefs délais.
-                                    Nous vous contacterons par email avec notre décision.
-                                    Les vendeurs commencent au statut "Non-affilié" (85% des revenus).
-                                    Le statut "Affilié" (90%) est accordé aux créateurs de qualité après évaluation.
+                                    {t('becomeCreator.important.description')}
                                 </p>
                             </div>
                         </div>
@@ -425,12 +422,12 @@ export default function BecomeCreator() {
                         {submitting ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Envoi en cours...
+                                {t('becomeCreator.form.sending')}
                             </>
                         ) : (
                             <>
                                 <Send className="w-5 h-5" />
-                                Envoyer ma demande
+                                {t('becomeCreator.form.submit')}
                             </>
                         )}
                     </button>
