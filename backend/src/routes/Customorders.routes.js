@@ -261,8 +261,8 @@ router.post("/orders/:id/pay-first", requireAuth, async (req, res, next) => {
                 quantity: 1
             }],
             mode: "payment",
-            success_url: `${process.env.FRONTEND_URL}/custom-orders/${id}?payment=first&success=true`,
-            cancel_url: `${process.env.FRONTEND_URL}/custom-orders/${id}`,
+            success_url: `${process.env.FRONTEND_URL}/custom-orders/orders/${id}?payment=first&success=true`,
+            cancel_url: `${process.env.FRONTEND_URL}/custom-orders/orders/${id}`,
             metadata: { type: "custom_order_first", order_id: id, user_id: req.user.id }
         });
 
@@ -302,8 +302,8 @@ router.post("/orders/:id/pay-final", requireAuth, async (req, res, next) => {
                 quantity: 1
             }],
             mode: "payment",
-            success_url: `${process.env.FRONTEND_URL}/custom-orders/${id}?payment=final&success=true`,
-            cancel_url: `${process.env.FRONTEND_URL}/custom-orders/${id}`,
+            success_url: `${process.env.FRONTEND_URL}/custom-orders/orders/${id}?payment=first&success=true`,
+            cancel_url: `${process.env.FRONTEND_URL}/custom-orders/orders/${id}`,
             metadata: { type: "custom_order_final", order_id: id, user_id: req.user.id }
         });
 
