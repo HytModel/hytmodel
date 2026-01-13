@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import {
     User, Star, Eye, Download, Package, Calendar,
     ExternalLink, ShoppingBag, Award, TrendingUp,
-    Grid, List, Filter, Search, ChevronDown, Gift
+    Grid, List, Filter, Search, ChevronDown, Gift,
+    X, SlidersHorizontal
 } from 'lucide-react'
 import { sellersAPI, bundlesAPI } from '../services/api'
 import { useTranslation } from '../context/LanguageContext'
@@ -40,12 +41,14 @@ export default function SellerProfile() {
     const [loading, setLoading] = useState(true)
     const [viewMode, setViewMode] = useState('grid')
     const [activeSection, setActiveSection] = useState('products')
+    const [showFilters, setShowFilters] = useState(false)
 
     // Filtres
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState('newest')
     const [selectedGame, setSelectedGame] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('')
+    const [showFreeOnly, setShowFreeOnly] = useState(false)
     const [games, setGames] = useState([])
     const [categories, setCategories] = useState([])
 
@@ -59,15 +62,12 @@ export default function SellerProfile() {
             setSeller(data.seller)
             setProducts(data.products || [])
 
-            // Extraire les jeux uniques
             const uniqueGames = [...new Set(data.products?.map(p => p.game_name).filter(Boolean))]
             setGames(uniqueGames)
 
-            // Extraire les catégories uniques
             const uniqueCategories = [...new Set(data.products?.map(p => p.category_name).filter(Boolean))]
             setCategories(uniqueCategories)
 
-            // Charger les bundles du vendeur
             try {
                 const bundlesRes = await bundlesAPI.getAll({ creator_id: data.seller.id })
                 setBundles(bundlesRes.data.bundles || [])
@@ -82,7 +82,6 @@ export default function SellerProfile() {
         }
     }
 
-    // Mettre à jour les catégories quand le jeu change
     useEffect(() => {
         if (selectedGame) {
             const filteredCategories = [...new Set(
@@ -101,12 +100,12 @@ export default function SellerProfile() {
         }
     }, [selectedGame, products])
 
-    // Filtrer et trier les produits
     const filteredProducts = products
         .filter(p => {
             if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
             if (selectedGame && p.game_name !== selectedGame) return false
             if (selectedCategory && p.category_name !== selectedCategory) return false
+            if (showFreeOnly && parseFloat(p.price) !== 0) return false
             return true
         })
         .sort((a, b) => {
@@ -120,6 +119,16 @@ export default function SellerProfile() {
                 default: return 0
             }
         })
+
+    const freeProductsCount = products.filter(p => parseFloat(p.price) === 0).length
+    const activeFiltersCount = [selectedGame, selectedCategory, showFreeOnly].filter(Boolean).length
+
+    const clearAllFilters = () => {
+        setSearchQuery('')
+        setSelectedGame('')
+        setSelectedCategory('')
+        setShowFreeOnly(false)
+    }
 
     const formatNumber = (num) => {
         if (!num && num !== 0) return '0'
@@ -320,7 +329,6 @@ export default function SellerProfile() {
                                 to={`/bundles/${bundle.id}`}
                                 className="bg-hyt-card border border-hyt-border rounded-xl p-6 hover:border-hyt-accent/50 transition-all group"
                             >
-                                {/* Header */}
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <h3 className="text-lg font-semibold text-white group-hover:text-hyt-accent transition-colors">
@@ -338,7 +346,6 @@ export default function SellerProfile() {
                                     </div>
                                 </div>
 
-                                {/* Produits inclus */}
                                 <div className="flex flex-wrap gap-2 mb-4">
                                     {bundle.items?.slice(0, 4).map(item => (
                                         <div key={item.id} className="flex items-center gap-2 px-2 py-1 bg-hyt-dark rounded-lg">
@@ -359,7 +366,6 @@ export default function SellerProfile() {
                                     )}
                                 </div>
 
-                                {/* Prix */}
                                 <div className="flex items-center justify-between pt-4 border-t border-hyt-border">
                                     <div className="text-sm text-gray-500">
                                         {bundle.item_count} {t('sellerProfile.bundles.productsIncluded')}
@@ -379,60 +385,45 @@ export default function SellerProfile() {
                 ) : (
                     /* Section Produits */
                     <>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <Package className="w-6 h-6 text-hyt-accent" />
-                                {t('sellerProfile.catalog')}
-                                <span className="text-gray-500 text-lg font-normal">({filteredProducts.length})</span>
-                            </h2>
-
-                            {/* Contrôles */}
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                        {/* Barre de filtres - Design propre */}
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl p-4 mb-6">
+                            {/* Ligne principale */}
+                            <div className="flex items-center gap-3">
                                 {/* Recherche */}
-                                <div className="relative flex-1 sm:flex-none">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                                     <input
                                         type="text"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         placeholder={t('sellerProfile.filters.search')}
-                                        className="input-field pl-10 w-full sm:w-48"
+                                        className="w-full bg-hyt-dark border border-hyt-border rounded-lg pl-11 pr-4 py-2.5 text-white placeholder-gray-500 focus:border-hyt-accent focus:outline-none transition-colors"
                                     />
                                 </div>
 
-                                {/* Jeu */}
-                                {games.length > 0 && (
-                                    <select
-                                        value={selectedGame}
-                                        onChange={(e) => setSelectedGame(e.target.value)}
-                                        className="input-field"
-                                    >
-                                        <option value="">{t('sellerProfile.filters.allGames')}</option>
-                                        {games.map(game => (
-                                            <option key={game} value={game}>{game}</option>
-                                        ))}
-                                    </select>
-                                )}
-
-                                {/* Catégorie */}
-                                {categories.length > 0 && (
-                                    <select
-                                        value={selectedCategory}
-                                        onChange={(e) => setSelectedCategory(e.target.value)}
-                                        className="input-field"
-                                    >
-                                        <option value="">{t('sellerProfile.filters.allCategories')}</option>
-                                        {categories.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
-                                )}
+                                {/* Bouton Filtres */}
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
+                                        showFilters || activeFiltersCount > 0
+                                            ? 'bg-hyt-accent/10 border-hyt-accent text-hyt-accent'
+                                            : 'bg-hyt-dark border-hyt-border text-gray-400 hover:text-white hover:border-gray-500'
+                                    }`}
+                                >
+                                    <SlidersHorizontal className="w-5 h-5" />
+                                    <span className="hidden sm:inline">{t('sellerProfile.filters.filters')}</span>
+                                    {activeFiltersCount > 0 && (
+                                        <span className="w-5 h-5 bg-hyt-accent text-black text-xs font-bold rounded-full flex items-center justify-center">
+                                            {activeFiltersCount}
+                                        </span>
+                                    )}
+                                </button>
 
                                 {/* Tri */}
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="input-field"
+                                    className="bg-hyt-dark border border-hyt-border rounded-lg px-4 py-2.5 text-white focus:border-hyt-accent focus:outline-none transition-colors cursor-pointer"
                                 >
                                     <option value="newest">{t('sellerProfile.sort.newest')}</option>
                                     <option value="oldest">{t('sellerProfile.sort.oldest')}</option>
@@ -443,21 +434,138 @@ export default function SellerProfile() {
                                 </select>
 
                                 {/* Vue */}
-                                <div className="flex bg-hyt-card rounded-lg p-1">
+                                <div className="hidden sm:flex bg-hyt-dark border border-hyt-border rounded-lg p-1">
                                     <button
                                         onClick={() => setViewMode('grid')}
-                                        className={`p-2 rounded ${viewMode === 'grid' ? 'bg-hyt-accent text-black' : 'text-gray-400'}`}
+                                        className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-hyt-accent text-black' : 'text-gray-400 hover:text-white'}`}
                                     >
                                         <Grid className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded ${viewMode === 'list' ? 'bg-hyt-accent text-black' : 'text-gray-400'}`}
+                                        className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-hyt-accent text-black' : 'text-gray-400 hover:text-white'}`}
                                     >
                                         <List className="w-4 h-4" />
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Panneau de filtres (collapsible) */}
+                            {showFilters && (
+                                <div className="mt-4 pt-4 border-t border-hyt-border">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {/* Jeu */}
+                                        {games.length > 0 && (
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1.5">{t('sellerProfile.filters.game')}</label>
+                                                <select
+                                                    value={selectedGame}
+                                                    onChange={(e) => setSelectedGame(e.target.value)}
+                                                    className="w-full bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm focus:border-hyt-accent focus:outline-none transition-colors cursor-pointer"
+                                                >
+                                                    <option value="">{t('sellerProfile.filters.allGames')}</option>
+                                                    {games.map(game => (
+                                                        <option key={game} value={game}>{game}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {/* Catégorie */}
+                                        {categories.length > 0 && (
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1.5">{t('sellerProfile.filters.category')}</label>
+                                                <select
+                                                    value={selectedCategory}
+                                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                                    className="w-full bg-hyt-dark border border-hyt-border rounded-lg px-3 py-2 text-white text-sm focus:border-hyt-accent focus:outline-none transition-colors cursor-pointer"
+                                                >
+                                                    <option value="">{t('sellerProfile.filters.allCategories')}</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {/* Gratuit uniquement */}
+                                        {freeProductsCount > 0 && (
+                                            <div className="flex items-end">
+                                                <button
+                                                    onClick={() => setShowFreeOnly(!showFreeOnly)}
+                                                    className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                                                        showFreeOnly
+                                                            ? 'bg-green-500/20 border-green-500 text-green-400'
+                                                            : 'bg-hyt-dark border-hyt-border text-gray-400 hover:border-gray-500 hover:text-white'
+                                                    }`}
+                                                >
+                                                    <Gift className="w-4 h-4" />
+                                                    {t('sellerProfile.filters.freeOnly')}
+                                                    <span className="text-xs opacity-70">({freeProductsCount})</span>
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Reset */}
+                                        {activeFiltersCount > 0 && (
+                                            <div className="flex items-end">
+                                                <button
+                                                    onClick={clearAllFilters}
+                                                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                    {t('sellerProfile.filters.reset')}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Filtres actifs (badges) */}
+                            {activeFiltersCount > 0 && !showFilters && (
+                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-hyt-border flex-wrap">
+                                    <span className="text-xs text-gray-500">{t('sellerProfile.filters.activeFilters')}:</span>
+                                    {selectedGame && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-hyt-accent/10 text-hyt-accent text-xs rounded-full">
+                                            {selectedGame}
+                                            <button onClick={() => setSelectedGame('')} className="hover:text-white">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {selectedCategory && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-hyt-accent/10 text-hyt-accent text-xs rounded-full">
+                                            {selectedCategory}
+                                            <button onClick={() => setSelectedCategory('')} className="hover:text-white">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    {showFreeOnly && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full">
+                                            <Gift className="w-3 h-3" />
+                                            {t('common.free')}
+                                            <button onClick={() => setShowFreeOnly(false)} className="hover:text-white">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={clearAllFilters}
+                                        className="text-xs text-gray-500 hover:text-red-400 transition-colors ml-auto"
+                                    >
+                                        {t('sellerProfile.filters.clearAll')}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Compteur de résultats */}
+                        <div className="flex items-center justify-between mb-4">
+                            <p className="text-sm text-gray-400">
+                                {filteredProducts.length} {filteredProducts.length > 1 ? t('sellerProfile.results.products') : t('sellerProfile.results.product')}
+                            </p>
                         </div>
 
                         {/* Produits */}
@@ -466,17 +574,13 @@ export default function SellerProfile() {
                                 <ShoppingBag className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                                 <h3 className="text-xl font-semibold text-white mb-2">{t('sellerProfile.empty.title')}</h3>
                                 <p className="text-gray-400">
-                                    {searchQuery || selectedGame || selectedCategory
+                                    {searchQuery || selectedGame || selectedCategory || showFreeOnly
                                         ? t('sellerProfile.empty.noMatch')
                                         : t('sellerProfile.empty.noProducts')}
                                 </p>
-                                {(searchQuery || selectedGame || selectedCategory) && (
+                                {(searchQuery || selectedGame || selectedCategory || showFreeOnly) && (
                                     <button
-                                        onClick={() => {
-                                            setSearchQuery('')
-                                            setSelectedGame('')
-                                            setSelectedCategory('')
-                                        }}
+                                        onClick={clearAllFilters}
                                         className="mt-4 btn-secondary"
                                     >
                                         {t('sellerProfile.empty.resetFilters')}
@@ -518,19 +622,21 @@ export default function SellerProfile() {
                                                     <span className="px-2 py-0.5 bg-hyt-dark rounded">{product.category_name}</span>
                                                 )}
                                                 <span className="flex items-center gap-1">
-                                            <Eye className="w-3 h-3" />
+                                                    <Eye className="w-3 h-3" />
                                                     {formatNumber(product.view_count || 0)}
-                                        </span>
+                                                </span>
                                                 {product.rating_avg && (
                                                     <span className="flex items-center gap-1">
-                                                <Star className="w-3 h-3 text-yellow-500" />
+                                                        <Star className="w-3 h-3 text-yellow-500" />
                                                         {parseFloat(product.rating_avg).toFixed(1)}
-                                            </span>
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-xl font-bold text-white">{parseFloat(product.price).toFixed(2)}€</p>
+                                            <p className={`text-xl font-bold ${parseFloat(product.price) === 0 ? 'text-green-400' : 'text-white'}`}>
+                                                {parseFloat(product.price) === 0 ? t('common.free') : `${parseFloat(product.price).toFixed(2)}€`}
+                                            </p>
                                         </div>
                                     </Link>
                                 ))}

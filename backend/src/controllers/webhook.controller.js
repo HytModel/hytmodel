@@ -191,13 +191,23 @@ class WebhookController {
         // Générer la note de paiement pour le vendeur
         try {
             const { rows: creatorRows } = await client.query(
-                `SELECT username, email FROM users WHERE id = $1`,
+                `SELECT username, email, creator_type FROM users WHERE id = $1`,
                 [bundle.creator_id]
             );
             const creator = creatorRows[0];
 
+            // Déterminer le taux de commission selon le type de créateur
+            // HytStudio: 0%, Affilié: 10%, Non-affilié: 15%
+            let commissionRate;
+            if (creator.creator_type === 'HYTSTUDIO') {
+                commissionRate = 0;
+            } else if (creator.creator_type === 'AFFILIATED') {
+                commissionRate = 0.10;
+            } else {
+                commissionRate = 0.15;
+            }
+
             const paymentNoteNumber = `PAY-B-${Date.now()}`;
-            const commissionRate = 0.15;
             const grossAmountCents = Math.round(parseFloat(bundle.final_price) * 100);
             const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
             const netAmountCents = grossAmountCents - commissionAmountCents;
@@ -218,6 +228,8 @@ class WebhookController {
                 grossAmount: grossAmountCents,
                 commissionAmount: commissionAmountCents,
                 netAmount: netAmountCents,
+                commissionRate: commissionRate,
+                creatorType: creator.creator_type,
                 stripeTransferId: session.payment_intent,
                 createdAt: new Date(),
                 isBundle: true,
@@ -231,6 +243,16 @@ class WebhookController {
             );
 
             console.log(`💰 Seller payment note generated: ${paymentNoteNumber}`);
+
+            // Mettre à jour les revenus du créateur (en euros)
+            await client.query(
+                `UPDATE users SET
+                                  total_earnings = COALESCE(total_earnings, 0) + $1,
+                                  total_commission = COALESCE(total_commission, 0) + $2,
+                                  available_balance = COALESCE(available_balance, 0) + $3
+                 WHERE id = $4`,
+                [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, bundle.creator_id]
+            );
         } catch (paymentError) {
             console.error("Error generating seller payment PDF:", paymentError);
         }
@@ -260,10 +282,17 @@ class WebhookController {
         console.log(`🛒 Processing cart purchase for user ${user_id}:`, modelIds);
 
         const purchasedItems = [];
+        // Grouper les achats par vendeur pour générer une note par vendeur
+        const sellerPayments = {}; // { seller_id: { seller, items: [], total: 0 } }
 
         for (const modelId of modelIds) {
             const { rows: modelRows } = await client.query(
-                `SELECT id, title, price, creator_id FROM models WHERE id = $1`,
+                `SELECT m.id, m.title, m.price, m.creator_id,
+                        u.username as creator_username, u.email as creator_email,
+                        u.creator_type, u.stripe_account_id as creator_stripe_id
+                 FROM models m
+                          JOIN users u ON u.id = m.creator_id
+                 WHERE m.id = $1`,
                 [modelId]
             );
 
@@ -289,6 +318,23 @@ class WebhookController {
                 title: model.title,
                 price: parseFloat(model.price)
             });
+
+            // Grouper par vendeur
+            if (!sellerPayments[model.creator_id]) {
+                sellerPayments[model.creator_id] = {
+                    seller: {
+                        id: model.creator_id,
+                        username: model.creator_username,
+                        email: model.creator_email,
+                        creator_type: model.creator_type,
+                        stripe_account_id: model.creator_stripe_id
+                    },
+                    items: [],
+                    total: 0
+                };
+            }
+            sellerPayments[model.creator_id].items.push(model.title);
+            sellerPayments[model.creator_id].total += parseFloat(model.price);
         }
 
         // Vider le panier
@@ -297,7 +343,7 @@ class WebhookController {
             [user_id]
         );
 
-        // Générer la facture
+        // Générer la facture pour l'acheteur
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -333,6 +379,84 @@ class WebhookController {
             console.error("Error generating invoice PDF:", pdfError);
         }
 
+        // Générer les notes de paiement pour chaque vendeur
+        for (const sellerId of Object.keys(sellerPayments)) {
+            const sellerData = sellerPayments[sellerId];
+
+            try {
+                // Déterminer le taux de commission selon le type de créateur
+                let commissionRate;
+                if (sellerData.seller.creator_type === 'HYTSTUDIO') {
+                    commissionRate = 0;
+                } else if (sellerData.seller.creator_type === 'AFFILIATED') {
+                    commissionRate = 0.10;
+                } else {
+                    commissionRate = 0.15;
+                }
+
+                const paymentNoteNumber = `PAY-C-${Date.now()}`;
+                const grossAmountCents = Math.round(sellerData.total * 100);
+                const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
+                const netAmountCents = grossAmountCents - commissionAmountCents;
+
+                const { rows: paymentRows } = await client.query(
+                    `INSERT INTO seller_payments (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
+                         RETURNING id`,
+                    [sellerId, paymentNoteNumber, grossAmountCents / 100, commissionRate, commissionAmountCents / 100, netAmountCents / 100, session.id]
+                );
+
+                const pdfPath = await generateSellerNotePdf({
+                    invoiceNumber: paymentNoteNumber,
+                    seller: {
+                        username: sellerData.seller.username,
+                        email: sellerData.seller.email
+                    },
+                    grossAmount: grossAmountCents,
+                    commissionAmount: commissionAmountCents,
+                    netAmount: netAmountCents,
+                    commissionRate: commissionRate,
+                    creatorType: sellerData.seller.creator_type,
+                    stripeTransferId: session.payment_intent,
+                    createdAt: new Date()
+                });
+
+                await client.query(
+                    `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
+                    [pdfPath, paymentRows[0].id]
+                );
+
+                console.log(`💰 Seller payment note generated for ${sellerData.seller.username}: ${paymentNoteNumber} (${sellerData.items.length} items, ${(commissionRate * 100)}% commission)`);
+
+                // Mettre à jour les revenus du créateur (en euros)
+                await client.query(
+                    `UPDATE users SET
+                                      total_earnings = COALESCE(total_earnings, 0) + $1,
+                                      total_commission = COALESCE(total_commission, 0) + $2,
+                                      available_balance = COALESCE(available_balance, 0) + $3
+                     WHERE id = $4`,
+                    [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, sellerId]
+                );
+
+                // Transfert Stripe Connect si configuré
+                if (sellerData.seller.stripe_account_id && netAmountCents > 0) {
+                    try {
+                        await stripe.transfers.create({
+                            amount: netAmountCents,
+                            currency: "eur",
+                            destination: sellerData.seller.stripe_account_id,
+                            transfer_group: `cart_${session.id}_${sellerId}`
+                        });
+                        console.log(`✅ Transfer to ${sellerData.seller.username} completed: ${(netAmountCents / 100).toFixed(2)}€`);
+                    } catch (transferError) {
+                        console.error(`Stripe transfer error for seller ${sellerId}:`, transferError);
+                    }
+                }
+            } catch (paymentError) {
+                console.error(`Error generating seller payment for ${sellerId}:`, paymentError);
+            }
+        }
+
         console.log(`✅ Cart purchase completed for user ${user_id}`);
     }
 
@@ -345,7 +469,12 @@ class WebhookController {
         console.log(`🎁 Processing model purchase: ${model_id} for user ${user_id}`);
 
         const { rows: modelRows } = await client.query(
-            `SELECT title, price FROM models WHERE id = $1`,
+            `SELECT m.id, m.title, m.price, m.creator_id,
+                    u.username as creator_username, u.email as creator_email,
+                    u.creator_type, u.stripe_account_id as creator_stripe_id
+             FROM models m
+                      JOIN users u ON u.id = m.creator_id
+             WHERE m.id = $1`,
             [model_id]
         );
 
@@ -363,7 +492,7 @@ class WebhookController {
             [user_id, model_id, model.price]
         );
 
-        // Générer la facture
+        // Générer la facture pour l'acheteur
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -396,6 +525,81 @@ class WebhookController {
             console.log(`📄 Invoice generated: ${invoiceNumber}`);
         } catch (pdfError) {
             console.error("Error generating invoice PDF:", pdfError);
+        }
+
+        // Générer la note de paiement pour le vendeur
+        try {
+            // Déterminer le taux de commission selon le type de créateur
+            // HytStudio: 0%, Affilié: 10%, Non-affilié: 15%
+            let commissionRate;
+            if (model.creator_type === 'HYTSTUDIO') {
+                commissionRate = 0;
+            } else if (model.creator_type === 'AFFILIATED') {
+                commissionRate = 0.10;
+            } else {
+                commissionRate = 0.15;
+            }
+
+            const paymentNoteNumber = `PAY-${Date.now()}`;
+            const grossAmountCents = Math.round(parseFloat(model.price) * 100);
+            const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
+            const netAmountCents = grossAmountCents - commissionAmountCents;
+
+            const { rows: paymentRows } = await client.query(
+                `INSERT INTO seller_payments (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')
+                     RETURNING id`,
+                [model.creator_id, paymentNoteNumber, grossAmountCents / 100, commissionRate, commissionAmountCents / 100, netAmountCents / 100, session.id]
+            );
+
+            const pdfPath = await generateSellerNotePdf({
+                invoiceNumber: paymentNoteNumber,
+                seller: {
+                    username: model.creator_username,
+                    email: model.creator_email
+                },
+                grossAmount: grossAmountCents,
+                commissionAmount: commissionAmountCents,
+                netAmount: netAmountCents,
+                commissionRate: commissionRate,
+                creatorType: model.creator_type,
+                stripeTransferId: session.payment_intent,
+                createdAt: new Date()
+            });
+
+            await client.query(
+                `UPDATE seller_payments SET pdf_path = $1 WHERE id = $2`,
+                [pdfPath, paymentRows[0].id]
+            );
+
+            console.log(`💰 Seller payment note generated: ${paymentNoteNumber} (${(commissionRate * 100)}% commission)`);
+
+            // Mettre à jour les revenus du créateur (en euros)
+            await client.query(
+                `UPDATE users SET
+                                  total_earnings = COALESCE(total_earnings, 0) + $1,
+                                  total_commission = COALESCE(total_commission, 0) + $2,
+                                  available_balance = COALESCE(available_balance, 0) + $3
+                 WHERE id = $4`,
+                [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, model.creator_id]
+            );
+
+            // Transfert Stripe Connect si configuré
+            if (model.creator_stripe_id && netAmountCents > 0) {
+                try {
+                    await stripe.transfers.create({
+                        amount: netAmountCents,
+                        currency: "eur",
+                        destination: model.creator_stripe_id,
+                        transfer_group: `model_${model_id}`
+                    });
+                    console.log(`✅ Transfer to creator completed: ${(netAmountCents / 100).toFixed(2)}€`);
+                } catch (transferError) {
+                    console.error("Stripe transfer error:", transferError);
+                }
+            }
+        } catch (paymentError) {
+            console.error("Error generating seller payment:", paymentError);
         }
 
         console.log(`✅ Model ${model_id} purchased successfully`);
@@ -442,11 +646,12 @@ class WebhookController {
             [order_id]
         );
 
-        // Message système
+        // Message système - CORRIGÉ: diviser par 100 pour afficher en euros
+        const amountInEuros = (Number(order.first_payment_amount) / 100).toFixed(2);
         await client.query(
             `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
              VALUES ($1, $2, 'SYSTEM', $3, '[]')`,
-            [order_id, user_id, `💳 Acompte de ${Number(order.first_payment_amount).toFixed(2)}€ reçu ! Le créateur peut commencer le travail.`]
+            [order_id, user_id, `💳 Acompte de ${amountInEuros}€ reçu ! Le créateur peut commencer le travail.`]
         );
 
         // Notification au créateur
@@ -462,7 +667,7 @@ class WebhookController {
             ]
         );
 
-        // Générer la facture
+        // Générer la facture - CORRIGÉ: diviser par 100 pour les euros
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -471,13 +676,14 @@ class WebhookController {
             const user = userRows[0];
 
             const invoiceNumber = `INV-CO-${Date.now()}`;
-            const amountPaid = parseFloat(order.first_payment_amount);
+            const amountPaidCentimes = parseFloat(order.first_payment_amount);
+            const amountPaidEuros = amountPaidCentimes / 100;
 
             const { rows: invoiceRows } = await client.query(
                 `INSERT INTO invoices (user_id, invoice_number, total_amount, stripe_session_id)
                  VALUES ($1, $2, $3, $4)
                      RETURNING id`,
-                [user_id, invoiceNumber, amountPaid, session.id]
+                [user_id, invoiceNumber, amountPaidEuros, session.id]
             );
 
             const pdfPath = await generateInvoicePdf({
@@ -485,9 +691,9 @@ class WebhookController {
                 user: { username: user.username, email: user.email },
                 items: [{
                     title: `Commande sur mesure: ${order.request_title} (Acompte 50%)`,
-                    price: amountPaid
+                    price: amountPaidEuros
                 }],
-                totalAmount: Math.round(amountPaid * 100),
+                totalAmount: Math.round(amountPaidCentimes), // Centimes pour le PDF
                 createdAt: new Date()
             });
 
@@ -513,7 +719,8 @@ class WebhookController {
         const { rows } = await client.query(
             `SELECT co.*, cr.title as request_title,
                     creator.username as creator_username, creator.email as creator_email,
-                    creator.stripe_account_id as creator_stripe_id
+                    creator.stripe_account_id as creator_stripe_id,
+                    creator.creator_type as creator_type
              FROM custom_orders co
                       JOIN custom_requests cr ON cr.id = co.request_id
                       JOIN users creator ON creator.id = co.creator_id
@@ -554,11 +761,12 @@ class WebhookController {
             [order.creator_id]
         );
 
-        // Message système
+        // Message système - CORRIGÉ: diviser par 100 pour afficher en euros
+        const amountInEuros = (Number(order.second_payment_amount) / 100).toFixed(2);
         await client.query(
             `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
              VALUES ($1, $2, 'SYSTEM', $3, '[]')`,
-            [order_id, user_id, `💳 Paiement final de ${Number(order.second_payment_amount).toFixed(2)}€ reçu ! Commande terminée. 🎉`]
+            [order_id, user_id, `💳 Paiement final de ${amountInEuros}€ reçu ! Commande terminée. 🎉`]
         );
 
         // Notification au créateur
@@ -574,29 +782,34 @@ class WebhookController {
             ]
         );
 
-        // Calculer le montant créateur
-        const totalPaid = parseFloat(order.first_payment_amount) + parseFloat(order.second_payment_amount);
-        const commissionAmount = parseFloat(order.commission_amount);
-        const creatorAmount = totalPaid - commissionAmount;
+        // Calculer le montant créateur - CORRIGÉ: tout est en centimes dans la DB
+        const totalPaidCentimes = parseFloat(order.first_payment_amount) + parseFloat(order.second_payment_amount);
+        const commissionAmountCentimes = parseFloat(order.commission_amount);
+        const creatorAmountCentimes = totalPaidCentimes - commissionAmountCentimes;
 
-        console.log(`💰 Creator payment: ${creatorAmount.toFixed(2)}€ (commission: ${commissionAmount.toFixed(2)}€)`);
+        // Convertir en euros pour les logs et Stripe
+        const totalPaidEuros = totalPaidCentimes / 100;
+        const commissionAmountEuros = commissionAmountCentimes / 100;
+        const creatorAmountEuros = creatorAmountCentimes / 100;
 
-        // Transfert Stripe Connect si configuré
+        console.log(`💰 Creator payment: ${creatorAmountEuros.toFixed(2)}€ (commission: ${commissionAmountEuros.toFixed(2)}€)`);
+
+        // Transfert Stripe Connect si configuré - Stripe attend des centimes
         if (order.creator_stripe_id) {
             try {
                 await stripe.transfers.create({
-                    amount: Math.round(creatorAmount * 100),
+                    amount: Math.round(creatorAmountCentimes), // Déjà en centimes
                     currency: "eur",
                     destination: order.creator_stripe_id,
                     transfer_group: `custom_order_${order_id}`
                 });
-                console.log(`✅ Transfer to creator completed: ${creatorAmount.toFixed(2)}€`);
+                console.log(`✅ Transfer to creator completed: ${creatorAmountEuros.toFixed(2)}€`);
             } catch (transferError) {
                 console.error("Stripe transfer error:", transferError);
             }
         }
 
-        // Enregistrer le paiement vendeur
+        // Enregistrer le paiement vendeur - Stocker en euros dans seller_payments
         try {
             const paymentNoteNumber = `PAY-CO-${Date.now()}`;
 
@@ -605,15 +818,17 @@ class WebhookController {
                  (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, stripe_session_id, status)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, 'PAID')
                      RETURNING id`,
-                [order.creator_id, paymentNoteNumber, totalPaid, order.commission_rate, commissionAmount, creatorAmount, session.id]
+                [order.creator_id, paymentNoteNumber, totalPaidEuros, order.commission_rate, commissionAmountEuros, creatorAmountEuros, session.id]
             );
 
             const pdfPath = await generateSellerNotePdf({
                 invoiceNumber: paymentNoteNumber,
                 seller: { username: order.creator_username, email: order.creator_email },
-                grossAmount: Math.round(totalPaid * 100),
-                commissionAmount: Math.round(commissionAmount * 100),
-                netAmount: Math.round(creatorAmount * 100),
+                grossAmount: Math.round(totalPaidCentimes), // Centimes pour le PDF
+                commissionAmount: Math.round(commissionAmountCentimes),
+                netAmount: Math.round(creatorAmountCentimes),
+                commissionRate: parseFloat(order.commission_rate), // 0 pour HYTSTUDIO, 0.05 pour AFFILIATED
+                creatorType: order.creator_type, // 'HYTSTUDIO' ou 'AFFILIATED'
                 stripeTransferId: session.payment_intent,
                 createdAt: new Date(),
                 isCustomOrder: true,
@@ -626,11 +841,21 @@ class WebhookController {
             );
 
             console.log(`💰 Seller payment recorded: ${paymentNoteNumber}`);
+
+            // Mettre à jour les revenus du créateur (en euros)
+            await client.query(
+                `UPDATE users SET
+                                  total_earnings = COALESCE(total_earnings, 0) + $1,
+                                  total_commission = COALESCE(total_commission, 0) + $2,
+                                  available_balance = COALESCE(available_balance, 0) + $3
+                 WHERE id = $4`,
+                [totalPaidCentimes / 100, commissionAmountCentimes / 100, creatorAmountCentimes / 100, order.creator_id]
+            );
         } catch (paymentError) {
             console.error("Error recording seller payment:", paymentError);
         }
 
-        // Générer la facture finale
+        // Générer la facture finale - CORRIGÉ: diviser par 100 pour les euros
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -639,13 +864,14 @@ class WebhookController {
             const user = userRows[0];
 
             const invoiceNumber = `INV-CO-FINAL-${Date.now()}`;
-            const amountPaid = parseFloat(order.second_payment_amount);
+            const amountPaidCentimes = parseFloat(order.second_payment_amount);
+            const amountPaidEuros = amountPaidCentimes / 100;
 
             const { rows: invoiceRows } = await client.query(
                 `INSERT INTO invoices (user_id, invoice_number, total_amount, stripe_session_id)
                  VALUES ($1, $2, $3, $4)
                      RETURNING id`,
-                [user_id, invoiceNumber, amountPaid, session.id]
+                [user_id, invoiceNumber, amountPaidEuros, session.id]
             );
 
             const pdfPath = await generateInvoicePdf({
@@ -653,9 +879,9 @@ class WebhookController {
                 user: { username: user.username, email: user.email },
                 items: [{
                     title: `Commande sur mesure: ${order.request_title} (Solde 50%)`,
-                    price: amountPaid
+                    price: amountPaidEuros
                 }],
-                totalAmount: Math.round(amountPaid * 100),
+                totalAmount: Math.round(amountPaidCentimes), // Centimes pour le PDF
                 createdAt: new Date()
             });
 

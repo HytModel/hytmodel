@@ -26,11 +26,28 @@ const getImageUrl = (url) => {
     return `http://localhost:3001${url}`
 }
 
+// Fonction pour détecter si un fichier est une image
+const isImageFile = (filename) => {
+    if (!filename) return false
+    const ext = filename.toLowerCase().split('.').pop()
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)
+}
+
 // Composant Message
 function MessageBubble({ message, isOwn, t }) {
+    const [imageErrors, setImageErrors] = useState({})
+
     const attachments = typeof message.attachments === 'string'
         ? JSON.parse(message.attachments)
         : message.attachments || []
+
+    // Séparer les images des autres fichiers
+    const imageAttachments = attachments.filter(f => isImageFile(f.originalname || f.filename))
+    const otherAttachments = attachments.filter(f => !isImageFile(f.originalname || f.filename))
+
+    const handleImageError = (index) => {
+        setImageErrors(prev => ({ ...prev, [index]: true }))
+    }
 
     // Séparateur de commande
     if (message.is_separator) {
@@ -100,11 +117,50 @@ function MessageBubble({ message, isOwn, t }) {
                             : 'bg-hyt-card border border-hyt-border text-white rounded-bl-md'
                 }`}>
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    {attachments.length > 0 && (
+
+                    {/* Images inline */}
+                    {imageAttachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                            {imageAttachments.map((file, i) => (
+                                imageErrors[`img-${i}`] ? (
+                                    <a
+                                        key={`img-${i}`}
+                                        href={getImageUrl(file.path)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex items-center gap-2 text-sm ${
+                                            isOwn ? 'text-black/70 hover:text-black' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        {file.originalname || `Image ${i + 1}`}
+                                    </a>
+                                ) : (
+                                    <a
+                                        key={`img-${i}`}
+                                        href={getImageUrl(file.path)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block"
+                                    >
+                                        <img
+                                            src={getImageUrl(file.path)}
+                                            alt={file.originalname || `Image ${i + 1}`}
+                                            className="max-h-64 rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                            onError={() => handleImageError(`img-${i}`)}
+                                        />
+                                    </a>
+                                )
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Autres fichiers */}
+                    {otherAttachments.length > 0 && (
                         <div className="mt-2 space-y-1">
-                            {attachments.map((file, i) => (
+                            {otherAttachments.map((file, i) => (
                                 <a
-                                    key={i}
+                                    key={`file-${i}`}
                                     href={getImageUrl(file.path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -284,7 +340,7 @@ export default function CustomOrderDetail() {
         setActionLoading(true)
         try {
             const formData = new FormData()
-            formData.append('message', deliveryMessage || t('orderDetail.delivery.defaultMessage'))
+            formData.append('message', deliveryMessage || t('orderDetail.deliver.defaultMessage'))
             deliveryFiles.forEach(file => formData.append('files', file))
 
             await customOrdersAPI.deliverOrderWithFiles(id, formData)
@@ -613,19 +669,19 @@ export default function CustomOrderDetail() {
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">{t('orderDetail.totalPrice')}</span>
-                                    <span className="text-white font-medium">{Number(order.total_price).toFixed(2)}€</span>
+                                    <span className="text-white font-medium">{(Number(order.total_price) / 100).toFixed(2)}€</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">{t('orderDetail.deposit')}</span>
                                     <span className={order.first_payment_paid ? 'text-green-400' : 'text-yellow-400'}>
-                                        {Number(order.first_payment_amount).toFixed(2)}€
+                                        {(Number(order.first_payment_amount) / 100).toFixed(2)}€
                                         {order.first_payment_paid ? ' ✓' : ` (${t('orderDetail.pending')})`}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">{t('orderDetail.balance')}</span>
                                     <span className={order.second_payment_paid ? 'text-green-400' : 'text-gray-400'}>
-                                        {Number(order.second_payment_amount).toFixed(2)}€
+                                        {(Number(order.second_payment_amount) / 100).toFixed(2)}€
                                         {order.second_payment_paid ? ' ✓' : ''}
                                     </span>
                                 </div>
@@ -656,7 +712,7 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-primary flex items-center justify-center gap-2"
                                 >
                                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                                    {t('orderDetail.pay')} {Number(order.first_payment_amount).toFixed(2)}€
+                                    {t('orderDetail.pay')} {(Number(order.first_payment_amount) / 100).toFixed(2)}€
                                 </button>
                             </div>
                         )}
@@ -779,7 +835,7 @@ export default function CustomOrderDetail() {
                                     className="w-full btn-primary flex items-center justify-center gap-2"
                                 >
                                     {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                                    {t('orderDetail.pay')} {Number(order.second_payment_amount).toFixed(2)}€
+                                    {t('orderDetail.pay')} {(Number(order.second_payment_amount) / 100).toFixed(2)}€
                                 </button>
                             </div>
                         )}

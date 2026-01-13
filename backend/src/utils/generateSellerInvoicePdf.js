@@ -8,6 +8,7 @@ const DARK_COLOR  = "#111827";
 const GREY_COLOR  = "#6B7280";
 const LIGHT_BG    = "#F3F4F6";
 const BUNDLE_COLOR = "#8B5CF6"; // Violet pour les bundles
+const CUSTOM_COLOR = "#10B981"; // Vert pour les commandes sur mesure
 
 // 📐 LAYOUT
 const PAGE_LEFT  = 50;
@@ -22,12 +23,17 @@ module.exports = async function generateSellerNotePdf({
                                                           grossAmount,        // centimes
                                                           commissionAmount,   // centimes
                                                           netAmount,          // centimes
+                                                          commissionRate = 0.15, // Taux de commission (0, 0.05, 0.10, 0.15)
+                                                          creatorType = null, // 'HYTSTUDIO', 'AFFILIATED', ou null
                                                           stripeTransferId,
                                                           createdAt,
                                                           // Infos bundle (optionnel)
                                                           isBundle = false,
                                                           bundleTitle = null,
-                                                          itemCount = 0
+                                                          itemCount = 0,
+                                                          // Infos commande sur mesure (optionnel)
+                                                          isCustomOrder = false,
+                                                          orderTitle = null
                                                       }) {
     const date = createdAt ? new Date(createdAt) : new Date();
 
@@ -93,8 +99,17 @@ module.exports = async function generateSellerNotePdf({
         .fillColor(GREY_COLOR)
         .text(seller.email || "");
 
+    // Afficher le type de créateur
+    if (creatorType) {
+        const typeLabel = creatorType === 'HYTSTUDIO' ? 'HytStudio' : 'Créateur Affilié';
+        doc
+            .fontSize(9)
+            .fillColor(creatorType === 'HYTSTUDIO' ? BRAND_COLOR : CUSTOM_COLOR)
+            .text(`Statut : ${typeLabel}`);
+    }
+
     doc.moveDown(1);
-    doc.text(`Référence Stripe : ${stripeTransferId || "—"}`);
+    doc.fillColor(GREY_COLOR).text(`Référence Stripe : ${stripeTransferId || "—"}`);
 
     // ─────────────────────────
     // 📦 INFO BUNDLE (si applicable)
@@ -124,6 +139,33 @@ module.exports = async function generateSellerNotePdf({
     }
 
     // ─────────────────────────
+    // 🎨 INFO COMMANDE SUR MESURE (si applicable)
+    // ─────────────────────────
+    if (isCustomOrder && orderTitle) {
+        doc.moveDown(1.5);
+
+        // Badge Custom Order
+        const badgeY = doc.y;
+        doc
+            .rect(PAGE_LEFT, badgeY, PAGE_RIGHT - PAGE_LEFT, 40)
+            .fill("#D1FAE5"); // Fond vert clair
+
+        doc
+            .fillColor(CUSTOM_COLOR)
+            .fontSize(12)
+            .font('Helvetica-Bold')
+            .text("COMMANDE SUR MESURE", PAGE_LEFT + 10, badgeY + 8);
+
+        doc
+            .fontSize(11)
+            .font('Helvetica')
+            .fillColor(DARK_COLOR)
+            .text(`"${orderTitle}"`, PAGE_LEFT + 10, badgeY + 24);
+
+        doc.y = badgeY + 50;
+    }
+
+    // ─────────────────────────
     // 📊 TABLEAU RÉCAP
     // ─────────────────────────
     doc.moveDown(1.5);
@@ -145,15 +187,46 @@ module.exports = async function generateSellerNotePdf({
 
     const euro = v => `${(v / 100).toFixed(2)} €`;
 
-    // Ligne de vente avec détail bundle si applicable
-    const saleLabel = isBundle
-        ? `Vente Bundle "${bundleTitle}"`
-        : "Ventes réalisées";
+    // Déterminer le label de vente
+    let saleLabel;
+    if (isCustomOrder && orderTitle) {
+        saleLabel = `Commande sur mesure "${orderTitle}"`;
+    } else if (isBundle && bundleTitle) {
+        saleLabel = `Vente Bundle "${bundleTitle}"`;
+    } else {
+        saleLabel = "Ventes réalisées";
+    }
 
+    // Déterminer le label de commission selon le type et le contexte
+    let commissionLabel;
+    const commissionPercent = Math.round(commissionRate * 100);
+
+    if (creatorType === 'HYTSTUDIO') {
+        // HytStudio : 0% de commission
+        commissionLabel = "Commission HytStore (0%)";
+    } else if (isCustomOrder) {
+        // Commande sur mesure pour affilié : 5%
+        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
+    } else if (creatorType === 'AFFILIATED') {
+        // Produits normaux pour affilié : 10%
+        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
+    } else {
+        // Produits normaux non-affilié : 15%
+        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
+    }
+
+    // Construire les lignes
     const lines = [
         [saleLabel, euro(grossAmount)],
-        ["Commission HytModel (15%)", `- ${euro(commissionAmount)}`],
     ];
+
+    // Ajouter la ligne de commission (même si 0% pour montrer la transparence)
+    if (commissionAmount > 0) {
+        lines.push([commissionLabel, `- ${euro(commissionAmount)}`]);
+    } else {
+        // HytStudio - montrer qu'il n'y a pas de commission
+        lines.push([commissionLabel, `- ${euro(0)}`]);
+    }
 
     lines.forEach(([label, value]) => {
         doc
@@ -200,7 +273,7 @@ module.exports = async function generateSellerNotePdf({
         .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(
-            "HytModel agit en tant qu'intermédiaire technique.\nCe document ne constitue pas une facture TVA.",
+            "HytStore agit en tant qu'intermédiaire technique.\nCe document ne constitue pas une facture TVA.",
             PAGE_LEFT,
             doc.y,
             { width: PAGE_RIGHT - PAGE_LEFT, align: "center" }

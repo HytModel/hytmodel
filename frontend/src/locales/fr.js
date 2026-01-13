@@ -1,6 +1,8 @@
 export default {
     // Commun
     common: {
+        free: 'Gratuit',
+        freeProduct: 'Produit gratuit',
         loading: 'Chargement...',
         cancel: 'Annuler',
         close: 'Fermer',
@@ -14,6 +16,7 @@ export default {
         error: 'Erreur',
         by: 'par',
         optional: 'optionnel'
+
     },
 
     // Home Page
@@ -130,6 +133,8 @@ export default {
 
     // Model Detail
     modelDetail: {
+        free: 'Gratuit',
+        getForFree: 'Obtenir gratuitement',
         backToProducts: 'Retour aux produits',
         description: 'Description',
         tags: 'Tags',
@@ -195,6 +200,8 @@ export default {
             bundles: 'Bundles'
         },
         filters: {
+            freeOnly: 'Gratuits uniquement',
+            showFreeOnly: 'Voir les gratuits',
             button: 'Filtres',
             title: 'Filtres avancés',
             clearAll: 'Effacer tout',
@@ -207,9 +214,9 @@ export default {
             maxPrice: 'Prix max (€)',
             gameVersions: 'Versions du jeu',
             tags: 'Tags',
-            available: '{{count}} disponible(s)',
-            versionsSelected: '{{count}} version(s) sélectionnée(s)',
-            tagsSelected: '{{count}} tag(s) sélectionné(s)',
+            available: '{count} disponible(s)',
+            versionsSelected: '{count} version(s) sélectionnée(s)',
+            tagsSelected: '{count} tag(s) sélectionné(s)',
             selectGameForVersions: 'Sélectionnez un jeu pour filtrer par version',
             sortBy: 'Trier par',
             sort: {
@@ -220,15 +227,16 @@ export default {
                 priceDesc: 'Prix décroissant'
             }
         },
-        results: '{{count}} résultat(s) trouvé(s)',
+        results: '{count} résultat(s) trouvé(s)',
         bundles: {
-            productCount: '{{count}} produits',
+            productCount: '{count} produits',
             empty: {
                 title: 'Aucun bundle disponible',
                 description: "Les vendeurs n'ont pas encore créé d'offres groupées"
             }
         },
         empty: {
+            noFreeProducts: 'Aucun produit gratuit disponible',
             title: 'Aucun produit trouvé',
             description: 'Essayez de modifier vos critères de recherche',
             clearFilters: 'Effacer les filtres'
@@ -239,10 +247,10 @@ export default {
     myProducts: {
         title: 'Mes produits',
         backToDashboard: 'Retour au dashboard',
-        count: '{{count}} produit(s)',
+        count: '{count} produit(s)',
         addProduct: 'Ajouter un produit',
-        sales: '{{count}} ventes',
-        confirmDelete: 'Êtes-vous sûr de vouloir supprimer "{{title}}" ?',
+        sales: '{count} ventes',
+        confirmDelete: 'Êtes-vous sûr de vouloir supprimer "{title}" ?',
         stats: {
             total: 'Total',
             online: 'En ligne',
@@ -273,8 +281,8 @@ export default {
             delete: 'Supprimer'
         },
         reports: {
-            count: '{{count}} signalement(s)',
-            active: '{{count}} en cours',
+            count: '{count} signalement(s)',
+            active: '{count} en cours',
             noDescription: 'Aucune description',
             staffNote: 'Note du staff',
             yourResponse: 'Votre réponse',
@@ -319,7 +327,7 @@ export default {
     // My Purchases
     myPurchases: {
         title: 'Mes achats',
-        count: '{{count}} produit(s) acheté(s)',
+        count: '{count} produit(s) acheté(s)',
         download: 'Télécharger',
         viewProduct: 'Voir le produit',
         empty: {
@@ -373,7 +381,7 @@ export default {
             submit: 'Envoyer ma demande'
         },
         errors: {
-            fileTooLarge: '{{name}} est trop volumineux (max 50MB)',
+            fileTooLarge: '{name} est trop volumineux (max 50MB)',
             maxFiles: 'Maximum 5 fichiers autorisés',
             titleDescriptionRequired: 'Titre et description requis',
             descriptionMinLength: 'La description doit faire au moins 50 caractères',
@@ -422,7 +430,7 @@ export default {
             fileFormats: 'ZIP, RAR, 7Z, TAR, GZ (max 500MB)',
             compatibleVersions: 'Versions du jeu compatibles',
             noGameVersions: 'Aucune version de jeu disponible',
-            versionsSelected: '{{count}} version(s) sélectionnée(s)',
+            versionsSelected: '{count} version(s) sélectionnée(s)',
             changelog: 'Notes de version (changelog)',
             changelogPlaceholder: 'Décrivez les changements de cette version...',
             mainVersion: 'Version principale',
@@ -511,7 +519,7 @@ export default {
             notConnected: 'Non connecté',
             connect: 'Connecter',
             disconnect: 'Déconnecter',
-            confirmDisconnect: 'Déconnecter votre compte {{provider}} ?'
+            confirmDisconnect: 'Déconnecter votre compte {provider} ?'
         },
         success: {
             updated: 'Profil mis à jour',
@@ -519,7 +527,7 @@ export default {
             twoFAEnabled: 'Double authentification activée',
             twoFADisabled: 'Double authentification désactivée',
             codesCopied: 'Codes copiés',
-            accountDisconnected: 'Compte {{provider}} déconnecté',
+            accountDisconnected: 'Compte {provider} déconnecté',
             sessionRevoked: 'Session révoquée',
             allSessionsRevoked: 'Toutes les sessions ont été révoquées'
         },
@@ -669,8 +677,19 @@ export default {
         },
         filters: {
             search: 'Rechercher...',
+            filters: 'Filtres',
+            game: 'Jeu',
+            category: 'Catégorie',
             allGames: 'Tous les jeux',
-            allCategories: 'Toutes catégories'
+            allCategories: 'Toutes les catégories',
+            freeOnly: 'Gratuit',
+            reset: 'Réinitialiser',
+            activeFilters: 'Filtres actifs',
+            clearAll: 'Tout effacer',
+        },
+        results: {
+            products: 'produits',
+            product: 'produit',
         },
         sort: {
             newest: 'Plus récents',
@@ -800,12 +819,16 @@ export default {
             add: 'Ajouter',
             errors: {
                 maxImages: 'Maximum 10 images autorisées',
-                tooLarge: '{{name}} est trop lourd (max 5MB)',
-                tooSmall: '{{name}} est trop petit (minimum 400x400 pixels)',
-                invalid: "{{name}} n'est pas une image valide"
+                tooLarge: '{name} est trop lourd (max 5MB)',
+                tooSmall: '{name} est trop petit (minimum 400x400 pixels)',
+                invalid: "{name} n'est pas une image valide"
             }
         },
         info: {
+            freeProduct: 'Produit gratuit',
+            freeProductHint: 'Offrir ce produit gratuitement aux utilisateurs',
+            freeProductEnabled: 'Ce produit sera gratuit',
+            freeProductDescription: 'Les utilisateurs pourront l\'obtenir sans paiement',
             title: 'Informations',
             productTitle: 'Titre',
             titlePlaceholder: 'Ex: Pack de textures HD',
@@ -859,7 +882,7 @@ export default {
                 searchProduct: 'Rechercher un produit...',
                 noPredefined: 'Aucune dépendance disponible pour ce jeu',
                 proposeHint: 'Proposez-en une dans l\'onglet "Proposer"',
-                noDepFound: 'Aucune dépendance trouvée pour "{{query}}"',
+                noDepFound: 'Aucune dépendance trouvée pour "{query}"',
                 noProducts: 'Aucun autre produit disponible pour ce jeu',
                 noProductFound: 'Aucun produit trouvé',
                 selectVersion: 'Sélectionner une version',
@@ -1011,9 +1034,9 @@ export default {
             },
             errors: {
                 maxImages: 'Maximum 10 images autorisées',
-                tooLarge: '{{name}} est trop lourd (max 5MB)',
-                tooSmall: '{{name}} est trop petit (minimum 400x400 pixels)',
-                invalid: "{{name}} n'est pas une image valide",
+                tooLarge: '{name} est trop lourd (max 5MB)',
+                tooSmall: '{name} est trop petit (minimum 400x400 pixels)',
+                invalid: "{name} n'est pas une image valide",
                 updateFailed: 'Erreur lors de la mise à jour'
             }
         },
@@ -1063,7 +1086,7 @@ export default {
     // Download Version Selector
     downloadSelector: {
         download: 'Télécharger',
-        downloadVersion: 'Télécharger v{{version}}',
+        downloadVersion: 'Télécharger v{version}',
         filterByGameVersion: 'Filtrer par version du jeu',
         allVersions: 'Toutes les versions',
         fileVersion: 'Version du fichier',
@@ -1072,7 +1095,7 @@ export default {
         noCompatibleVersion: 'Aucune version compatible',
         viewAllVersions: 'Voir toutes les versions',
         compatibleWith: 'Compatible avec :',
-        versionsAvailable: '{{count}} versions disponibles',
+        versionsAvailable: '{count} versions disponibles',
         success: {
             started: 'Téléchargement démarré'
         },
@@ -1084,7 +1107,7 @@ export default {
 
     // Dashboard
     dashboard: {
-        greeting: 'Bonjour, {{username}}',
+        greeting: 'Bonjour, {username}',
         welcomeMessage: 'Bienvenue sur votre tableau de bord',
         addProduct: 'Ajouter un produit',
         tabs: {
@@ -1096,23 +1119,35 @@ export default {
         },
         quickActions: {
             myPurchases: 'Mes achats',
-            productsCount: '{{count}} produits',
+            productsCount: '{count} produits',
             invoices: 'Factures',
             viewAll: 'Voir tout',
             myProducts: 'Mes produits',
             manage: 'Gérer',
             settings: 'Paramètres',
-            configure: 'Configurer'
+            configure: 'Configurer',
+            analytics: "Analytics",
+            statistics: "Statistiques"
         },
         stats: {
             totalRevenue: 'Revenus totaux',
             totalSales: 'Ventes totales',
             lastSale: 'Dernière vente',
             lastPayout: 'Dernier paiement',
+            last30Days: "30 derniers jours",
+            customOrders: "Commandes sur mesure",
+            completed: "terminées",
             none: 'Aucun'
         },
+        topProducts: {
+            title: "Produits les plus vendus",
+            subtitle: "Vos meilleures ventes",
+            sales: "ventes",
+            empty: "Aucune vente pour le moment",
+            emptyDescription: "Vos meilleures ventes apparaîtront ici"
+        },
         customOrdersCta: {
-            title: '{{count}} demande(s) sur mesure disponible(s)',
+            title: '{count} demande(s) sur mesure disponible(s)',
             description: 'Des clients recherchent vos compétences ! Faites une offre et décrochez de nouvelles commandes.'
         },
         proposalsCta: {
@@ -1187,6 +1222,114 @@ export default {
         }
     },
 
+    creatorAnalytics: {
+        title: "Analytics",
+        subtitle: "Statistiques détaillées de vos ventes",
+        retry: "Réessayer",
+        noData: "Aucune donnée disponible",
+        breakdown: {
+            title: "Répartition des revenus",
+            products: "Produits",
+            bundles: "Bundles",
+            customOrders: "Sur mesure",
+            sales: "ventes",
+            revenue: "Revenus",
+            count: "Ventes",
+            noSales: "Aucune vente",
+            noSalesDescription: "Vous n'avez pas encore réalisé de vente sur cette période."
+        },
+        filters: {
+            title: "Filtres",
+            button: "Filtres",
+            clearAll: "Effacer tout",
+            activeFilters: "Filtres actifs",
+            game: "Jeu",
+            category: "Catégorie",
+            tags: "Tags",
+            gameVersions: "Versions du jeu",
+            allGames: "Tous les jeux",
+            allCategories: "Toutes les catégories",
+            selectGameForVersions: "Sélectionnez un jeu pour voir les versions disponibles",
+            available: "{count} disponibles",
+            versionsSelected: "{{count}} version(s) sélectionnée(s)",
+            tagsSelected: "{count} tag(s) sélectionné(s)",
+            note: "Note: Les filtres s'appliquent principalement à la performance des produits. Les revenus globaux et la répartition ne sont pas filtrés."
+        },
+        period: {
+            daysShort: "j",
+            year: "1an"
+        },
+        kpis: {
+            revenue: "Revenus",
+            sales: "Ventes",
+            totalViews: "Vues totales",
+            conversion: "Conversion"
+        },
+        stats: {
+            downloads: "Téléchargements",
+            avgRating: "Note moyenne",
+            uniqueBuyers: "Acheteurs uniques",
+            activeProducts: "Produits actifs"
+        },
+        insights: {
+            title: "Recommandations",
+            revenueGrowth: {
+                title: "📈 Excellente croissance !",
+                message: "Vos revenus ont augmenté de {value}% par rapport à la période précédente."
+            },
+            revenueDecline: {
+                title: "⚠️ Baisse des revenus",
+                message: "Pensez à promouvoir vos produits ou à en ajouter de nouveaux."
+            },
+            lowConversion: {
+                title: "💡 Améliorez vos conversions",
+                message: "Votre taux de conversion est bas. Essayez d'améliorer vos descriptions et images."
+            },
+            excellentRating: {
+                title: "⭐ Excellentes notes !",
+                message: "Votre note moyenne de {value}/5 est excellente. Continuez ainsi !"
+            },
+            productsToOptimize: {
+                title: "🎯 Produits à optimiser",
+                message: "{value} produit(s) ont des vues mais pas de ventes. Revoyez leurs prix ou descriptions."
+            }
+        },
+        bestHours: {
+            title: "Meilleures heures de vente"
+        },
+        bestDays: {
+            title: "Meilleurs jours de vente"
+        },
+        days: {
+            sunday: "Dimanche",
+            monday: "Lundi",
+            tuesday: "Mardi",
+            wednesday: "Mercredi",
+            thursday: "Jeudi",
+            friday: "Vendredi",
+            saturday: "Samedi"
+        },
+        products: {
+            title: "Performance par produit",
+            product: "Produit",
+            views: "Vues",
+            downloads: "Téléch.",
+            sales: "Ventes",
+            conv: "Conv.",
+            revenue: "Revenus"
+        },
+        empty: {
+            title: "Pas encore de données",
+            description: "Les statistiques apparaîtront une fois que vous aurez des ventes",
+            addProduct: "Ajouter un produit"
+        },
+        errors: {
+            title: "Erreur de chargement",
+            loadFailed: "Erreur lors du chargement des analytics"
+        }
+    },
+
+
     // Custom Request Detail
     customRequestDetail: {
         backToRequests: 'Retour aux demandes',
@@ -1223,6 +1366,7 @@ export default {
             rejected: 'Refusée',
             withdrawn: 'Retirée'
         },
+
         pendingValidation: {
             title: 'En attente de validation',
             description: 'Notre équipe examine votre demande. Vous serez notifié dès qu\'elle sera approuvée.'
@@ -1230,10 +1374,21 @@ export default {
         rejected: {
             title: 'Demande refusée',
             reason: 'Raison :'
+
         },
         searchingCreator: {
             title: 'En recherche de créateur',
             description: 'Votre demande est visible par nos créateurs affiliés. Vous recevrez bientôt des offres !'
+        },
+        acceptModal: {
+            title: 'Accepter cette offre ?',
+            message: 'Vous êtes sur le point d\'accepter l\'offre de {creator} pour {price}€. Les autres offres seront automatiquement refusées.',
+            confirm: 'Accepter l\'offre'
+        },
+        rejectModal: {
+            title: 'Refuser cette offre ?',
+            message: 'Êtes-vous sûr de vouloir refuser cette offre ? Cette action est irréversible.',
+            confirm: 'Refuser'
         },
         goodToKnow: {
             title: 'Bon à savoir',
@@ -1344,8 +1499,9 @@ export default {
             addMore: "Ajouter d'autres fichiers",
             selectFiles: 'Sélectionner les fichiers',
             messagePlaceholder: 'Message de livraison (optionnel)...',
-            button: 'Livrer ({{count}} fichier(s))',
+            button: 'Livrer ({count} fichier(s))',
             defaultMessage: 'Livraison effectuée !'
+
         },
         review: {
             title: 'Livraison reçue',
@@ -1360,14 +1516,14 @@ export default {
         withdraw: {
             title: 'Rétractation',
             description: 'Vous pouvez annuler la commande en cours.',
-            refund25: "Vous récupérez 25% de l'acompte",
-            creator20: 'Le créateur reçoit 20% (travail effectué)',
+            refund25: "Vous récupérez 50% de l'acompte",
+            creator20: 'Le créateur reçoit 40% (travail effectué)',
             button: 'Me rétracter'
         },
         problem: {
             title: 'Un problème ?',
             description: 'Si les fichiers ne fonctionnent pas correctement, signalez-le.',
-            previousClaims: '{{count}} réclamation(s) précédente(s) résolue(s)',
+            previousClaims: '{count} réclamation(s) précédente(s) résolue(s)',
             button: 'Signaler un problème'
         },
         claim: {
@@ -1376,7 +1532,7 @@ export default {
             clientMessage: 'Votre réclamation est en cours de traitement.'
         },
         fixes: {
-            title: 'Correctifs reçus ({{count}})',
+            title: 'Correctifs reçus ({count})',
             version: 'Version',
             accepted: 'Accepté',
             rejected: 'Refusé',
@@ -1398,7 +1554,7 @@ export default {
             delivered: 'Commande livrée !',
             approved: 'Livraison validée !',
             revisionRequested: 'Demande de révision envoyée',
-            withdrawn: 'Rétractation effectuée. Remboursement: {{amount}}€',
+            withdrawn: 'Rétractation effectuée. Remboursement: {amount}€',
             claimOpened: 'Réclamation envoyée. Le créateur et notre équipe ont été notifiés.',
             fixSent: 'Correctif envoyé au client',
             fixAccepted: 'Correctif accepté ! Réclamation clôturée.',
@@ -1415,6 +1571,7 @@ export default {
             generic: 'Erreur'
         }
     },
+
 
     // Custom Order Conversation
     conversation: {
@@ -1477,6 +1634,14 @@ export default {
             offerRejected: 'Offre refusée',
             conversationClosed: 'Conversation clôturée'
         },
+        acceptModal: {
+            title: 'Accepter cette offre ?',
+            price: 'Prix total',
+            delay: 'Délai estimé',
+            paymentInfo: 'Vous devrez payer un acompte de {amount}€ (50%) pour démarrer la commande.',
+            description: 'En acceptant, une commande sera créée et vous pourrez continuer à discuter avec le créateur.',
+            confirm: 'Accepter l\'offre'
+        },
         errors: {
             loadFailed: 'Erreur lors du chargement',
             sendFailed: "Erreur lors de l'envoi",
@@ -1493,7 +1658,7 @@ export default {
         deadline: 'Deadline',
         attachments: 'Pièces jointes',
         file: 'Fichier',
-        offersReceived: '{{count}} offre(s) reçue(s)',
+        offersReceived: '{count} offre(s) reçue(s)',
         messages: 'Messages',
         contact: 'Contacter',
         makeOffer: 'Faire une offre',
@@ -1533,7 +1698,7 @@ export default {
             clientDeadline: 'Deadline client',
             messageLabel: 'Message au client',
             messagePlaceholder: 'Présentez votre approche, vos compétences, posez des questions si nécessaire...',
-            minChars: '{{count}}/20 caractères minimum',
+            minChars: '{count}/20 caractères minimum',
             send: "Envoyer l'offre",
             success: 'Offre envoyée !',
             errors: {
@@ -1608,7 +1773,7 @@ export default {
     // Cart
     cart: {
         title: 'Mon panier',
-        productCount: '{{count}} produit(s)',
+        productCount: '{count} produit(s)',
         clearCart: 'Vider le panier',
         confirmClear: 'Voulez-vous vraiment vider votre panier ?',
         checkout: 'Passer au paiement',
@@ -1642,9 +1807,9 @@ export default {
 
     // Bundle Detail
     bundleDetail: {
-        includedProducts: 'Produits inclus ({{count}})',
+        includedProducts: 'Produits inclus ({count})',
         included: 'Inclus',
-        youSave: 'Vous économisez {{amount}}€',
+        youSave: 'Vous économisez {amount}€',
         discountApplied: 'Remise appliquée',
         products: 'Produits',
         yourBundle: "C'est votre bundle",
@@ -1652,7 +1817,7 @@ export default {
         viewPurchases: 'Voir mes achats',
         buyBundle: 'Acheter le bundle',
         purchaseInfo: 'En achetant ce bundle, vous obtenez tous les produits inclus.',
-        validUntil: "Offre valable jusqu'au {{date}}",
+        validUntil: "Offre valable jusqu'au {date}",
         success: {
             purchased: 'Bundle acheté avec succès !'
         },
@@ -1685,7 +1850,7 @@ export default {
             popular: 'POPULAIRE',
             ofRevenue: 'de vos revenus',
             forPlatform: 'pour la plateforme',
-            commission: 'Commission plateforme : {{percent}}%'
+            commission: 'Commission plateforme : {percent}%'
         },
         form: {
             presentYourself: 'Présentez-vous',
@@ -1707,7 +1872,7 @@ export default {
         },
         status: {
             pendingTitle: "Demande en cours d'examen",
-            pendingDescription: 'Votre demande a été soumise le {{date}}. Notre équipe l\'examine actuellement.',
+            pendingDescription: 'Votre demande a été soumise le {date}. Notre équipe l\'examine actuellement.',
             pendingHint: 'Vous recevrez une réponse dans les prochains jours.',
             approvedTitle: 'Félicitations ! 🎉',
             approvedDescription: 'Votre demande a été approuvée ! Vous pouvez maintenant vendre sur HytModel.',
@@ -1773,24 +1938,24 @@ export default {
             selectGame: 'Sélectionnez un jeu pour gérer ses catégories',
             selectGameToView: 'Sélectionnez un jeu pour voir ses catégories',
             new: 'Nouvelle catégorie',
-            newTitleFor: 'Nouvelle catégorie pour {{game}}',
+            newTitleFor: 'Nouvelle catégorie pour {game}',
             editTitle: 'Modifier la catégorie',
-            noneForGame: 'Aucune catégorie pour {{game}}',
+            noneForGame: 'Aucune catégorie pour {game}',
             createFirst: 'Créer la première catégorie',
-            countForGame: '{{count}} catégorie(s) pour {{game}}',
+            countForGame: '{count} catégorie(s) pour {game}',
             namePlaceholder: 'Ex: Véhicules, Bâtiments...'
         },
         tags: {
             selectGame: 'Sélectionnez un jeu pour gérer ses tags',
             selectGameToView: 'Sélectionnez un jeu pour voir ses tags',
             new: 'Nouveau tag',
-            newTitleFor: 'Nouveau tag pour {{game}}',
+            newTitleFor: 'Nouveau tag pour {game}',
             editTitle: 'Modifier le tag',
             searchPlaceholder: 'Rechercher un tag...',
             noFound: 'Aucun tag trouvé',
-            noneForGame: 'Aucun tag pour {{game}}',
+            noneForGame: 'Aucun tag pour {game}',
             createFirst: 'Créer le premier tag',
-            countForGame: '{{count}} tag(s) pour {{game}}',
+            countForGame: '{count} tag(s) pour {game}',
             nameLabel: 'Nom du tag',
             namePlaceholder: 'Ex: HD, Animé, Optimisé...'
         },
@@ -1798,13 +1963,13 @@ export default {
             selectGame: 'Sélectionnez un jeu pour gérer ses versions',
             selectGameToView: 'Sélectionnez un jeu pour voir ses versions',
             new: 'Nouvelle version',
-            newTitleFor: 'Nouvelle version pour {{game}}',
+            newTitleFor: 'Nouvelle version pour {game}',
             editTitle: 'Modifier la version',
             searchPlaceholder: 'Rechercher une version...',
             noFound: 'Aucune version trouvée',
-            noneForGame: 'Aucune version pour {{game}}',
+            noneForGame: 'Aucune version pour {game}',
             createFirst: 'Créer la première version',
-            countForGame: '{{count}} version(s) pour {{game}}',
+            countForGame: '{count} version(s) pour {game}',
             versionLabel: 'Version',
             versionPlaceholder: 'Ex: 1.20.4, b3258, ESX 1.9...',
             versionHint: 'Entrez le numéro ou nom de la version du jeu'
@@ -1817,20 +1982,20 @@ export default {
             editTitle: 'Modifier la dépendance',
             searchPlaceholder: 'Rechercher une dépendance...',
             noFound: 'Aucune dépendance trouvée',
-            noneForGame: 'Aucune dépendance pour {{game}}',
+            noneForGame: 'Aucune dépendance pour {game}',
             create: 'Créer une dépendance',
             disabled: 'Désactivée',
-            usedBy: 'Utilisée par {{count}} produit(s)',
+            usedBy: 'Utilisée par {count} produit(s)',
             website: 'Site web',
             logoOptional: 'Logo (optionnel)',
             namePlaceholder: 'Ex: Fabric, Forge, OptiFine...'
         },
         confirmDelete: {
-            game: 'Supprimer le jeu "{{name}}" ? Cela peut affecter les produits associés.',
-            category: 'Supprimer la catégorie "{{name}}" ?',
-            tag: 'Supprimer le tag "{{name}}" ?',
-            version: 'Supprimer la version "{{name}}" ?',
-            dependency: 'Supprimer la dépendance "{{name}}" ?'
+            game: 'Supprimer le jeu "{name}" ? Cela peut affecter les produits associés.',
+            category: 'Supprimer la catégorie "{name}" ?',
+            tag: 'Supprimer le tag "{name}" ?',
+            version: 'Supprimer la version "{name}" ?',
+            dependency: 'Supprimer la dépendance "{name}" ?'
         },
         success: {
             gameCreated: 'Jeu créé',
@@ -1899,7 +2064,7 @@ export default {
         eligible: {
             noEligible: 'Aucun vendeur éligible',
             willAppearHere: 'Les vendeurs avec 1000+ ventes apparaîtront ici',
-            info: '{{count}} vendeur(s) ont atteint 1000+ ventes et sont éligibles au statut Affilié (90% des revenus)'
+            info: '{count} vendeur(s) ont atteint 1000+ ventes et sont éligibles au statut Affilié (90% des revenus)'
         },
         searchPlaceholder: 'Rechercher un vendeur...',
         noSellersFound: 'Aucun vendeur trouvé',
@@ -2040,7 +2205,7 @@ export default {
             seller: 'Vendeur',
             reportedBy: 'Signalé par',
             reportDescription: 'Description du signalement',
-            sellerResponseOn: 'Réponse du vendeur ({{date}})',
+            sellerResponseOn: 'Réponse du vendeur ({date})',
             staffNote: 'Note du staff',
             viewProduct: 'Voir le produit'
         },
@@ -2093,7 +2258,7 @@ export default {
         noDependencies: 'Aucune dépendance',
         noProposals: 'Aucune proposition',
         disabled: 'Désactivée',
-        usedBy: 'Utilisée par {{count}} produit(s)',
+        usedBy: 'Utilisée par {count} produit(s)',
         proposedBy: 'Proposée par',
         reason: 'Raison',
         confirmDelete: 'Supprimer cette dépendance ? Les produits liés perdront cette association.',
@@ -2174,10 +2339,10 @@ export default {
         },
         requests: {
             noRequests: 'Aucune demande',
-            noRequestsWithStatus: 'Aucune demande avec le statut "{{status}}"',
+            noRequestsWithStatus: 'Aucune demande avec le statut "{status}"',
             noRequestsInSystem: 'Aucune demande dans le système',
             by: 'Par',
-            offersCount: '{{count}} offre(s)',
+            offersCount: '{count} offre(s)',
             description: 'Description',
             game: 'Jeu',
             category: 'Catégorie',
@@ -2243,11 +2408,11 @@ export default {
         views: 'vues',
         kpis: {
             totalRevenue: 'Revenus totaux',
-            salesCount: '{{count}} ventes',
+            salesCount: '{count} ventes',
             avgCart: 'Panier moyen',
             perTransaction: 'Par transaction',
             totalViews: 'Vues totales',
-            uniqueVisitors: '{{count}} visiteurs uniques',
+            uniqueVisitors: '{count} visiteurs uniques',
             conversionRate: 'Taux conversion',
             visitorsToBuyers: 'Visiteurs → Acheteurs'
         },
@@ -2258,7 +2423,7 @@ export default {
             topVersions: 'Versions les plus vendues',
             forThisGame: 'Pour ce jeu',
             bestSellers: 'Produits best-sellers',
-            top10For: 'Top 10 pour {{game}}'
+            top10For: 'Top 10 pour {game}'
         },
         charts: {
             salesByGame: 'Ventes par jeu',
@@ -2314,10 +2479,10 @@ export default {
             totalReports: 'Total signalés'
         },
         alerts: {
-            pendingReports: '{{count}} signalement(s) en attente',
+            pendingReports: '{count} signalement(s) en attente',
             reportsNeedAttention: 'Des produits ont été signalés et nécessitent votre attention',
             viewReports: 'Voir les signalements',
-            pendingCustomOrders: '{{count}} demande(s) sur mesure en attente',
+            pendingCustomOrders: '{count} demande(s) sur mesure en attente',
             customOrdersNeedValidation: 'Des clients attendent la validation de leur demande',
             viewRequests: 'Voir les demandes'
         },
@@ -2360,7 +2525,7 @@ export default {
             changed: 'Changé',
             detailTitle: 'Détail des modifications',
             newProduct: 'Nouveau produit - Pas de modifications',
-            changesDetected: '{{count}} modification(s) détectée(s)',
+            changesDetected: '{count} modification(s) détectée(s)',
             previousHiddenReason: 'Raison du masquage précédent',
             fields: {
                 title: 'Titre',
@@ -2395,7 +2560,7 @@ export default {
         },
         products: {
             title: 'Gestion des produits',
-            count: '{{count}} produit(s)',
+            count: '{count} produit(s)',
             searchPlaceholder: 'Rechercher par titre ou créateur...',
             allStatuses: 'Tous les statuts',
             noProducts: 'Aucun produit trouvé',
@@ -2418,13 +2583,13 @@ export default {
             },
             hideModal: {
                 title: 'Masquer le produit',
-                description: 'Vous allez masquer "{{title}}". Le vendeur sera notifié de la raison.',
+                description: 'Vous allez masquer "{title}". Le vendeur sera notifié de la raison.',
                 reasonLabel: 'Raison du masquage',
                 reasonPlaceholder: 'Ex: Contenu inapproprié, droits d\'auteur, qualité insuffisante...'
             },
             deleteModal: {
                 title: 'Supprimer le produit',
-                description: 'Êtes-vous sûr de vouloir supprimer définitivement "{{title}}" ? Cette action est irréversible.'
+                description: 'Êtes-vous sûr de vouloir supprimer définitivement "{title}" ? Cette action est irréversible.'
             },
             success: {
                 approved: 'Produit approuvé',
@@ -2450,7 +2615,7 @@ export default {
         subtitle: 'Créez des offres groupées pour augmenter vos ventes',
         createBundle: 'Créer un bundle',
         confirmDelete: 'Supprimer ce bundle ?',
-        stats: '{{products}} produits • {{sales}} ventes',
+        stats: '{products} produits • {sales} ventes',
         status: {
             active: 'Actif',
             inactive: 'Inactif'
@@ -2482,7 +2647,7 @@ export default {
             productsLabel: 'Produits inclus (minimum 2)',
             searchPlaceholder: 'Rechercher un produit...',
             noProducts: 'Aucun produit approuvé trouvé',
-            selectedCount: '{{count}} produit(s) sélectionné(s)',
+            selectedCount: '{count} produit(s) sélectionné(s)',
             startDate: 'Date de début (optionnel)',
             endDate: 'Date de fin (optionnel)',
             create: 'Créer le bundle',
@@ -2504,7 +2669,7 @@ export default {
         errors: {
             loadFailed: 'Erreur lors du chargement des bundles',
             minProducts: 'Sélectionnez au moins 2 produits',
-            minPrice: 'Le prix final ({{price}}€) est inférieur au minimum de 5€',
+            minPrice: 'Le prix final ({price}€) est inférieur au minimum de 5€',
             deleteFailed: 'Erreur lors de la suppression',
             generic: 'Erreur'
         }
@@ -2517,15 +2682,15 @@ export default {
         minCharsLabel: 'caractères minimum',
         errors: {
             fieldRequired: 'Ce champ est requis',
-            minChars: 'Minimum {{count}} caractères requis'
+            minChars: 'Minimum {count} caractères requis'
         },
         withdraw: {
             title: 'Se rétracter',
             subtitle: 'Cette action est irréversible',
             depositPaid: 'Acompte payé',
-            youGet: 'Vous récupérez (25%)',
-            creatorGets: 'Créateur reçoit (20%)',
-            platformFee: 'Frais plateforme (5%)',
+            youGet: 'Vous récupérez (50%)',
+            creatorGets: 'Créateur reçoit (40%)',
+            platformFee: 'Frais plateforme (10%)',
             reasonLabel: 'Raison de la rétractation (optionnel)',
             reasonPlaceholder: 'Expliquez pourquoi vous souhaitez annuler...',
             confirm: 'Confirmer la rétractation'
@@ -2549,7 +2714,7 @@ export default {
         },
         delivery: {
             title: 'Confirmer la livraison ?',
-            message: 'Vous allez livrer {{count}} fichier(s)',
+            message: 'Vous allez livrer {count} fichier(s)',
             info: 'Le client pourra ensuite valider ou demander des modifications.',
             deliver: 'Livrer'
         },
@@ -2561,7 +2726,7 @@ export default {
         },
         rejectFix: {
             title: 'Refuser le correctif',
-            version: 'Version {{version}}',
+            version: 'Version {version}',
             info: 'Expliquez précisément ce qui ne fonctionne pas pour que le créateur puisse corriger efficacement.',
             whatWrong: "Qu'est-ce qui ne va pas ?",
             placeholder: "Ex: Le fichier ne s'ouvre toujours pas, les couleurs ne correspondent pas à ma demande, il manque encore...",
@@ -2570,7 +2735,7 @@ export default {
         },
         acceptFix: {
             title: 'Accepter le correctif ?',
-            version: 'Version {{version}}',
+            version: 'Version {version}',
             info: 'En acceptant, la réclamation sera clôturée et les fichiers corrigés remplaceront les fichiers finaux.',
             downloadInfo: 'Vous pourrez télécharger les fichiers corrigés une fois le paiement effectué',
             accept: 'Accepter'
@@ -2616,7 +2781,7 @@ export default {
 
     // ModelCard
     modelCard: {
-        viewShop: 'Voir la boutique de {{name}}'
+        viewShop: 'Voir la boutique de {name}'
     },
 
     // Footer
@@ -2642,6 +2807,12 @@ export default {
         madeWith: 'Fait avec',
         inFrance: 'en France'
     },
+
+    language: {
+        title: 'Langue',
+        subtitle: 'Choisissez la langue de l\'interface'
+    },
+    freeOnly: 'Gratuits uniquement',
 
     // Navigation
     nav: {
@@ -2669,9 +2840,9 @@ export default {
         language: 'Langue',
         timeAgo: {
             now: "À l'instant",
-            minutes: 'Il y a {{count}}m',
-            hours: 'Il y a {{count}}h',
-            days: 'Il y a {{count}}j'
+            minutes: 'Il y a {count}m',
+            hours: 'Il y a {count}h',
+            days: 'Il y a {count}j'
         }
     }
 }

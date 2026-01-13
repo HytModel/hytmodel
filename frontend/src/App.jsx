@@ -30,6 +30,7 @@ import NotFound from './pages/NotFound'
 import MyProducts from './pages/MyProducts'
 import EditProduct from './pages/EditProduct'
 import BecomeCreator from './pages/BecomeCreator'
+import CreatorAnalytics from './pages/CreatorAnalytics'
 
 // Commandes sur mesure
 import CustomOrders from './pages/CustomOrders'
@@ -96,6 +97,7 @@ export default function App() {
                     {/* Pages protégées (connecté requis) */}
                     <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
                     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/dashboard/analytics" element={<CreatorRoute><CreatorAnalytics /></CreatorRoute>} />
                     <Route path="/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/dashboard/purchases" element={<ProtectedRoute><Purchases /></ProtectedRoute>} />
                     <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />

@@ -4,7 +4,7 @@ import {
     Upload as UploadIcon, X, Image, Film, FileArchive,
     DollarSign, Tag, Gamepad2, Loader2, Star, Trash2,
     Plus, Youtube, Check, AlertCircle, Link2, Search,
-    ExternalLink, Package, Layers
+    ExternalLink, Package, Layers, Gift
 } from 'lucide-react'
 import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, modelImagesAPI, dependenciesAPI, modelFileVersionsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -22,6 +22,7 @@ export default function Upload() {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [price, setPrice] = useState('')
+    const [isFree, setIsFree] = useState(false)
     const [gameId, setGameId] = useState('')
     const [categoryId, setCategoryId] = useState('')
     const [selectedTags, setSelectedTags] = useState([])
@@ -366,7 +367,8 @@ export default function Upload() {
             return
         }
 
-        if (!price || parseFloat(price) < 5) {
+        // Validation prix : gratuit OU minimum 5€
+        if (!isFree && (!price || parseFloat(price) < 5)) {
             toast.error(t('upload.errors.minPrice'))
             return
         }
@@ -393,7 +395,7 @@ export default function Upload() {
             formData.append('file', file)
             formData.append('title', title.trim())
             formData.append('description', description.trim())
-            formData.append('price', parseFloat(price))
+            formData.append('price', isFree ? 0 : parseFloat(price))
             formData.append('gameId', gameId)
             formData.append('categoryId', categoryId)
             formData.append('tagIds', JSON.stringify(selectedTags))
@@ -629,22 +631,56 @@ export default function Upload() {
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2">
-                                <DollarSign className="w-4 h-4 inline mr-1" />
-                                {t('upload.info.price')} * <span className="text-xs text-gray-500">({t('upload.info.minPrice')})</span>
+                        {/* Checkbox Gratuit */}
+                        <div className="pt-2">
+                            <label
+                                className="flex items-center gap-3 cursor-pointer group"
+                                onClick={() => setIsFree(!isFree)}
+                            >
+                                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                                    isFree
+                                        ? 'bg-green-500 border-green-500'
+                                        : 'border-gray-600 group-hover:border-gray-400'
+                                }`}>
+                                    {isFree && <Check className="w-4 h-4 text-white" />}
+                                </div>
+                                <div>
+                                    <span className="text-white font-medium flex items-center gap-2">
+                                        <Gift className="w-4 h-4 text-green-400" />
+                                        {t('upload.info.freeProduct')}
+                                    </span>
+                                    <p className="text-xs text-gray-500">{t('upload.info.freeProductHint')}</p>
+                                </div>
                             </label>
-                            <input
-                                type="number"
-                                value={price}
-                                onChange={(e) => setPrice(e.target.value)}
-                                placeholder="5.00"
-                                min="5"
-                                step="0.01"
-                                className="input-field w-full"
-                                required
-                            />
                         </div>
+
+                        {/* Champ prix - masqué si gratuit */}
+                        {!isFree ? (
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">
+                                    <DollarSign className="w-4 h-4 inline mr-1" />
+                                    {t('upload.info.price')} * <span className="text-xs text-gray-500">({t('upload.info.minPrice')})</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    placeholder="5.00"
+                                    min="5"
+                                    step="0.01"
+                                    className="input-field w-full"
+                                    required={!isFree}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                                <Gift className="w-6 h-6 text-green-400" />
+                                <div>
+                                    <p className="text-green-400 font-medium">{t('upload.info.freeProductEnabled')}</p>
+                                    <p className="text-xs text-green-400/70">{t('upload.info.freeProductDescription')}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Vidéo YouTube */}

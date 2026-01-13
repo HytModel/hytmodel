@@ -106,11 +106,11 @@ class ModelsService {
             // Vérifier par user_id si connecté
             if (userId) {
                 const { rows: userView } = await pool.query(
-                    `SELECT id FROM model_views 
-                     WHERE model_id = $1 
-                     AND user_id = $2
-                     AND viewed_at > NOW() - INTERVAL '24 hours'
-                     LIMIT 1`,
+                    `SELECT id FROM model_views
+                     WHERE model_id = $1
+                       AND user_id = $2
+                       AND viewed_at > NOW() - INTERVAL '24 hours'
+                         LIMIT 1`,
                     [id, userId]
                 );
                 if (userView.length > 0) {
@@ -121,12 +121,12 @@ class ModelsService {
             // Sinon vérifier par IP
             if (shouldInsert && visitorIp) {
                 const { rows: ipView } = await pool.query(
-                    `SELECT id FROM model_views 
-                     WHERE model_id = $1 
-                     AND visitor_ip = $2
-                     AND user_id IS NULL
-                     AND viewed_at > NOW() - INTERVAL '24 hours'
-                     LIMIT 1`,
+                    `SELECT id FROM model_views
+                     WHERE model_id = $1
+                       AND visitor_ip = $2
+                       AND user_id IS NULL
+                       AND viewed_at > NOW() - INTERVAL '24 hours'
+                         LIMIT 1`,
                     [id, visitorIp]
                 );
                 if (ipView.length > 0) {
@@ -155,6 +155,7 @@ class ModelsService {
         }
 
         // 2. Récupérer le modèle avec les stats
+        // Téléchargements depuis model_file_versions (multi-version)
         const { rows } = await pool.query(
             `SELECT m.*,
                     g.name AS game_name, g.slug AS game_slug,
@@ -162,12 +163,17 @@ class ModelsService {
                     u.username AS creator_username,
                     u.display_name AS creator_display_name,
                     u.avatar_url AS creator_avatar_url,
-                    COALESCE(ms.downloads, 0) AS download_count
+                    COALESCE(dl.total_downloads, 0) AS download_count
              FROM models m
                       LEFT JOIN games g ON g.id = m.game_id
                       LEFT JOIN categories c ON c.id = m.category_id
                       LEFT JOIN users u ON u.id = m.creator_id
-                      LEFT JOIN model_stats ms ON ms.model_id = m.id
+                      LEFT JOIN (
+                 SELECT model_id, SUM(download_count) AS total_downloads
+                 FROM model_file_versions
+                 WHERE is_active = true
+                 GROUP BY model_id
+             ) dl ON dl.model_id = m.id
              WHERE m.id = $1 AND m.deleted_at IS NULL`,
             [id]
         );
@@ -362,16 +368,26 @@ class ModelsService {
     }
 
     // Lister les modèles approuvés (et non masqués)
+    // Téléchargements depuis model_file_versions (multi-version)
     async listApprovedModels() {
         const { rows } = await pool.query(
             `SELECT m.id, m.title, m.description, m.price, m.created_at,
-                    m.thumbnail_url, m.creator_id,
+                    m.thumbnail_url, m.creator_id, m.view_count, m.rating_avg, m.rating_count,
                     g.name AS game_name, c.name AS category_name,
-                    u.username AS creator_username
+                    u.username AS creator_username,
+                    u.display_name AS creator_display_name,
+                    u.avatar_url AS creator_avatar_url,
+                    COALESCE(dl.total_downloads, 0) AS download_count
              FROM models m
                       LEFT JOIN games g ON g.id = m.game_id
                       LEFT JOIN categories c ON c.id = m.category_id
                       LEFT JOIN users u ON u.id = m.creator_id
+                      LEFT JOIN (
+                 SELECT model_id, SUM(download_count) AS total_downloads
+                 FROM model_file_versions
+                 WHERE is_active = true
+                 GROUP BY model_id
+             ) dl ON dl.model_id = m.id
              WHERE m.status = 'APPROVED'
                AND m.is_hidden = FALSE
                AND m.deleted_at IS NULL
@@ -482,6 +498,7 @@ class ModelsService {
     }
 
     // NOUVEAU : Recherche avancée avec game, category, versions
+    // Téléchargements depuis model_file_versions (multi-version)
     async searchModelsAdvanced(filters) {
         const { query, gameId, categoryId, tagIds, versionIds, minPrice, maxPrice } = filters;
 
@@ -517,24 +534,24 @@ class ModelsService {
         if (tagIds && tagIds.length > 0) {
             values.push(tagIds);
             tagFilter = `
-                AND EXISTS (
-                    SELECT 1 FROM model_tags mt
-                    WHERE mt.model_id = m.id
-                    AND mt.tag_id = ANY($${values.length})
-                )
-            `;
+            AND EXISTS (
+                SELECT 1 FROM model_tags mt
+                WHERE mt.model_id = m.id
+                AND mt.tag_id = ANY($${values.length})
+            )
+        `;
         }
 
         let versionFilter = "";
         if (versionIds && versionIds.length > 0) {
             values.push(versionIds);
             versionFilter = `
-                AND EXISTS (
-                    SELECT 1 FROM model_versions mv
-                    WHERE mv.model_id = m.id
-                    AND mv.version_id = ANY($${values.length})
-                )
-            `;
+            AND EXISTS (
+                SELECT 1 FROM model_versions mv
+                WHERE mv.model_id = m.id
+                AND mv.version_id = ANY($${values.length})
+            )
+        `;
         }
 
         const { rows } = await pool.query(
@@ -544,15 +561,22 @@ class ModelsService {
                     u.username AS creator_username,
                     u.display_name AS creator_display_name,
                     u.avatar_url AS creator_avatar_url,
+                    COALESCE(dl.total_downloads, 0) AS download_count,
                     array_remove(array_agg(DISTINCT t.name), NULL) AS tags
              FROM models m
                       LEFT JOIN games g ON g.id = m.game_id
                       LEFT JOIN categories c ON c.id = m.category_id
                       LEFT JOIN users u ON u.id = m.creator_id
+                      LEFT JOIN (
+                 SELECT model_id, SUM(download_count) AS total_downloads
+                 FROM model_file_versions
+                 WHERE is_active = true
+                 GROUP BY model_id
+             ) dl ON dl.model_id = m.id
                       LEFT JOIN model_tags mt ON mt.model_id = m.id
                       LEFT JOIN tags t ON t.id = mt.tag_id
                  ${where} ${tagFilter} ${versionFilter}
-             GROUP BY m.id, g.name, c.name, u.username, u.display_name, u.avatar_url
+             GROUP BY m.id, g.name, c.name, u.username, u.display_name, u.avatar_url, dl.total_downloads
              ORDER BY m.created_at DESC`,
             values
         );

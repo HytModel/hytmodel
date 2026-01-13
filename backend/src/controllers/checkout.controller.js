@@ -3,6 +3,7 @@ const checkoutService = require("../services/checkout.service");
 const stripeService = require("../services/stripe.service");
 const isUuid = require("../utils/isUuid");
 
+
 class CheckoutController {
     // Créer une session de paiement
     async createCheckout(req, res, next) {
@@ -28,7 +29,7 @@ class CheckoutController {
             // Créer la session Stripe avec cart_id
             const session = await stripeService.createCheckoutSession({
                 userId,
-                cartId, // AJOUTÉ: passer le cartId
+                cartId,
                 items,
                 successUrl: `${process.env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
                 cancelUrl: `${process.env.FRONTEND_URL}/cart`
@@ -49,6 +50,28 @@ class CheckoutController {
 
             res.json({ purchases });
         } catch (error) {
+            next(error);
+        }
+    }
+
+    // Récupérer un produit gratuit
+// Récupérer un produit gratuit
+    async claimFreeProduct(req, res, next) {
+        try {
+            const { productId } = req.params;
+            const userId = req.user.id;
+
+            await checkoutService.claimFreeProduct(userId, productId);
+
+            res.json({ success: true, message: 'Produit ajouté à vos achats' });
+        } catch (error) {
+            if (error.message === 'Produit non trouvé') {
+                return res.status(404).json({ error: error.message });
+            }
+            if (error.message === 'Ce produit n\'est pas gratuit' ||
+                error.message === 'Vous possédez déjà ce produit') {
+                return res.status(400).json({ error: error.message });
+            }
             next(error);
         }
     }

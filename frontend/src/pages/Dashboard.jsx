@@ -5,7 +5,7 @@ import {
     ArrowUpRight, ArrowDownRight, Package, FileText,
     Upload, Settings, CreditCard, Lightbulb, ChevronRight,
     Link2, Plus, X, Loader2, Check, Clock, XCircle, CheckCircle,
-    Search, Trash2, Gift
+    Search, Trash2, Gift, BarChart3, Award, Wallet, PenTool
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
@@ -14,13 +14,14 @@ import Loading from '../components/Loading'
 import SellerProposals from './SellerProposals'
 import toast from 'react-hot-toast'
 import BundleManager from '../components/BundleManager'
-import { PenTool } from 'lucide-react'
 import CreatorCustomOrders from './CreatorCustomOrders'
+
 
 export default function Dashboard() {
     const { user, isCreator } = useAuth()
     const { t } = useTranslation()
     const [stats, setStats] = useState(null)
+    const [analytics, setAnalytics] = useState(null)
     const [recentSales, setRecentSales] = useState([])
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
@@ -86,6 +87,13 @@ export default function Dashboard() {
                     ])
                     setStats(statsRes.data)
                     setRecentSales(salesRes.data || [])
+
+                    try {
+                        const analyticsRes = await sellerAPI.getAnalytics()
+                        setAnalytics(analyticsRes.data)
+                    } catch (e) {
+                        console.error('Failed to load analytics:', e)
+                    }
 
                     try {
                         const proposalsRes = await proposalsAPI.getMy()
@@ -180,6 +188,12 @@ export default function Dashboard() {
         }
     }
 
+    const getImageUrl = (url) => {
+        if (!url) return null
+        if (url.startsWith('http')) return url
+        return `http://localhost:3001${url}`
+    }
+
     if (loading) {
         return <Loading fullScreen />
     }
@@ -191,7 +205,7 @@ export default function Dashboard() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
                         <h1 className="font-display text-3xl font-bold text-white">
-                            {t('dashboard.greeting', { username: user?.username })} 👋
+                            {t('dashboard.greeting', { username: user.username })} 👋
                         </h1>
                         <p className="text-gray-500">
                             {t('dashboard.welcomeMessage')}
@@ -301,37 +315,27 @@ export default function Dashboard() {
                 ) : activeTab === 'dependencies' && isCreator() ? (
                     /* Onglet Dépendances */
                     <div className="space-y-6">
-                        {/* Header */}
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-white">{t('dashboard.dependencies.title')}</h2>
-                                <p className="text-gray-400 text-sm">
-                                    {t('dashboard.dependencies.subtitle')}
-                                </p>
+                                <p className="text-gray-400 text-sm">{t('dashboard.dependencies.subtitle')}</p>
                             </div>
-                            <button
-                                onClick={() => setShowDepModal(true)}
-                                className="btn-primary flex items-center gap-2"
-                            >
+                            <button onClick={() => setShowDepModal(true)} className="btn-primary flex items-center gap-2">
                                 <Plus className="w-4 h-4" />
                                 {t('dashboard.dependencies.propose')}
                             </button>
                         </div>
 
-                        {/* Info Card */}
                         <div className="card bg-blue-500/5 border-blue-500/30">
                             <div className="flex items-start gap-3">
                                 <Link2 className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="text-blue-400 font-medium">{t('dashboard.dependencies.whatIs.title')}</p>
-                                    <p className="text-gray-400 text-sm mt-1">
-                                        {t('dashboard.dependencies.whatIs.description')}
-                                    </p>
+                                    <p className="text-gray-400 text-sm mt-1">{t('dashboard.dependencies.whatIs.description')}</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Liste des propositions */}
                         {depProposalsLoading ? (
                             <div className="flex justify-center py-12">
                                 <Loader2 className="w-8 h-8 text-hyt-accent animate-spin" />
@@ -340,41 +344,26 @@ export default function Dashboard() {
                             <div className="card text-center py-12">
                                 <Link2 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                                 <p className="text-gray-400 mb-2">{t('dashboard.dependencies.empty.title')}</p>
-                                <p className="text-gray-500 text-sm">
-                                    {t('dashboard.dependencies.empty.description')}
-                                </p>
+                                <p className="text-gray-500 text-sm">{t('dashboard.dependencies.empty.description')}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {depProposals.map(proposal => (
-                                    <div
-                                        key={proposal.id}
-                                        className="card flex items-center gap-4"
-                                    >
-                                        {/* Logo */}
+                                    <div key={proposal.id} className="card flex items-center gap-4">
                                         <div className="w-14 h-14 rounded-xl bg-hyt-dark flex items-center justify-center overflow-hidden flex-shrink-0">
                                             {proposal.logo_url ? (
-                                                <img
-                                                    src={`http://localhost:3001${proposal.logo_url}`}
-                                                    alt={proposal.name}
-                                                    className="w-full h-full object-contain p-1"
-                                                />
+                                                <img src={`http://localhost:3001${proposal.logo_url}`} alt={proposal.name} className="w-full h-full object-contain p-1" />
                                             ) : (
                                                 <Link2 className="w-6 h-6 text-gray-500" />
                                             )}
                                         </div>
-
-                                        {/* Info */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <h3 className="font-semibold text-white">{proposal.name}</h3>
-                                                <span className="px-2 py-0.5 text-xs bg-hyt-border text-gray-400 rounded">
-                                                    {proposal.game_name}
-                                                </span>
+                                                <span className="px-2 py-0.5 text-xs bg-hyt-border text-gray-400 rounded">{proposal.game_name}</span>
                                                 <span className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
                                                     proposal.status === 'PENDING' ? 'bg-orange-500/20 text-orange-400' :
-                                                        proposal.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
-                                                            'bg-red-500/20 text-red-400'
+                                                        proposal.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                                                 }`}>
                                                     {proposal.status === 'PENDING' && <Clock className="w-3 h-3" />}
                                                     {proposal.status === 'APPROVED' && <CheckCircle className="w-3 h-3" />}
@@ -383,26 +372,12 @@ export default function Dashboard() {
                                                         proposal.status === 'APPROVED' ? t('dashboard.dependencies.status.approved') : t('dashboard.dependencies.status.rejected')}
                                                 </span>
                                             </div>
-                                            {proposal.description && (
-                                                <p className="text-sm text-gray-400 mt-1 line-clamp-1">{proposal.description}</p>
-                                            )}
-                                            {proposal.rejection_reason && (
-                                                <p className="text-sm text-red-400 mt-1">
-                                                    {t('dashboard.dependencies.reason')}: {proposal.rejection_reason}
-                                                </p>
-                                            )}
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                {t('dashboard.dependencies.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR')}
-                                            </p>
+                                            {proposal.description && <p className="text-sm text-gray-400 mt-1 line-clamp-1">{proposal.description}</p>}
+                                            {proposal.rejection_reason && <p className="text-sm text-red-400 mt-1">{t('dashboard.dependencies.reason')}: {proposal.rejection_reason}</p>}
+                                            <p className="text-xs text-gray-500 mt-1">{t('dashboard.dependencies.proposedOn')} {new Date(proposal.created_at).toLocaleDateString('fr-FR')}</p>
                                         </div>
-
-                                        {/* Actions */}
                                         {proposal.status === 'PENDING' && (
-                                            <button
-                                                onClick={() => handleDeleteDepProposal(proposal.id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                                title={t('common.delete')}
-                                            >
+                                            <button onClick={() => handleDeleteDepProposal(proposal.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title={t('common.delete')}>
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         )}
@@ -411,7 +386,6 @@ export default function Dashboard() {
                             </div>
                         )}
 
-                        {/* Modal de proposition */}
                         {showDepModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                                 <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
@@ -424,108 +398,43 @@ export default function Dashboard() {
                                             <X className="w-5 h-5" />
                                         </button>
                                     </div>
-
                                     <form onSubmit={handleSubmitDepProposal} className="p-4 space-y-4">
-                                        {/* Logo */}
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.logo')}</label>
                                             <div className="flex items-center gap-4">
-                                                <div
-                                                    onClick={() => document.getElementById('dep-logo-input').click()}
-                                                    className="w-16 h-16 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex items-center justify-center cursor-pointer overflow-hidden"
-                                                >
-                                                    {depLogoPreview ? (
-                                                        <img src={depLogoPreview} alt="Logo" className="w-full h-full object-contain p-1" />
-                                                    ) : (
-                                                        <Link2 className="w-6 h-6 text-gray-500" />
-                                                    )}
+                                                <div onClick={() => document.getElementById('dep-logo-input').click()} className="w-16 h-16 rounded-xl bg-hyt-dark border-2 border-dashed border-hyt-border hover:border-hyt-accent/50 flex items-center justify-center cursor-pointer overflow-hidden">
+                                                    {depLogoPreview ? <img src={depLogoPreview} alt="Logo" className="w-full h-full object-contain p-1" /> : <Link2 className="w-6 h-6 text-gray-500" />}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
                                                     <p>{t('dashboard.dependencies.modal.clickToUpload')}</p>
                                                     <p className="text-xs">{t('dashboard.dependencies.modal.logoFormat')}</p>
                                                 </div>
                                             </div>
-                                            <input
-                                                id="dep-logo-input"
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleDepLogoChange}
-                                                className="hidden"
-                                            />
+                                            <input id="dep-logo-input" type="file" accept="image/*" onChange={handleDepLogoChange} className="hidden" />
                                         </div>
-
-                                        {/* Nom */}
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.name')} *</label>
-                                            <input
-                                                type="text"
-                                                value={depForm.name}
-                                                onChange={(e) => setDepForm({ ...depForm, name: e.target.value })}
-                                                placeholder={t('dashboard.dependencies.modal.namePlaceholder')}
-                                                className="input-field w-full"
-                                                required
-                                            />
+                                            <input type="text" value={depForm.name} onChange={(e) => setDepForm({ ...depForm, name: e.target.value })} placeholder={t('dashboard.dependencies.modal.namePlaceholder')} className="input-field w-full" required />
                                         </div>
-
-                                        {/* Jeu */}
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.game')} *</label>
-                                            <select
-                                                value={depForm.gameId}
-                                                onChange={(e) => setDepForm({ ...depForm, gameId: e.target.value })}
-                                                className="input-field w-full"
-                                                required
-                                            >
+                                            <select value={depForm.gameId} onChange={(e) => setDepForm({ ...depForm, gameId: e.target.value })} className="input-field w-full" required>
                                                 <option value="">{t('dashboard.dependencies.modal.selectGame')}</option>
-                                                {games.map(game => (
-                                                    <option key={game.id} value={game.id}>{game.name}</option>
-                                                ))}
+                                                {games.map(game => <option key={game.id} value={game.id}>{game.name}</option>)}
                                             </select>
                                         </div>
-
-                                        {/* Description */}
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.description')}</label>
-                                            <textarea
-                                                value={depForm.description}
-                                                onChange={(e) => setDepForm({ ...depForm, description: e.target.value })}
-                                                placeholder={t('dashboard.dependencies.modal.descriptionPlaceholder')}
-                                                rows={2}
-                                                className="input-field w-full resize-none"
-                                            />
+                                            <textarea value={depForm.description} onChange={(e) => setDepForm({ ...depForm, description: e.target.value })} placeholder={t('dashboard.dependencies.modal.descriptionPlaceholder')} rows={2} className="input-field w-full resize-none" />
                                         </div>
-
-                                        {/* Site web */}
                                         <div>
                                             <label className="block text-sm text-gray-400 mb-2">{t('dashboard.dependencies.modal.website')}</label>
-                                            <input
-                                                type="url"
-                                                value={depForm.websiteUrl}
-                                                onChange={(e) => setDepForm({ ...depForm, websiteUrl: e.target.value })}
-                                                placeholder="https://..."
-                                                className="input-field w-full"
-                                            />
+                                            <input type="url" value={depForm.websiteUrl} onChange={(e) => setDepForm({ ...depForm, websiteUrl: e.target.value })} placeholder="https://..." className="input-field w-full" />
                                         </div>
-
-                                        {/* Boutons */}
                                         <div className="flex gap-3 pt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowDepModal(false)}
-                                                className="btn-ghost flex-1"
-                                            >
-                                                {t('common.cancel')}
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={submittingDep}
-                                                className="btn-primary flex-1 flex items-center justify-center gap-2"
-                                            >
-                                                {submittingDep ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <Check className="w-4 h-4" />
-                                                )}
+                                            <button type="button" onClick={() => setShowDepModal(false)} className="btn-ghost flex-1">{t('common.cancel')}</button>
+                                            <button type="submit" disabled={submittingDep} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                                                {submittingDep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                                                 {t('dashboard.dependencies.propose')}
                                             </button>
                                         </div>
@@ -536,59 +445,57 @@ export default function Dashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* Quick Actions */}
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                            <Link
-                                to="/purchases"
-                                className="card-hover flex items-center gap-4"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-hyt-accent/10 flex items-center justify-center">
-                                    <Package className="w-6 h-6 text-hyt-accent" />
+                        {/* Quick Actions - Grille adaptative */}
+                        <div className={`grid gap-4 mb-8 ${isCreator() ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2'}`}>
+                            <Link to="/purchases" className="card-hover flex items-center gap-3 sm:gap-4">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-hyt-accent/10 flex items-center justify-center flex-shrink-0">
+                                    <Package className="w-5 h-5 sm:w-6 sm:h-6 text-hyt-accent" />
                                 </div>
-                                <div>
-                                    <p className="text-gray-400 text-sm">{t('dashboard.quickActions.myPurchases')}</p>
-                                    <p className="font-semibold text-white">{t('dashboard.quickActions.productsCount', { count: purchases.length })}</p>
+                                <div className="min-w-0">
+                                    <p className="text-gray-400 text-xs sm:text-sm">{t('dashboard.quickActions.myPurchases')}</p>
+                                    <p className="font-semibold text-white text-sm sm:text-base truncate">{t('dashboard.quickActions.productsCount', { count: purchases.length })}</p>
                                 </div>
                             </Link>
 
-                            <Link
-                                to="/invoices"
-                                className="card-hover flex items-center gap-4"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-hyt-purple/10 flex items-center justify-center">
-                                    <FileText className="w-6 h-6 text-hyt-purple" />
+                            <Link to="/invoices" className="card-hover flex items-center gap-3 sm:gap-4">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-hyt-purple/10 flex items-center justify-center flex-shrink-0">
+                                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-hyt-purple" />
                                 </div>
-                                <div>
-                                    <p className="text-gray-400 text-sm">{t('dashboard.quickActions.invoices')}</p>
-                                    <p className="font-semibold text-white">{t('dashboard.quickActions.viewAll')}</p>
+                                <div className="min-w-0">
+                                    <p className="text-gray-400 text-xs sm:text-sm">{t('dashboard.quickActions.invoices')}</p>
+                                    <p className="font-semibold text-white text-sm sm:text-base">{t('dashboard.quickActions.viewAll')}</p>
                                 </div>
                             </Link>
 
                             {isCreator() && (
                                 <>
-                                    <Link
-                                        to="/dashboard/models"
-                                        className="card-hover flex items-center gap-4"
-                                    >
-                                        <div className="w-12 h-12 rounded-xl bg-hyt-success/10 flex items-center justify-center">
-                                            <ShoppingBag className="w-6 h-6 text-hyt-success" />
+                                    <Link to="/dashboard/models" className="card-hover flex items-center gap-3 sm:gap-4">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-hyt-success/10 flex items-center justify-center flex-shrink-0">
+                                            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-hyt-success" />
                                         </div>
-                                        <div>
-                                            <p className="text-gray-400 text-sm">{t('dashboard.quickActions.myProducts')}</p>
-                                            <p className="font-semibold text-white">{t('dashboard.quickActions.manage')}</p>
+                                        <div className="min-w-0">
+                                            <p className="text-gray-400 text-xs sm:text-sm">{t('dashboard.quickActions.myProducts')}</p>
+                                            <p className="font-semibold text-white text-sm sm:text-base">{t('dashboard.quickActions.manage')}</p>
                                         </div>
                                     </Link>
 
-                                    <Link
-                                        to="/dashboard/settings"
-                                        className="card-hover flex items-center gap-4"
-                                    >
-                                        <div className="w-12 h-12 rounded-xl bg-hyt-warning/10 flex items-center justify-center">
-                                            <Settings className="w-6 h-6 text-hyt-warning" />
+                                    <Link to="/dashboard/analytics" className="card-hover flex items-center gap-3 sm:gap-4">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                            <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
                                         </div>
-                                        <div>
-                                            <p className="text-gray-400 text-sm">{t('dashboard.quickActions.settings')}</p>
-                                            <p className="font-semibold text-white">{t('dashboard.quickActions.configure')}</p>
+                                        <div className="min-w-0">
+                                            <p className="text-gray-400 text-xs sm:text-sm">{t('dashboard.quickActions.analytics')}</p>
+                                            <p className="font-semibold text-white text-sm sm:text-base">{t('dashboard.quickActions.statistics')}</p>
+                                        </div>
+                                    </Link>
+
+                                    <Link to="/dashboard/settings" className="card-hover flex items-center gap-3 sm:gap-4 col-span-2 lg:col-span-1">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-hyt-warning/10 flex items-center justify-center flex-shrink-0">
+                                            <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-hyt-warning" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-gray-400 text-xs sm:text-sm">{t('dashboard.quickActions.settings')}</p>
+                                            <p className="font-semibold text-white text-sm sm:text-base">{t('dashboard.quickActions.configure')}</p>
                                         </div>
                                     </Link>
                                 </>
@@ -599,99 +506,144 @@ export default function Dashboard() {
                         {isCreator() && stats && (
                             <>
                                 {/* Stats Cards */}
-                                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                                    <div className="card">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="w-10 h-10 rounded-lg bg-hyt-success/10 flex items-center justify-center">
-                                                <DollarSign className="w-5 h-5 text-hyt-success" />
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                    <div className="card bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+                                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.totalRevenue')}</p>
-                                        <p className="font-display text-2xl font-bold text-white">
-                                            {(stats.totalEarnings / 100).toFixed(2)}€
+                                        <p className="text-gray-400 text-xs sm:text-sm mb-1">{t('dashboard.stats.totalRevenue')}</p>
+                                        <p className="font-display text-xl sm:text-2xl font-bold text-green-400">
+                                            {(analytics?.totalEarnings || 0).toFixed(2)}€
                                         </p>
                                     </div>
 
                                     <div className="card">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="w-10 h-10 rounded-lg bg-hyt-accent/10 flex items-center justify-center">
-                                                <ShoppingBag className="w-5 h-5 text-hyt-accent" />
+                                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.totalSales')}</p>
-                                        <p className="font-display text-2xl font-bold text-white">
-                                            {stats.salesCount}
+                                        <p className="text-gray-400 text-xs sm:text-sm mb-1">{t('dashboard.stats.last30Days')}</p>
+                                        <p className="font-display text-xl sm:text-2xl font-bold text-white">
+                                            {(analytics?.revenue30Days || 0).toFixed(2)}€
                                         </p>
                                     </div>
 
                                     <div className="card">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="w-10 h-10 rounded-lg bg-hyt-purple/10 flex items-center justify-center">
-                                                <TrendingUp className="w-5 h-5 text-hyt-purple" />
+                                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-hyt-accent/10 flex items-center justify-center">
+                                                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-hyt-accent" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.lastSale')}</p>
-                                        <p className="font-display text-lg font-bold text-white">
-                                            {stats.lastSaleAt
-                                                ? new Date(stats.lastSaleAt).toLocaleDateString('fr-FR')
-                                                : t('dashboard.stats.none')
-                                            }
-                                        </p>
+                                        <p className="text-gray-400 text-xs sm:text-sm mb-1">{t('dashboard.stats.totalSales')}</p>
+                                        <p className="font-display text-xl sm:text-2xl font-bold text-white">{stats.salesCount}</p>
                                     </div>
 
                                     <div className="card">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="w-10 h-10 rounded-lg bg-hyt-warning/10 flex items-center justify-center">
-                                                <CreditCard className="w-5 h-5 text-hyt-warning" />
+                                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                                                <PenTool className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
                                             </div>
                                         </div>
-                                        <p className="text-gray-400 text-sm mb-1">{t('dashboard.stats.lastPayout')}</p>
-                                        <p className="font-display text-lg font-bold text-white">
-                                            {stats.lastPayout
-                                                ? `${(stats.lastPayout.amount / 100).toFixed(2)}€`
-                                                : t('dashboard.stats.none')
-                                            }
+                                        <p className="text-gray-400 text-xs sm:text-sm mb-1">{t('dashboard.stats.customOrders')}</p>
+                                        <p className="font-display text-xl sm:text-2xl font-bold text-white">
+                                            {(analytics?.customOrdersRevenue || 0).toFixed(2)}€
                                         </p>
+                                        <p className="text-xs text-gray-500 mt-1">{analytics?.completedCustomOrders || 0} {t('dashboard.stats.completed')}</p>
                                     </div>
                                 </div>
 
+                                {/* Top Produits */}
+                                {analytics?.topProducts && analytics.topProducts.length > 0 && (
+                                    <div className="card mb-8">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-lg bg-hyt-accent/10 flex items-center justify-center">
+                                                <Award className="w-5 h-5 text-hyt-accent" />
+                                            </div>
+                                            <div>
+                                                <h2 className="font-semibold text-white">{t('dashboard.topProducts.title')}</h2>
+                                                <p className="text-sm text-gray-500">{t('dashboard.topProducts.subtitle')}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {analytics.topProducts.map((product, index) => (
+                                                <div key={product.id} className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl bg-hyt-darker/50 hover:bg-hyt-darker transition-colors">
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                                                        index === 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                                                            index === 1 ? 'bg-gray-400/20 text-gray-400' :
+                                                                index === 2 ? 'bg-orange-600/20 text-orange-400' : 'bg-hyt-border text-gray-500'
+                                                    }`}>
+                                                        #{index + 1}
+                                                    </div>
+
+                                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-hyt-dark overflow-hidden flex-shrink-0">
+                                                        {product.image_url ? (
+                                                            <img src={getImageUrl(product.image_url)} alt={product.title} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                <Package className="w-5 h-5 text-gray-600" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <Link to={`/models/${product.id}`} className="font-medium text-white hover:text-hyt-accent transition-colors line-clamp-1 text-sm sm:text-base">
+                                                            {product.title}
+                                                        </Link>
+                                                        <p className="text-xs sm:text-sm text-gray-500">
+                                                            {Number(product.price) === 0 ? t('common.free') : `${Number(product.price).toFixed(2)}€`}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="font-semibold text-white text-sm sm:text-base">{product.sales_count} {t('dashboard.topProducts.sales')}</p>
+                                                        <p className="text-xs sm:text-sm text-green-400">{product.total_revenue.toFixed(2)}€</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Empty state */}
+                                {(!analytics?.topProducts || analytics.topProducts.length === 0) && (
+                                    <div className="card mb-8">
+                                        <div className="text-center py-8">
+                                            <BarChart3 className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                                            <p className="text-gray-400">{t('dashboard.topProducts.empty')}</p>
+                                            <p className="text-sm text-gray-500">{t('dashboard.topProducts.emptyDescription')}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Custom Orders CTA */}
                                 {customOrdersCount > 0 && (
-                                    <div
-                                        onClick={() => setActiveTab('custom-orders')}
-                                        className="card mb-8 border-orange-500/30 bg-orange-500/5 cursor-pointer hover:bg-orange-500/10 transition-colors"
-                                    >
+                                    <div onClick={() => setActiveTab('custom-orders')} className="card mb-8 border-orange-500/30 bg-orange-500/5 cursor-pointer hover:bg-orange-500/10 transition-colors">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
                                                 <PenTool className="w-6 h-6 text-orange-500" />
                                             </div>
                                             <div className="flex-1">
-                                                <h3 className="font-semibold text-white mb-1">
-                                                    {t('dashboard.customOrdersCta.title', { count: customOrdersCount })}
-                                                </h3>
-                                                <p className="text-gray-400 text-sm">
-                                                    {t('dashboard.customOrdersCta.description')}
-                                                </p>
+                                                <h3 className="font-semibold text-white mb-1">{t('dashboard.customOrdersCta.title', { count: customOrdersCount })}</h3>
+                                                <p className="text-gray-400 text-sm">{t('dashboard.customOrdersCta.description')}</p>
                                             </div>
                                             <ChevronRight className="w-5 h-5 text-gray-400" />
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Propositions CTA Card */}
-                                <div
-                                    onClick={() => setActiveTab('proposals')}
-                                    className="card mb-8 border-yellow-500/30 bg-yellow-500/5 cursor-pointer hover:bg-yellow-500/10 transition-colors"
-                                >
+                                {/* Propositions CTA */}
+                                <div onClick={() => setActiveTab('proposals')} className="card mb-8 border-yellow-500/30 bg-yellow-500/5 cursor-pointer hover:bg-yellow-500/10 transition-colors">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
                                             <Lightbulb className="w-6 h-6 text-yellow-500" />
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="font-semibold text-white mb-1">{t('dashboard.proposalsCta.title')}</h3>
-                                            <p className="text-gray-400 text-sm">
-                                                {t('dashboard.proposalsCta.description')}
-                                            </p>
+                                            <p className="text-gray-400 text-sm">{t('dashboard.proposalsCta.description')}</p>
                                         </div>
                                         <ChevronRight className="w-5 h-5 text-gray-400" />
                                     </div>
@@ -706,14 +658,8 @@ export default function Dashboard() {
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.title')}</h3>
-                                                <p className="text-gray-400 text-sm mb-4">
-                                                    {t('dashboard.stripe.description')}
-                                                </p>
-                                                <button
-                                                    onClick={handleConnectStripe}
-                                                    disabled={connectingStripe}
-                                                    className="btn-primary"
-                                                >
+                                                <p className="text-gray-400 text-sm mb-4">{t('dashboard.stripe.description')}</p>
+                                                <button onClick={handleConnectStripe} disabled={connectingStripe} className="btn-primary">
                                                     {connectingStripe ? t('dashboard.stripe.connecting') : t('dashboard.stripe.connect')}
                                                 </button>
                                             </div>
@@ -726,25 +672,17 @@ export default function Dashboard() {
                                     <div className="card">
                                         <div className="flex items-center justify-between mb-6">
                                             <h2 className="font-semibold text-white">{t('dashboard.recentSales.title')}</h2>
-                                            <Link to="/dashboard/sales" className="text-sm text-hyt-accent hover:underline">
-                                                {t('dashboard.recentSales.viewAll')}
-                                            </Link>
+                                            <Link to="/dashboard/sales" className="text-sm text-hyt-accent hover:underline">{t('dashboard.recentSales.viewAll')}</Link>
                                         </div>
-
                                         <div className="space-y-4">
                                             {recentSales.map((sale) => (
-                                                <div
-                                                    key={sale.id}
-                                                    className="flex items-center justify-between py-3 border-b border-hyt-border last:border-0"
-                                                >
+                                                <div key={sale.id} className="flex items-center justify-between py-3 border-b border-hyt-border last:border-0">
                                                     <div>
                                                         <p className="font-medium text-white">{sale.modelTitle || t('dashboard.recentSales.product')}</p>
-                                                        <p className="text-sm text-gray-500">
-                                                            {new Date(sale.createdAt).toLocaleDateString('fr-FR')}
-                                                        </p>
+                                                        <p className="text-sm text-gray-500">{new Date(sale.createdAt).toLocaleDateString('fr-FR')}</p>
                                                     </div>
-                                                    <span className="font-mono font-semibold text-hyt-success">
-                                                        +{(sale.amount / 100).toFixed(2)}€
+                                                    <span className={`font-mono font-semibold ${sale.amount === 0 ? 'text-green-400' : 'text-hyt-success'}`}>
+                                                        {sale.amount === 0 ? t('common.free') : `+${(sale.amount).toFixed(2)}€`}
                                                     </span>
                                                 </div>
                                             ))}
@@ -759,17 +697,11 @@ export default function Dashboard() {
                             <div className="card">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="font-semibold text-white">{t('dashboard.recentPurchases.title')}</h2>
-                                    <Link to="/purchases" className="text-sm text-hyt-accent hover:underline">
-                                        {t('dashboard.recentPurchases.viewAll')}
-                                    </Link>
+                                    <Link to="/purchases" className="text-sm text-hyt-accent hover:underline">{t('dashboard.recentPurchases.viewAll')}</Link>
                                 </div>
-
                                 <div className="space-y-4">
                                     {purchases.slice(0, 5).map((purchase) => (
-                                        <div
-                                            key={purchase.id}
-                                            className="flex items-center gap-4 py-3 border-b border-hyt-border last:border-0"
-                                        >
+                                        <div key={purchase.id} className="flex items-center gap-4 py-3 border-b border-hyt-border last:border-0">
                                             <div className="w-12 h-12 rounded-lg bg-hyt-darker overflow-hidden flex-shrink-0">
                                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent/10 to-hyt-purple/10">
                                                     <span className="text-sm font-bold text-hyt-accent/30">3D</span>
@@ -777,12 +709,10 @@ export default function Dashboard() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-white truncate">{purchase.title}</p>
-                                                <p className="text-sm text-gray-500">
-                                                    {new Date(purchase.created_at).toLocaleDateString('fr-FR')}
-                                                </p>
+                                                <p className="text-sm text-gray-500">{new Date(purchase.created_at).toLocaleDateString('fr-FR')}</p>
                                             </div>
-                                            <span className="font-mono text-gray-400">
-                                                {Number(purchase.price).toFixed(2)}€
+                                            <span className={`font-mono ${Number(purchase.price) === 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                                                {Number(purchase.price) === 0 ? t('common.free') : `${Number(purchase.price).toFixed(2)}€`}
                                             </span>
                                         </div>
                                     ))}
@@ -794,19 +724,13 @@ export default function Dashboard() {
                         {!isCreator() && (
                             <div className="card mt-8 bg-gradient-to-r from-hyt-accent/10 to-hyt-purple/10 border-hyt-accent/20">
                                 <div className="flex items-center gap-6">
-                                    <div className="hidden sm:block w-20 h-20 rounded-2xl bg-gradient-to-br from-hyt-accent to-hyt-purple flex items-center justify-center">
+                                    <div className="hidden sm:flex w-20 h-20 rounded-2xl bg-gradient-to-br from-hyt-accent to-hyt-purple items-center justify-center flex-shrink-0">
                                         <Upload className="w-10 h-10 text-white" />
                                     </div>
                                     <div className="flex-1">
-                                        <h3 className="font-display text-xl font-bold text-white mb-2">
-                                            {t('dashboard.becomeCreator.title')}
-                                        </h3>
-                                        <p className="text-gray-400 mb-4">
-                                            {t('dashboard.becomeCreator.description')}
-                                        </p>
-                                        <Link to="/become-creator" className="btn-primary">
-                                            {t('dashboard.becomeCreator.learnMore')}
-                                        </Link>
+                                        <h3 className="font-display text-xl font-bold text-white mb-2">{t('dashboard.becomeCreator.title')}</h3>
+                                        <p className="text-gray-400 mb-4">{t('dashboard.becomeCreator.description')}</p>
+                                        <Link to="/become-creator" className="btn-primary">{t('dashboard.becomeCreator.learnMore')}</Link>
                                     </div>
                                 </div>
                             </div>

@@ -4,7 +4,7 @@ import {
     User, Camera, Mail, Lock, Shield, Smartphone,
     Link as LinkIcon, Save, Loader2, Check, X, Copy,
     Eye, EyeOff, AlertTriangle, QrCode, Key, Trash2,
-    ExternalLink, LogOut, Monitor
+    ExternalLink, LogOut, Monitor, Globe, ChevronDown
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
@@ -27,10 +27,34 @@ const GoogleIcon = () => (
     </svg>
 )
 
+// Drapeaux pour les langues
+const FlagFR = () => (
+    <svg className="w-5 h-5 rounded-sm" viewBox="0 0 640 480">
+        <path fill="#fff" d="M0 0h640v480H0z"/>
+        <path fill="#00267f" d="M0 0h213.3v480H0z"/>
+        <path fill="#f31830" d="M426.7 0H640v480H426.7z"/>
+    </svg>
+)
+
+const FlagEN = () => (
+    <svg className="w-5 h-5 rounded-sm" viewBox="0 0 640 480">
+        <path fill="#012169" d="M0 0h640v480H0z"/>
+        <path fill="#FFF" d="m75 0 244 181L562 0h78v62L400 241l240 178v61h-80L320 301 81 480H0v-60l239-178L0 64V0h75z"/>
+        <path fill="#C8102E" d="m424 281 216 159v40L369 281h55zm-184 20 6 35L54 480H0l240-179zM640 0v3L391 191l2-44L590 0h50zM0 0l239 176h-60L0 42V0z"/>
+        <path fill="#FFF" d="M241 0v480h160V0H241zM0 160v160h640V160H0z"/>
+        <path fill="#C8102E" d="M0 193v96h640v-96H0zM273 0v480h96V0h-96z"/>
+    </svg>
+)
+
+const languages = [
+    { code: 'fr', name: 'Français', flag: FlagFR },
+    { code: 'en', name: 'English', flag: FlagEN }
+]
+
 export default function Profile() {
     const navigate = useNavigate()
     const { user, refreshUser } = useAuth()
-    const { t } = useTranslation()
+    const { t, language, setLanguage } = useTranslation()
     const avatarInputRef = useRef(null)
 
     // États du profil
@@ -74,6 +98,9 @@ export default function Profile() {
     const [sessions, setSessions] = useState([])
     const [showSessions, setShowSessions] = useState(false)
 
+    // États langue
+    const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+
     // UI
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -86,6 +113,17 @@ export default function Profile() {
         }
         loadProfile()
     }, [user])
+
+    // Fermer le dropdown quand on clique ailleurs
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (showLanguageDropdown && !e.target.closest('.language-dropdown')) {
+                setShowLanguageDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showLanguageDropdown])
 
     const loadProfile = async () => {
         try {
@@ -173,6 +211,13 @@ export default function Profile() {
         } finally {
             setSaving(false)
         }
+    }
+
+    // Language change
+    const handleLanguageChange = (langCode) => {
+        setLanguage(langCode)
+        setShowLanguageDropdown(false)
+        toast.success(langCode === 'fr' ? 'Langue changée en Français' : 'Language changed to English')
     }
 
     // 2FA Functions
@@ -273,6 +318,9 @@ export default function Profile() {
         }
     }
 
+    // Trouver la langue actuelle
+    const currentLanguage = languages.find(l => l.code === language) || languages[0]
+
     if (loading) {
         return (
             <div className="min-h-screen pt-20 flex items-center justify-center">
@@ -364,6 +412,48 @@ export default function Profile() {
                                     <p className="text-gray-500 text-sm">{user?.email}</p>
                                     <p className="text-gray-600 text-xs mt-1">{t('profile.avatar.hint')}</p>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Langue / Language */}
+                        <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                <Globe className="w-5 h-5" />
+                                {t('profile.language.title')}
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-4">{t('profile.language.subtitle')}</p>
+
+                            <div className="relative language-dropdown">
+                                <button
+                                    onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                                    className="flex items-center justify-between w-full sm:w-64 px-4 py-3 bg-hyt-dark border border-hyt-border rounded-lg hover:border-hyt-accent/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <currentLanguage.flag />
+                                        <span className="text-white">{currentLanguage.name}</span>
+                                    </div>
+                                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showLanguageDropdown ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {showLanguageDropdown && (
+                                    <div className="absolute z-10 mt-2 w-full sm:w-64 bg-hyt-card border border-hyt-border rounded-lg shadow-xl overflow-hidden">
+                                        {languages.map((lang) => (
+                                            <button
+                                                key={lang.code}
+                                                onClick={() => handleLanguageChange(lang.code)}
+                                                className={`flex items-center gap-3 w-full px-4 py-3 hover:bg-hyt-dark transition-colors ${
+                                                    language === lang.code ? 'bg-hyt-accent/10 text-hyt-accent' : 'text-white'
+                                                }`}
+                                            >
+                                                <lang.flag />
+                                                <span>{lang.name}</span>
+                                                {language === lang.code && (
+                                                    <Check className="w-4 h-4 ml-auto" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

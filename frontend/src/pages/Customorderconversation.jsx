@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, Send, Paperclip, Loader2, User, Clock,
     MessageSquare, Euro, Calendar, CheckCircle, X, XCircle,
-    FileText, AlertCircle, CreditCard, Lock
+    FileText, AlertCircle, CreditCard, Lock, Image as ImageIcon
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -16,11 +16,26 @@ const getImageUrl = (url) => {
     return `http://localhost:3001${url}`
 }
 
+// Vérifier si un fichier est une image
+const isImageFile = (file) => {
+    if (!file) return false
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
+    const fileName = (file.originalname || file.name || '').toLowerCase()
+    const mimeType = file.mimetype || file.type || ''
+
+    return imageExtensions.some(ext => fileName.endsWith(ext)) ||
+        mimeType.startsWith('image/')
+}
+
 // Composant Message
 function MessageBubble({ message, isOwn, t }) {
     const attachments = typeof message.attachments === 'string'
         ? JSON.parse(message.attachments)
         : message.attachments || []
+
+    // Séparer images et autres fichiers
+    const imageAttachments = attachments.filter(isImageFile)
+    const otherAttachments = attachments.filter(f => !isImageFile(f))
 
     // Détecter les messages système
     const isSystemMessage = message.content?.startsWith('💰') ||
@@ -66,11 +81,47 @@ function MessageBubble({ message, isOwn, t }) {
                         ? 'bg-hyt-accent text-black rounded-br-md'
                         : 'bg-hyt-card border border-hyt-border text-white rounded-bl-md'
                 }`}>
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    {/* Texte du message */}
+                    {message.content && (
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    )}
 
-                    {attachments.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                            {attachments.map((file, i) => (
+                    {/* Images attachées */}
+                    {imageAttachments.length > 0 && (
+                        <div className={`${message.content ? 'mt-2' : ''} space-y-2`}>
+                            {imageAttachments.map((file, i) => (
+                                <a
+                                    key={i}
+                                    href={getImageUrl(file.path)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                >
+                                    <img
+                                        src={getImageUrl(file.path)}
+                                        alt={file.originalname || `Image ${i + 1}`}
+                                        className="max-w-full rounded-lg max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                        onError={(e) => {
+                                            // Fallback si l'image ne charge pas
+                                            e.target.style.display = 'none'
+                                            e.target.nextSibling?.classList.remove('hidden')
+                                        }}
+                                    />
+                                    <div className={`hidden flex items-center gap-2 text-sm ${
+                                        isOwn ? 'text-black/70' : 'text-gray-400'
+                                    }`}>
+                                        <ImageIcon className="w-4 h-4" />
+                                        {file.originalname || `Image ${i + 1}`}
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Autres fichiers */}
+                    {otherAttachments.length > 0 && (
+                        <div className={`${message.content || imageAttachments.length > 0 ? 'mt-2' : ''} space-y-1`}>
+                            {otherAttachments.map((file, i) => (
                                 <a
                                     key={i}
                                     href={getImageUrl(file.path)}
@@ -102,6 +153,7 @@ function MessageBubble({ message, isOwn, t }) {
 // Modal pour faire une offre (créateur)
 function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
     const { t } = useTranslation()
+    // Si offre existante, convertir de centimes en euros pour l'affichage dans l'input
     const [price, setPrice] = useState(existingOffer ? (existingOffer.price / 100).toString() : '')
     const [days, setDays] = useState(existingOffer?.estimated_days?.toString() || '')
     const [message, setMessage] = useState('')
@@ -116,8 +168,9 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
             toast.error(t('conversation.offerModal.errors.minDays'))
             return
         }
+        // Envoyer en centimes (× 100)
         onSubmit({
-            price: Math.round(parseFloat(price) * 100),
+            price: Math.round(Number(price) * 100),
             estimated_days: parseInt(days),
             message: message.trim()
         })
@@ -191,6 +244,81 @@ function MakeOfferModal({ onClose, onSubmit, loading, existingOffer }) {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    )
+}
+
+// Modal pour accepter une offre (client)
+function AcceptOfferModal({ onClose, onConfirm, loading, offer }) {
+    const { t } = useTranslation()
+
+    // Prix en euros (÷ 100)
+    const priceInEuros = offer ? (offer.price / 100) : 0
+    const depositInEuros = priceInEuros / 2
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md">
+                <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        {t('conversation.acceptModal.title')}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    {/* Récap de l'offre */}
+                    <div className="bg-hyt-dark rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-gray-400">{t('conversation.acceptModal.price')}</span>
+                            <span className="text-2xl font-bold text-white">
+                                {priceInEuros.toFixed(2)}€
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400">{t('conversation.acceptModal.delay')}</span>
+                            <span className="text-white">
+                                {offer?.estimated_days} {t('conversation.days')}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Info paiement */}
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                        <p className="text-green-400 text-sm flex items-center gap-2">
+                            <CreditCard className="w-4 h-4 flex-shrink-0" />
+                            {t('conversation.acceptModal.paymentInfo', {
+                                amount: depositInEuros.toFixed(2)
+                            })}
+                        </p>
+                    </div>
+
+                    <p className="text-gray-400 text-sm">
+                        {t('conversation.acceptModal.description')}
+                    </p>
+                </div>
+
+                <div className="flex gap-3 p-4 border-t border-hyt-border">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 btn-ghost"
+                        disabled={loading}
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={loading}
+                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium flex items-center justify-center gap-2"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        {t('conversation.acceptModal.confirm')}
+                    </button>
+                </div>
             </div>
         </div>
     )
@@ -336,6 +464,7 @@ export default function CustomOrderConversation() {
     const [showOfferModal, setShowOfferModal] = useState(false)
     const [showRejectModal, setShowRejectModal] = useState(false)
     const [showCloseModal, setShowCloseModal] = useState(false)
+    const [showAcceptModal, setShowAcceptModal] = useState(false)
 
     useEffect(() => {
         loadConversation()
@@ -413,14 +542,27 @@ export default function CustomOrderConversation() {
         }
     }
 
-    const handleAcceptOffer = async () => {
-        if (!confirm(t('conversation.confirmAcceptOffer'))) return
+    const handleAcceptOffer = () => {
+        setShowAcceptModal(true)
+    }
+
+    const confirmAcceptOffer = async () => {
+        if (!existingOffer?.id) {
+            toast.error(t('conversation.errors.generic'))
+            return
+        }
 
         setActionLoading(true)
         try {
-            const { data } = await customOrdersAPI.acceptConversationOffer(id)
+            const { data } = await customOrdersAPI.acceptOffer(existingOffer.id)
             toast.success(t('conversation.success.offerAccepted'))
-            loadConversation()
+            setShowAcceptModal(false)
+            // Rediriger vers la commande créée
+            if (data.order?.id) {
+                navigate(`/custom-orders/orders/${data.order.id}`)
+            } else {
+                loadConversation()
+            }
         } catch (error) {
             toast.error(error.response?.data?.error || t('conversation.errors.generic'))
         } finally {
@@ -485,6 +627,9 @@ export default function CustomOrderConversation() {
         ? { username: conversation.creator_username, avatar: conversation.creator_avatar }
         : { username: conversation.client_username, avatar: conversation.client_avatar }
 
+    // Prix en euros pour l'affichage (÷ 100)
+    const offerPriceInEuros = existingOffer ? (existingOffer.price / 100) : 0
+
     return (
         <div className="min-h-screen pt-20 flex flex-col">
             <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col px-4 py-4">
@@ -527,7 +672,7 @@ export default function CustomOrderConversation() {
                             </span>
                         ) : existingOffer?.status === 'PENDING' ? (
                             <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                                {t('conversation.status.offer')}: {(existingOffer.price / 100).toFixed(0)}€
+                                {t('conversation.status.offer')}: {offerPriceInEuros.toFixed(0)}€
                             </span>
                         ) : null}
 
@@ -551,7 +696,7 @@ export default function CustomOrderConversation() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-white font-medium">
-                                            {t('conversation.status.offer')} : {(existingOffer.price / 100).toFixed(2)}€
+                                            {t('conversation.status.offer')} : {offerPriceInEuros.toFixed(2)}€
                                         </p>
                                         <p className="text-gray-400 text-sm">
                                             {t('conversation.delay')} : {existingOffer.estimated_days} {t('conversation.days')}
@@ -604,7 +749,7 @@ export default function CustomOrderConversation() {
                                     className="px-4 py-2 bg-hyt-accent text-black font-medium rounded-lg hover:bg-hyt-accent/90 flex items-center gap-2"
                                 >
                                     <CreditCard className="w-4 h-4" />
-                                    {t('conversation.pay')} {(existingOffer.price / 100 / 2).toFixed(2)}€
+                                    {t('conversation.pay')} {(offerPriceInEuros / 2).toFixed(2)}€
                                 </button>
                             </div>
                         </div>
@@ -654,7 +799,11 @@ export default function CustomOrderConversation() {
                         <div className="flex flex-wrap gap-2">
                             {attachments.map((file, i) => (
                                 <div key={i} className="flex items-center gap-2 bg-hyt-dark px-3 py-1 rounded-lg text-sm">
-                                    <FileText className="w-4 h-4 text-gray-400" />
+                                    {isImageFile(file) ? (
+                                        <ImageIcon className="w-4 h-4 text-hyt-accent" />
+                                    ) : (
+                                        <FileText className="w-4 h-4 text-gray-400" />
+                                    )}
                                     <span className="text-white truncate max-w-[150px]">{file.name}</span>
                                     <button
                                         onClick={() => setAttachments(attachments.filter((_, idx) => idx !== i))}
@@ -685,7 +834,7 @@ export default function CustomOrderConversation() {
                                 multiple
                                 onChange={handleFileChange}
                                 className="hidden"
-                                accept="image/*,.pdf,.doc,.docx,.zip,.rar"
+                                accept="image/*,.gif,.pdf,.doc,.docx,.zip,.rar"
                             />
 
                             {/* Bouton faire une offre (créateur seulement) */}
@@ -733,6 +882,15 @@ export default function CustomOrderConversation() {
                     onSubmit={handleMakeOffer}
                     loading={actionLoading}
                     existingOffer={existingOffer?.status === 'PENDING' ? existingOffer : null}
+                />
+            )}
+
+            {showAcceptModal && (
+                <AcceptOfferModal
+                    onClose={() => setShowAcceptModal(false)}
+                    onConfirm={confirmAcceptOffer}
+                    loading={actionLoading}
+                    offer={existingOffer}
                 />
             )}
 

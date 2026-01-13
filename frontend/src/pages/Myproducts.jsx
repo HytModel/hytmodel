@@ -515,8 +515,8 @@ export default function MyProducts() {
                                             {product.category_name && ` • ${product.category_name}`}
                                         </p>
                                         <div className="flex items-center gap-4 mt-2">
-                                            <span className="text-hyt-accent font-semibold">
-                                                {parseFloat(product.price).toFixed(2)} €
+                                            <span className={`font-semibold ${parseFloat(product.price) === 0 ? 'text-green-400' : 'text-hyt-accent'}`}>
+                                                {parseFloat(product.price) === 0 ? t('common.free') : `${parseFloat(product.price).toFixed(2)} €`}
                                             </span>
                                             {product.download_count > 0 && (
                                                 <span className="text-gray-500 text-sm flex items-center gap-1">

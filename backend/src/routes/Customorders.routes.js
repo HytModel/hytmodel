@@ -23,7 +23,7 @@ const upload = multer({
     storage,
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
     fileFilter: (req, file, cb) => {
-        const allowed = [".jpg", ".jpeg", ".png", ".gif", ".zip", ".rar", ".pdf", ".doc", ".docx"];
+        const allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".zip", ".rar", ".pdf", ".doc", ".docx"];
         const ext = path.extname(file.originalname).toLowerCase();
         if (allowed.includes(ext)) {
             cb(null, true);
@@ -112,7 +112,6 @@ router.get("/requests/:id", requireAuth, async (req, res, next) => {
         const isClient = request.client_id === req.user.id;
         const isStaff = ["STAFF", "ADMIN"].includes(req.user.role);
 
-        // Vérifier si créateur affilié via creator_type
         const { rows: creatorCheck } = await pool.query(
             `SELECT id, creator_type FROM users WHERE id = $1 AND role = 'CREATOR' AND creator_type IN ('AFFILIATED', 'HYTSTUDIO')`,
             [req.user.id]
@@ -176,7 +175,6 @@ router.post("/offers/:id/accept", requireAuth, async (req, res, next) => {
             return res.status(403).json({ error: "Vous n'êtes pas le client de cette demande" });
         }
 
-        // Commission: 0% si HYTSTUDIO, 5% si AFFILIATED
         const isHytStudio = offer.creator_type === 'HYTSTUDIO';
         const commissionRate = isHytStudio ? 0 : 0.05;
         const commissionAmount = offer.price * commissionRate;
@@ -256,7 +254,7 @@ router.post("/orders/:id/pay-first", requireAuth, async (req, res, next) => {
                         name: `Acompte: ${order.request_title}`,
                         description: "Premier paiement (50%) - Remboursable à 50% en cas d'annulation"
                     },
-                    unit_amount: Math.round(parseFloat(order.first_payment_amount) * 100)
+                    unit_amount: Math.round(parseFloat(order.first_payment_amount))
                 },
                 quantity: 1
             }],
@@ -297,7 +295,7 @@ router.post("/orders/:id/pay-final", requireAuth, async (req, res, next) => {
                         name: `Solde: ${order.request_title}`,
                         description: "Paiement final (50%) - Déblocage des fichiers"
                     },
-                    unit_amount: Math.round(parseFloat(order.second_payment_amount) * 100)
+                    unit_amount: Math.round(parseFloat(order.second_payment_amount))
                 },
                 quantity: 1
             }],
@@ -314,8 +312,6 @@ router.post("/orders/:id/pay-final", requireAuth, async (req, res, next) => {
 });
 
 // POST /api/custom-orders/orders/:id/cancel - Annuler une commande
-// Remboursement: 50% du premier paiement uniquement (25% du total)
-// Après livraison: aucun remboursement
 router.post("/orders/:id/cancel", requireAuth, async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -331,7 +327,6 @@ router.post("/orders/:id/cancel", requireAuth, async (req, res, next) => {
         if (!rows[0]) return res.status(404).json({ error: "Commande non trouvée" });
         const order = rows[0];
 
-        // Impossible d'annuler après livraison complète
         if (order.status === 'COMPLETED') {
             return res.status(400).json({ error: "Impossible d'annuler une commande livrée et payée" });
         }
@@ -342,7 +337,6 @@ router.post("/orders/:id/cancel", requireAuth, async (req, res, next) => {
         let refundAmount = 0;
         let refundMessage = "Commande annulée sans remboursement";
 
-        // Remboursement: 50% du premier paiement seulement
         if (order.first_payment_paid && order.first_payment_stripe_id) {
             refundAmount = parseFloat(order.first_payment_amount) * 0.5;
             refundMessage = `Remboursement de ${refundAmount.toFixed(2)}€ (50% de l'acompte)`;
@@ -424,44 +418,190 @@ router.get("/orders/:id", requireAuth, async (req, res, next) => {
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        // Récupérer les messages
-        const { rows: messages } = await pool.query(
-            `SELECT com.*, u.username as sender_username, u.avatar_url as sender_avatar
+        const { rows: convRows } = await pool.query(
+            `SELECT id FROM custom_conversations
+             WHERE request_id = $1 AND client_id = $2 AND creator_id = $3`,
+            [order.request_id, order.client_id, order.creator_id]
+        );
+        const conversationId = convRows[0]?.id;
+
+        let conversationMessages = [];
+        if (conversationId) {
+            const { rows: convMsgs } = await pool.query(
+                `SELECT ccm.id, ccm.conversation_id, ccm.sender_id, ccm.content, ccm.attachments,
+                        ccm.is_read, ccm.created_at,
+                        'CONVERSATION' as source,
+                        'MESSAGE' as message_type,
+                        u.username as sender_username, u.avatar_url as sender_avatar
+                 FROM custom_conversation_messages ccm
+                          JOIN users u ON u.id = ccm.sender_id
+                 WHERE ccm.conversation_id = $1
+                 ORDER BY ccm.created_at ASC`,
+                [conversationId]
+            );
+            conversationMessages = convMsgs;
+        }
+
+        const { rows: orderMessages } = await pool.query(
+            `SELECT com.id, com.order_id, com.sender_id, com.content, com.attachments,
+                    com.is_read, com.created_at, com.message_type, com.progress_value,
+                    'ORDER' as source,
+                    u.username as sender_username, u.avatar_url as sender_avatar
              FROM custom_order_messages com
                       JOIN users u ON u.id = com.sender_id
              WHERE com.order_id = $1
              ORDER BY com.created_at ASC`,
             [id]
         );
-        order.messages = messages;
 
-        // Masquer les fichiers finaux tant que pas payé entièrement
+        const allMessages = [...conversationMessages, ...orderMessages].sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+        );
+
+        if (conversationMessages.length > 0 && orderMessages.length > 0) {
+            const firstOrderMessage = orderMessages[0];
+            const orderStartIndex = allMessages.findIndex(m => m.source === 'ORDER');
+
+            if (orderStartIndex > 0) {
+                allMessages.splice(orderStartIndex, 0, {
+                    id: 'separator-order-start',
+                    content: '✅ Offre acceptée - Commande démarrée',
+                    message_type: 'SYSTEM',
+                    source: 'SYSTEM',
+                    created_at: firstOrderMessage.created_at,
+                    is_separator: true
+                });
+            }
+        }
+
+        await pool.query(
+            `UPDATE custom_order_messages
+             SET is_read = TRUE
+             WHERE order_id = $1 AND sender_id != $2 AND is_read = FALSE`,
+            [id, req.user.id]
+        );
+
+        if (conversationId) {
+            if (isClient) {
+                await pool.query(
+                    `UPDATE custom_conversations SET client_unread_count = 0 WHERE id = $1`,
+                    [conversationId]
+                );
+            } else {
+                await pool.query(
+                    `UPDATE custom_conversations SET creator_unread_count = 0 WHERE id = $1`,
+                    [conversationId]
+                );
+            }
+        }
+
+        order.messages = allMessages;
+        order.conversation_id = conversationId;
+
         if (!order.second_payment_paid && !isStaff && !isCreator) {
             order.final_files = [];
         }
 
-        res.json({ order, isClient, isCreator });
+        res.json({
+            order,
+            messages: allMessages,
+            isClient: order.client_id === req.user.id,
+            isCreator: order.creator_id === req.user.id
+        });
     } catch (error) {
         next(error);
     }
 });
 
-// NOTE: Route déplacée plus bas avec notifications - voir ligne ~876
-// POST /api/custom-orders/orders/:id/messages - Envoyer un message
-// router.post("/orders/:id/messages", requireAuth, upload.array("attachments", 5), async (req, res, next) => {
-//     -- SUPPRIMÉE car dupliquée et sans notification --
-// });
+// POST /api/custom-orders/orders/:id/messages - Envoyer un message dans une commande (CORRIGÉ: permet images sans texte)
+router.post("/orders/:id/messages", requireAuth, upload.array("attachments", 5), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { content, message_type } = req.body;
+
+        // Traiter les fichiers uploadés AVANT la validation
+        const attachments = req.files ? req.files.map(f => ({
+            filename: f.filename,
+            originalname: f.originalname,
+            path: `/uploads/custom-orders/${f.filename}`,
+            size: f.size,
+            mimetype: f.mimetype
+        })) : [];
+
+        // Permettre d'envoyer soit du texte, soit des fichiers, soit les deux
+        const hasContent = content?.trim();
+        const hasAttachments = attachments.length > 0;
+
+        if (!hasContent && !hasAttachments) {
+            return res.status(400).json({ error: "Message ou fichier requis" });
+        }
+
+        const { rows } = await pool.query(
+            `SELECT * FROM custom_orders WHERE id = $1`,
+            [id]
+        );
+
+        if (!rows[0]) {
+            return res.status(404).json({ error: "Commande non trouvée" });
+        }
+
+        const order = rows[0];
+
+        if (order.client_id !== req.user.id && order.creator_id !== req.user.id) {
+            return res.status(403).json({ error: "Accès non autorisé" });
+        }
+
+        if (['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(order.status)) {
+            return res.status(400).json({ error: "Impossible d'envoyer des messages sur une commande terminée" });
+        }
+
+        const { rows: messageRows } = await pool.query(
+            `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
+             VALUES ($1, $2, $3, $4, $5)
+                 RETURNING *`,
+            [id, req.user.id, message_type || 'MESSAGE', hasContent ? content.trim() : '', JSON.stringify(attachments)]
+        );
+
+        const { rows: fullMessage } = await pool.query(
+            `SELECT com.*, u.username as sender_username, u.avatar_url as sender_avatar
+             FROM custom_order_messages com
+                      JOIN users u ON u.id = com.sender_id
+             WHERE com.id = $1`,
+            [messageRows[0].id]
+        );
+
+        const recipientId = order.client_id === req.user.id ? order.creator_id : order.client_id;
+
+        const notifMessage = hasAttachments && !hasContent
+            ? `Nouveau fichier reçu sur votre commande`
+            : `Nouveau message sur votre commande`;
+
+        await pool.query(
+            `INSERT INTO notifications (user_id, type, title, message, data)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+                recipientId,
+                'CUSTOM_ORDER_MESSAGE',
+                'Nouveau message',
+                notifMessage,
+                JSON.stringify({ order_id: id, link: `/custom-orders/orders/${id}` })
+            ]
+        );
+
+        res.status(201).json({ message: fullMessage[0] });
+    } catch (error) {
+        next(error);
+    }
+});
 
 // ==================== ROUTES CRÉATEUR ====================
 
 // GET /api/custom-orders/creator/requests - Demandes disponibles
 router.get("/creator/requests", requireAuth, async (req, res, next) => {
     try {
-        // STAFF/ADMIN sont considérés comme HytStudio
         const isStaffOrAdmin = ['STAFF', 'ADMIN'].includes(req.user.role);
 
         if (!isStaffOrAdmin) {
-            // Vérifier si l'utilisateur est un créateur AFFILIATED ou HYTSTUDIO
             const { rows: userCheck } = await pool.query(
                 `SELECT id, creator_type FROM users WHERE id = $1 AND role = 'CREATOR' AND creator_type IN ('AFFILIATED', 'HYTSTUDIO')`,
                 [req.user.id]
@@ -471,10 +611,6 @@ router.get("/creator/requests", requireAuth, async (req, res, next) => {
             }
         }
 
-        // Récupérer les demandes disponibles pour le créateur
-        // Inclure : demandes sans interaction OU avec conversation ouverte OU avec offre en attente/acceptée
-        // Exclure : demandes avec conversation clôturée OU offre refusée/retirée
-        // En production : exclure aussi ses propres demandes
         const isDev = process.env.NODE_ENV !== 'production';
 
         const { rows } = await pool.query(
@@ -491,16 +627,13 @@ router.get("/creator/requests", requireAuth, async (req, res, next) => {
                       LEFT JOIN categories c ON c.id = cr.category_id
                       JOIN users u ON u.id = cr.client_id
              WHERE cr.status = 'APPROVED'
-             -- En production, exclure ses propres demandes
                  ${isDev ? '' : 'AND cr.client_id != $1'}
-               -- Exclure si le créateur a une conversation clôturée
                AND NOT EXISTS (
                    SELECT 1 FROM custom_conversations cc 
                    WHERE cc.request_id = cr.id 
                    AND cc.creator_id = $1
                AND cc.status = 'CLOSED'
                  )
-             -- Exclure si le créateur a une offre refusée ou retirée (et pas de conversation ouverte)
                AND NOT EXISTS (
                  SELECT 1 FROM custom_offers co
                  WHERE co.request_id = cr.id
@@ -517,7 +650,6 @@ router.get("/creator/requests", requireAuth, async (req, res, next) => {
             [req.user.id]
         );
 
-        // Récupérer aussi les conversations actives du créateur (pour les afficher séparément)
         const { rows: activeConversations } = await pool.query(
             `SELECT cc.*, cr.title as request_title, cr.description as request_description,
                     cr.budget_min, cr.budget_max, cr.deadline, cr.status as request_status,
@@ -554,12 +686,10 @@ router.post("/creator/offers", requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: "Tous les champs sont requis" });
         }
 
-        // STAFF/ADMIN sont considérés comme HytStudio (0% commission)
         const isStaffOrAdmin = ['STAFF', 'ADMIN'].includes(req.user.role);
         let isHytStudio = isStaffOrAdmin;
 
         if (!isStaffOrAdmin) {
-            // Vérifier si l'utilisateur est un créateur AFFILIATED ou HYTSTUDIO
             const { rows: userCheck } = await pool.query(
                 `SELECT id, creator_type FROM users WHERE id = $1 AND role = 'CREATOR' AND creator_type IN ('AFFILIATED', 'HYTSTUDIO')`,
                 [req.user.id]
@@ -570,7 +700,7 @@ router.post("/creator/offers", requireAuth, async (req, res, next) => {
             isHytStudio = userCheck[0].creator_type === 'HYTSTUDIO';
         }
 
-        const commissionRate = isHytStudio ? 0 : 0.05; // 0% pour HytStudio/Staff/Admin, 5% pour Affilié
+        const commissionRate = isHytStudio ? 0 : 0.05;
 
         const { rows: requestCheck } = await pool.query(
             `SELECT * FROM custom_requests WHERE id = $1 AND status = 'APPROVED'`,
@@ -578,8 +708,6 @@ router.post("/creator/offers", requireAuth, async (req, res, next) => {
         );
         if (!requestCheck[0]) return res.status(404).json({ error: "Demande non disponible" });
 
-        // En production, empêcher de faire une offre sur sa propre demande
-        // En dev (NODE_ENV !== 'production'), on autorise pour les tests
         const isDev = process.env.NODE_ENV !== 'production';
         if (!isDev && requestCheck[0].client_id === req.user.id) {
             return res.status(400).json({ error: "Vous ne pouvez pas faire une offre sur votre propre demande" });
@@ -599,7 +727,6 @@ router.post("/creator/offers", requireAuth, async (req, res, next) => {
             [request_id, req.user.id, price, estimated_days, message, commissionRate, isHytStudio]
         );
 
-        // Notification au client (sauf si c'est soi-même en dev)
         if (requestCheck[0].client_id !== req.user.id) {
             await pool.query(
                 `INSERT INTO notifications (user_id, type, title, message, data)
@@ -671,7 +798,6 @@ router.post("/orders/:id/deliver", requireAuth, upload.array("files", 10), async
             size: f.size
         }));
 
-        // Mettre en attente de validation (pas directement AWAITING_FINAL_PAYMENT)
         await pool.query(
             `UPDATE custom_orders
              SET status = 'PENDING_REVIEW', progress = 100, final_files = $2, delivered_at = NOW()
@@ -679,7 +805,6 @@ router.post("/orders/:id/deliver", requireAuth, upload.array("files", 10), async
             [id, JSON.stringify(finalFiles)]
         );
 
-        // Message de livraison
         await pool.query(
             `INSERT INTO custom_order_messages
              (order_id, sender_id, message_type, content, attachments, progress_value)
@@ -687,7 +812,6 @@ router.post("/orders/:id/deliver", requireAuth, upload.array("files", 10), async
             [id, req.user.id, message || '📦 Livraison effectuée ! Veuillez vérifier les fichiers.', JSON.stringify(finalFiles)]
         );
 
-        // Notification au client
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -706,215 +830,7 @@ router.post("/orders/:id/deliver", requireAuth, upload.array("files", 10), async
     }
 });
 
-// GET /api/custom-orders/orders/:id - Détails d'une commande avec messages
-router.get("/orders/:id", requireAuth, async (req, res, next) => {
-    try {
-        const { id } = req.params;
-
-        const { rows } = await pool.query(
-            `SELECT co.*,
-                    cr.title as request_title, cr.description as request_description,
-                    cr.attachments as request_attachments,
-                    client.username as client_username, client.avatar_url as client_avatar,
-                    creator.username as creator_username, creator.avatar_url as creator_avatar
-             FROM custom_orders co
-                      JOIN custom_requests cr ON cr.id = co.request_id
-                      JOIN users client ON client.id = co.client_id
-                      JOIN users creator ON creator.id = co.creator_id
-             WHERE co.id = $1`,
-            [id]
-        );
-
-        if (!rows[0]) {
-            return res.status(404).json({ error: "Commande non trouvée" });
-        }
-
-        const order = rows[0];
-
-        // Vérifier que l'utilisateur fait partie de la commande
-        if (order.client_id !== req.user.id && order.creator_id !== req.user.id && !['STAFF', 'ADMIN'].includes(req.user.role)) {
-            return res.status(403).json({ error: "Accès non autorisé" });
-        }
-
-        // Récupérer la conversation associée (si elle existe)
-        const { rows: convRows } = await pool.query(
-            `SELECT id FROM custom_conversations
-             WHERE request_id = $1 AND client_id = $2 AND creator_id = $3`,
-            [order.request_id, order.client_id, order.creator_id]
-        );
-        const conversationId = convRows[0]?.id;
-
-        // Récupérer les messages de la conversation (pré-commande)
-        let conversationMessages = [];
-        if (conversationId) {
-            const { rows: convMsgs } = await pool.query(
-                `SELECT ccm.id, ccm.conversation_id, ccm.sender_id, ccm.content, ccm.attachments,
-                        ccm.is_read, ccm.created_at,
-                        'CONVERSATION' as source,
-                        'MESSAGE' as message_type,
-                        u.username as sender_username, u.avatar_url as sender_avatar
-                 FROM custom_conversation_messages ccm
-                          JOIN users u ON u.id = ccm.sender_id
-                 WHERE ccm.conversation_id = $1
-                 ORDER BY ccm.created_at ASC`,
-                [conversationId]
-            );
-            conversationMessages = convMsgs;
-        }
-
-        // Récupérer les messages de la commande (post-acceptation)
-        const { rows: orderMessages } = await pool.query(
-            `SELECT com.id, com.order_id, com.sender_id, com.content, com.attachments,
-                    com.is_read, com.created_at, com.message_type, com.progress_value,
-                    'ORDER' as source,
-                    u.username as sender_username, u.avatar_url as sender_avatar
-             FROM custom_order_messages com
-                      JOIN users u ON u.id = com.sender_id
-             WHERE com.order_id = $1
-             ORDER BY com.created_at ASC`,
-            [id]
-        );
-
-        // Fusionner et trier par date
-        const allMessages = [...conversationMessages, ...orderMessages].sort(
-            (a, b) => new Date(a.created_at) - new Date(b.created_at)
-        );
-
-        // Ajouter un message système pour marquer le début de la commande
-        if (conversationMessages.length > 0 && orderMessages.length > 0) {
-            // Trouver la date du premier message de commande
-            const firstOrderMessage = orderMessages[0];
-            const orderStartIndex = allMessages.findIndex(m => m.source === 'ORDER');
-
-            if (orderStartIndex > 0) {
-                // Insérer un séparateur
-                allMessages.splice(orderStartIndex, 0, {
-                    id: 'separator-order-start',
-                    content: '✅ Offre acceptée - Commande démarrée',
-                    message_type: 'SYSTEM',
-                    source: 'SYSTEM',
-                    created_at: firstOrderMessage.created_at,
-                    is_separator: true
-                });
-            }
-        }
-
-        // Marquer les messages de commande comme lus
-        await pool.query(
-            `UPDATE custom_order_messages
-             SET is_read = TRUE
-             WHERE order_id = $1 AND sender_id != $2 AND is_read = FALSE`,
-            [id, req.user.id]
-        );
-
-        // Marquer les messages de conversation comme lus aussi
-        if (conversationId) {
-            const isClient = order.client_id === req.user.id;
-            if (isClient) {
-                await pool.query(
-                    `UPDATE custom_conversations SET client_unread_count = 0 WHERE id = $1`,
-                    [conversationId]
-                );
-            } else {
-                await pool.query(
-                    `UPDATE custom_conversations SET creator_unread_count = 0 WHERE id = $1`,
-                    [conversationId]
-                );
-            }
-        }
-
-        // Ajouter les messages à l'objet order pour compatibilité
-        order.messages = allMessages;
-        order.conversation_id = conversationId;
-
-        res.json({
-            order,
-            messages: allMessages,
-            isClient: order.client_id === req.user.id,
-            isCreator: order.creator_id === req.user.id
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// POST /api/custom-orders/orders/:id/messages - Envoyer un message dans une commande
-router.post("/orders/:id/messages", requireAuth, upload.array("attachments", 5), async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const { content, message_type } = req.body;
-
-        if (!content?.trim()) {
-            return res.status(400).json({ error: "Message requis" });
-        }
-
-        // Vérifier la commande
-        const { rows } = await pool.query(
-            `SELECT * FROM custom_orders WHERE id = $1`,
-            [id]
-        );
-
-        if (!rows[0]) {
-            return res.status(404).json({ error: "Commande non trouvée" });
-        }
-
-        const order = rows[0];
-
-        // Vérifier que l'utilisateur fait partie de la commande
-        if (order.client_id !== req.user.id && order.creator_id !== req.user.id) {
-            return res.status(403).json({ error: "Accès non autorisé" });
-        }
-
-        // Bloquer les messages sur commandes terminées ou annulées (sauf DISPUTED)
-        if (['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(order.status)) {
-            return res.status(400).json({ error: "Impossible d'envoyer des messages sur une commande terminée" });
-        }
-
-        const attachments = req.files ? req.files.map(f => ({
-            filename: f.filename,
-            originalname: f.originalname,
-            path: `/uploads/custom-orders/${f.filename}`,
-            size: f.size
-        })) : [];
-
-        // Créer le message
-        const { rows: messageRows } = await pool.query(
-            `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
-             VALUES ($1, $2, $3, $4, $5)
-                 RETURNING *`,
-            [id, req.user.id, message_type || 'MESSAGE', content.trim(), JSON.stringify(attachments)]
-        );
-
-        // Récupérer le message avec les infos utilisateur
-        const { rows: fullMessage } = await pool.query(
-            `SELECT com.*, u.username as sender_username, u.avatar_url as sender_avatar
-             FROM custom_order_messages com
-                      JOIN users u ON u.id = com.sender_id
-             WHERE com.id = $1`,
-            [messageRows[0].id]
-        );
-
-        // Notification au destinataire
-        const recipientId = order.client_id === req.user.id ? order.creator_id : order.client_id;
-        await pool.query(
-            `INSERT INTO notifications (user_id, type, title, message, data)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [
-                recipientId,
-                'CUSTOM_ORDER_MESSAGE',
-                'Nouveau message',
-                `Nouveau message sur votre commande`,
-                JSON.stringify({ order_id: id, link: `/custom-orders/orders/${id}` })
-            ]
-        );
-
-        res.status(201).json({ message: fullMessage[0] });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// POST /api/custom-orders/orders/:id/deliver - Livrer (sans fichier obligatoire)
+// POST /api/custom-orders/orders/:id/deliver-simple - Livrer (sans fichier obligatoire)
 router.post("/orders/:id/deliver-simple", requireAuth, async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -932,7 +848,6 @@ router.post("/orders/:id/deliver-simple", requireAuth, async (req, res, next) =>
             [id]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -940,7 +855,6 @@ router.post("/orders/:id/deliver-simple", requireAuth, async (req, res, next) =>
             [id, req.user.id]
         );
 
-        // Notification au client
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -977,7 +891,6 @@ router.post("/orders/:id/approve", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -985,7 +898,6 @@ router.post("/orders/:id/approve", requireAuth, async (req, res, next) => {
             [id, req.user.id]
         );
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1027,7 +939,6 @@ router.post("/orders/:id/revision", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -1035,7 +946,6 @@ router.post("/orders/:id/revision", requireAuth, async (req, res, next) => {
             [id, req.user.id, `🔄 Demande de révision :\n\n${reason}`]
         );
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1057,7 +967,6 @@ router.post("/orders/:id/revision", requireAuth, async (req, res, next) => {
 // ==================== RÉTRACTATION & RÉCLAMATIONS ====================
 
 // POST /api/custom-orders/orders/:id/withdraw - Client se rétracte pendant IN_PROGRESS
-// Remboursement: 25% au client, 20% au vendeur (pour travail effectué)
 router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -1083,12 +992,10 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
         const order = rows[0];
         const firstPayment = parseFloat(order.first_payment_amount);
 
-        // Calculs: 25% remboursé au client, 20% au vendeur, 5% frais plateforme
         const clientRefund = firstPayment * 0.25;
         const creatorPayment = firstPayment * 0.20;
-        const platformFee = firstPayment * 0.05; // 5% de frais
+        const platformFee = firstPayment * 0.05;
 
-        // Remboursement Stripe au client
         if (order.first_payment_stripe_id) {
             try {
                 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -1101,7 +1008,6 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
             }
         }
 
-        // Paiement au créateur si compte Stripe Connect
         if (order.creator_stripe_id) {
             try {
                 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -1116,7 +1022,6 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
             }
         }
 
-        // Mettre à jour la commande
         await client.query(
             `UPDATE custom_orders
              SET status = 'CANCELLED',
@@ -1127,13 +1032,11 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
             [id, reason || 'Rétractation client pendant réalisation', clientRefund]
         );
 
-        // Mettre à jour la demande
         await client.query(
             `UPDATE custom_requests SET status = 'CANCELLED' WHERE id = $1`,
             [order.request_id]
         );
 
-        // Message système
         await client.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -1141,7 +1044,6 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
             [id, req.user.id, `⚠️ Rétractation du client\n\nRemboursement client: ${clientRefund.toFixed(2)}€ (25%)\nCompensation créateur: ${creatorPayment.toFixed(2)}€ (20%)\n\nRaison: ${reason || 'Non spécifiée'}`]
         );
 
-        // Notification au créateur
         await client.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1154,7 +1056,6 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
             ]
         );
 
-        // Enregistrer le paiement vendeur
         await client.query(
             `INSERT INTO seller_payments
              (seller_id, payment_number, gross_amount, commission_rate, commission_amount, net_amount, status)
@@ -1178,7 +1079,7 @@ router.post("/orders/:id/withdraw", requireAuth, async (req, res, next) => {
     }
 });
 
-// POST /api/custom-orders/orders/:id/claim - Client fait une réclamation sur les fichiers
+// POST /api/custom-orders/orders/:id/claim - Client fait une réclamation
 router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -1188,8 +1089,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: "Veuillez décrire le problème en détail (min 20 caractères)" });
         }
 
-        // Vérifier la commande (autoriser COMPLETED, AWAITING_FINAL_PAYMENT, PENDING_REVIEW)
-        // On autorise aussi DISPUTED si la réclamation précédente a été résolue
         const { rows } = await pool.query(
             `SELECT co.*, cr.title as request_title
              FROM custom_orders co
@@ -1204,12 +1103,10 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
 
         const order = rows[0];
 
-        // Vérifier que la commande n'est pas annulée
         if (['CANCELLED', 'REFUNDED'].includes(order.status)) {
             return res.status(400).json({ error: "Impossible de faire une réclamation sur une commande annulée" });
         }
 
-        // Vérifier qu'il n'y a pas déjà une réclamation OUVERTE (non résolue)
         const { rows: existingClaim } = await pool.query(
             `SELECT id FROM custom_order_claims WHERE order_id = $1 AND status IN ('OPEN', 'IN_REVIEW')`,
             [id]
@@ -1219,7 +1116,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: "Une réclamation est déjà en cours pour cette commande" });
         }
 
-        // Créer la réclamation
         const { rows: claimRows } = await pool.query(
             `INSERT INTO custom_order_claims (order_id, client_id, reason)
              VALUES ($1, $2, $3)
@@ -1227,7 +1123,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             [id, req.user.id, reason]
         );
 
-        // Marquer la commande comme ayant une réclamation
         await pool.query(
             `UPDATE custom_orders
              SET has_active_claim = TRUE, claim_count = claim_count + 1, status = 'DISPUTED'
@@ -1235,7 +1130,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -1243,7 +1137,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             [id, req.user.id, `⚠️ Réclamation ouverte\n\nProblème signalé:\n${reason}`]
         );
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1256,7 +1149,6 @@ router.post("/orders/:id/claim", requireAuth, async (req, res, next) => {
             ]
         );
 
-        // Notification aux staff
         const { rows: staffUsers } = await pool.query(
             `SELECT id FROM users WHERE role IN ('STAFF', 'ADMIN')`
         );
@@ -1289,7 +1181,6 @@ router.get("/orders/:id/claims", requireAuth, async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // Vérifier l'accès
         const { rows: orderRows } = await pool.query(
             `SELECT * FROM custom_orders WHERE id = $1`,
             [id]
@@ -1307,7 +1198,6 @@ router.get("/orders/:id/claims", requireAuth, async (req, res, next) => {
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        // Récupérer les réclamations avec les correctifs
         const { rows: claims } = await pool.query(
             `SELECT coc.*,
                     u.username as client_username,
@@ -1320,7 +1210,6 @@ router.get("/orders/:id/claims", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Récupérer les correctifs
         const { rows: fixes } = await pool.query(
             `SELECT cof.*, u.username as creator_username
              FROM custom_order_fixes cof
@@ -1346,7 +1235,6 @@ router.post("/orders/:id/fix", requireAuth, upload.array("files", 10), async (re
             return res.status(400).json({ error: "Veuillez joindre les fichiers corrigés" });
         }
 
-        // Vérifier la commande
         const { rows } = await pool.query(
             `SELECT co.*, cr.title as request_title
              FROM custom_orders co
@@ -1361,7 +1249,6 @@ router.post("/orders/:id/fix", requireAuth, upload.array("files", 10), async (re
 
         const order = rows[0];
 
-        // Compter les versions existantes
         const { rows: versionCount } = await pool.query(
             `SELECT COUNT(*) as count FROM custom_order_fixes WHERE order_id = $1`,
             [id]
@@ -1375,7 +1262,6 @@ router.post("/orders/:id/fix", requireAuth, upload.array("files", 10), async (re
             size: f.size
         }));
 
-        // Créer le correctif
         const { rows: fixRows } = await pool.query(
             `INSERT INTO custom_order_fixes (order_id, claim_id, creator_id, files, message, version)
              VALUES ($1, $2, $3, $4, $5, $6)
@@ -1383,7 +1269,6 @@ router.post("/orders/:id/fix", requireAuth, upload.array("files", 10), async (re
             [id, claim_id || null, req.user.id, JSON.stringify(files), message || '', newVersion]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -1391,7 +1276,6 @@ router.post("/orders/:id/fix", requireAuth, upload.array("files", 10), async (re
             [id, req.user.id, `🔧 Correctif v${newVersion} envoyé\n\n${message || 'Veuillez vérifier les fichiers corrigés.'}`, JSON.stringify(files)]
         );
 
-        // Notification au client
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1415,7 +1299,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
     try {
         const { id, fixId } = req.params;
 
-        // Vérifier la commande
         const { rows } = await pool.query(
             `SELECT co.*, cr.title as request_title
              FROM custom_orders co
@@ -1430,7 +1313,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
 
         const order = rows[0];
 
-        // Vérifier le correctif
         const { rows: fixRows } = await pool.query(
             `SELECT * FROM custom_order_fixes WHERE id = $1 AND order_id = $2`,
             [fixId, id]
@@ -1440,19 +1322,15 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
             return res.status(404).json({ error: "Correctif non trouvé" });
         }
 
-        // Accepter le correctif
         await pool.query(
             `UPDATE custom_order_fixes SET is_accepted = TRUE WHERE id = $1`,
             [fixId]
         );
 
-        // Mettre à jour les fichiers finaux avec le correctif
-        // S'assurer que files est bien une chaîne JSON
         const fixFiles = typeof fixRows[0].files === 'string'
             ? fixRows[0].files
             : JSON.stringify(fixRows[0].files);
 
-        // Déterminer le nouveau statut : si déjà tout payé, rester COMPLETED, sinon AWAITING_FINAL_PAYMENT
         const newStatus = order.second_payment_paid ? 'COMPLETED' : 'AWAITING_FINAL_PAYMENT';
 
         await pool.query(
@@ -1462,7 +1340,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
             [id, fixFiles, newStatus]
         );
 
-        // Résoudre la réclamation liée au correctif OU toutes les réclamations ouvertes
         if (fixRows[0].claim_id) {
             await pool.query(
                 `UPDATE custom_order_claims
@@ -1472,7 +1349,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
             );
         }
 
-        // Résoudre aussi toutes les autres réclamations ouvertes de cette commande
         await pool.query(
             `UPDATE custom_order_claims
              SET status = 'RESOLVED', resolution = 'Correctif accepté par le client', resolved_at = NOW()
@@ -1480,7 +1356,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
             [id]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages 
              (order_id, sender_id, message_type, content, attachments)
@@ -1488,7 +1363,6 @@ router.post("/orders/:id/fix/:fixId/accept", requireAuth, async (req, res, next)
             [id, req.user.id]
         );
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1513,7 +1387,6 @@ router.post("/orders/:id/fix/:fixId/reject", requireAuth, async (req, res, next)
         const { id, fixId } = req.params;
         const { feedback } = req.body;
 
-        // Vérifier la commande
         const { rows } = await pool.query(
             `SELECT co.*, cr.title as request_title
              FROM custom_orders co
@@ -1528,13 +1401,11 @@ router.post("/orders/:id/fix/:fixId/reject", requireAuth, async (req, res, next)
 
         const order = rows[0];
 
-        // Refuser le correctif
         await pool.query(
             `UPDATE custom_order_fixes SET is_accepted = FALSE, client_feedback = $2 WHERE id = $1`,
             [fixId, feedback || null]
         );
 
-        // Message système
         await pool.query(
             `INSERT INTO custom_order_messages
                  (order_id, sender_id, message_type, content, attachments)
@@ -1542,7 +1413,6 @@ router.post("/orders/:id/fix/:fixId/reject", requireAuth, async (req, res, next)
             [id, req.user.id, `❌ Correctif refusé\n\n${feedback ? 'Feedback: ' + feedback : 'Veuillez proposer une nouvelle correction.'}`]
         );
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -1706,7 +1576,6 @@ router.post("/conversations", requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: "request_id requis" });
         }
 
-        // Récupérer la demande
         const { rows: requestRows } = await pool.query(
             `SELECT * FROM custom_requests WHERE id = $1`,
             [request_id]
@@ -1716,29 +1585,24 @@ router.post("/conversations", requireAuth, async (req, res, next) => {
         }
         const request = requestRows[0];
 
-        // Déterminer qui est le client et qui est le créateur
         let clientId, creatorId;
 
         if (request.client_id === req.user.id) {
-            // L'utilisateur est le client, il doit spécifier le créateur
             if (!creator_id) {
                 return res.status(400).json({ error: "creator_id requis (vous êtes le client)" });
             }
             clientId = req.user.id;
             creatorId = creator_id;
         } else {
-            // L'utilisateur est un créateur qui veut contacter le client
             clientId = request.client_id;
             creatorId = req.user.id;
         }
 
-        // Empêcher de se contacter soi-même (sauf en dev pour les tests)
         const isDev = process.env.NODE_ENV !== 'production';
         if (!isDev && clientId === creatorId) {
             return res.status(400).json({ error: "Vous ne pouvez pas vous contacter vous-même" });
         }
 
-        // Vérifier que le créateur est éligible (AFFILIATED, HYTSTUDIO, STAFF, ADMIN)
         const { rows: creatorCheck } = await pool.query(
             `SELECT id, role, creator_type FROM users WHERE id = $1`,
             [creatorId]
@@ -1753,7 +1617,6 @@ router.post("/conversations", requireAuth, async (req, res, next) => {
             return res.status(403).json({ error: "Ce créateur n'est pas éligible aux commandes sur mesure" });
         }
 
-        // Chercher une conversation existante ou en créer une
         let conversation;
         const { rows: existingConv } = await pool.query(
             `SELECT * FROM custom_conversations
@@ -1773,7 +1636,6 @@ router.post("/conversations", requireAuth, async (req, res, next) => {
             conversation = newConv[0];
         }
 
-        // Récupérer les infos des participants
         const { rows: participants } = await pool.query(
             `SELECT id, username, avatar_url FROM users WHERE id IN ($1, $2)`,
             [clientId, creatorId]
@@ -1809,7 +1671,6 @@ router.get("/conversations", requireAuth, async (req, res, next) => {
             [req.user.id]
         );
 
-        // Ajouter le nombre de non-lus pour l'utilisateur courant
         const conversations = rows.map(conv => ({
             ...conv,
             unread_count: conv.client_id === req.user.id
@@ -1817,7 +1678,6 @@ router.get("/conversations", requireAuth, async (req, res, next) => {
                 : conv.creator_unread_count
         }));
 
-        // Calculer le total de messages non lus
         const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
 
         res.json({ conversations, total_unread: totalUnread });
@@ -1848,7 +1708,6 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // Récupérer la conversation
         const { rows: convRows } = await pool.query(
             `SELECT cc.*,
                     cr.title as request_title, cr.description as request_description,
@@ -1869,12 +1728,10 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
 
         const conversation = convRows[0];
 
-        // Vérifier que l'utilisateur fait partie de la conversation
         if (conversation.client_id !== req.user.id && conversation.creator_id !== req.user.id) {
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        // Récupérer les messages
         const { rows: messages } = await pool.query(
             `SELECT ccm.*, u.username as sender_username, u.avatar_url as sender_avatar
              FROM custom_conversation_messages ccm
@@ -1884,7 +1741,6 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Marquer les messages comme lus
         await pool.query(
             `UPDATE custom_conversation_messages
              SET is_read = TRUE
@@ -1892,7 +1748,6 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
             [id, req.user.id]
         );
 
-        // Réinitialiser le compteur de non-lus
         if (conversation.client_id === req.user.id) {
             await pool.query(
                 `UPDATE custom_conversations SET client_unread_count = 0 WHERE id = $1`,
@@ -1905,7 +1760,6 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
             );
         }
 
-        // Vérifier si une offre existe déjà
         const { rows: offerRows } = await pool.query(
             `SELECT * FROM custom_offers
              WHERE request_id = $1 AND creator_id = $2`,
@@ -1923,17 +1777,29 @@ router.get("/conversations/:id", requireAuth, async (req, res, next) => {
     }
 });
 
-// POST /api/custom-orders/conversations/:id/messages - Envoyer un message
+// POST /api/custom-orders/conversations/:id/messages - Envoyer un message (CORRIGÉ: permet images sans texte)
 router.post("/conversations/:id/messages", requireAuth, upload.array("attachments", 5), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { content } = req.body;
 
-        if (!content?.trim()) {
-            return res.status(400).json({ error: "Message requis" });
+        // Traiter les fichiers uploadés AVANT la validation
+        const attachments = req.files ? req.files.map(f => ({
+            filename: f.filename,
+            originalname: f.originalname,
+            path: `/uploads/custom-orders/${f.filename}`,
+            size: f.size,
+            mimetype: f.mimetype
+        })) : [];
+
+        // Permettre d'envoyer soit du texte, soit des fichiers, soit les deux
+        const hasContent = content?.trim();
+        const hasAttachments = attachments.length > 0;
+
+        if (!hasContent && !hasAttachments) {
+            return res.status(400).json({ error: "Message ou fichier requis" });
         }
 
-        // Vérifier la conversation
         const { rows: convRows } = await pool.query(
             `SELECT * FROM custom_conversations WHERE id = $1`,
             [id]
@@ -1945,27 +1811,21 @@ router.post("/conversations/:id/messages", requireAuth, upload.array("attachment
 
         const conversation = convRows[0];
 
-        // Vérifier que l'utilisateur fait partie de la conversation
         if (conversation.client_id !== req.user.id && conversation.creator_id !== req.user.id) {
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        const attachments = req.files ? req.files.map(f => ({
-            filename: f.filename,
-            originalname: f.originalname,
-            path: `/uploads/custom-orders/${f.filename}`,
-            size: f.size
-        })) : [];
+        if (conversation.status === 'CLOSED') {
+            return res.status(400).json({ error: "Cette conversation est clôturée" });
+        }
 
-        // Créer le message
         const { rows: messageRows } = await pool.query(
             `INSERT INTO custom_conversation_messages (conversation_id, sender_id, content, attachments)
              VALUES ($1, $2, $3, $4)
                  RETURNING *`,
-            [id, req.user.id, content.trim(), JSON.stringify(attachments)]
+            [id, req.user.id, hasContent ? content.trim() : '', JSON.stringify(attachments)]
         );
 
-        // Mettre à jour la conversation
         const isClient = conversation.client_id === req.user.id;
         await pool.query(
             `UPDATE custom_conversations
@@ -1975,7 +1835,6 @@ router.post("/conversations/:id/messages", requireAuth, upload.array("attachment
             [id]
         );
 
-        // Récupérer le message avec les infos utilisateur
         const { rows: fullMessage } = await pool.query(
             `SELECT ccm.*, u.username as sender_username, u.avatar_url as sender_avatar
              FROM custom_conversation_messages ccm
@@ -1984,16 +1843,18 @@ router.post("/conversations/:id/messages", requireAuth, upload.array("attachment
             [messageRows[0].id]
         );
 
-        // Créer une notification pour le destinataire
         const recipientId = isClient ? conversation.creator_id : conversation.client_id;
         const senderUsername = fullMessage[0].sender_username;
 
-        // Récupérer le titre de la demande
         const { rows: requestRows } = await pool.query(
             `SELECT title FROM custom_requests WHERE id = $1`,
             [conversation.request_id]
         );
         const requestTitle = requestRows[0]?.title || 'Demande sur mesure';
+
+        const notifMessage = hasAttachments && !hasContent
+            ? `${senderUsername} vous a envoyé ${attachments.length} fichier(s) concernant "${requestTitle}"`
+            : `${senderUsername} vous a envoyé un message concernant "${requestTitle}"`;
 
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
@@ -2002,7 +1863,7 @@ router.post("/conversations/:id/messages", requireAuth, upload.array("attachment
                 recipientId,
                 'CUSTOM_ORDER_MESSAGE',
                 'Nouveau message',
-                `${senderUsername} vous a envoyé un message concernant "${requestTitle}"`,
+                notifMessage,
                 JSON.stringify({
                     conversation_id: id,
                     sender_id: req.user.id,
@@ -2023,7 +1884,6 @@ router.get("/requests/:id/conversations", requireAuth, async (req, res, next) =>
     try {
         const { id } = req.params;
 
-        // Vérifier que l'utilisateur est le client de la demande
         const { rows: requestRows } = await pool.query(
             `SELECT * FROM custom_requests WHERE id = $1`,
             [id]
@@ -2037,7 +1897,6 @@ router.get("/requests/:id/conversations", requireAuth, async (req, res, next) =>
             return res.status(403).json({ error: "Accès non autorisé" });
         }
 
-        // Récupérer toutes les conversations de cette demande
         const { rows } = await pool.query(
             `SELECT cc.*,
                     creator.username as creator_username, creator.avatar_url as creator_avatar,
@@ -2072,7 +1931,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
             return res.status(400).json({ error: "Prix et délai requis" });
         }
 
-        // Vérifier la conversation
         const { rows: convRows } = await pool.query(
             `SELECT cc.*, cr.status as request_status, cr.title as request_title
              FROM custom_conversations cc
@@ -2087,24 +1945,20 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
 
         const conversation = convRows[0];
 
-        // Vérifier que c'est le créateur
         if (conversation.creator_id !== req.user.id) {
             return res.status(403).json({ error: "Seul le créateur peut faire une offre" });
         }
 
-        // Vérifier que la conversation n'est pas clôturée
         if (conversation.status === 'CLOSED') {
             return res.status(400).json({ error: "Cette conversation est clôturée" });
         }
 
-        // Vérifier qu'il n'y a pas déjà une offre en attente
         const { rows: existingOffer } = await pool.query(
             `SELECT id FROM custom_offers
              WHERE request_id = $1 AND creator_id = $2 AND status = 'PENDING'`,
             [conversation.request_id, req.user.id]
         );
 
-        // Déterminer la commission
         const { rows: userCheck } = await pool.query(
             `SELECT role, creator_type FROM users WHERE id = $1`,
             [req.user.id]
@@ -2115,7 +1969,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
 
         let offer;
         if (existingOffer[0]) {
-            // Mettre à jour l'offre existante
             const { rows } = await pool.query(
                 `UPDATE custom_offers
                  SET price = $1, estimated_days = $2, message = $3, updated_at = NOW()
@@ -2125,7 +1978,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
             );
             offer = rows[0];
         } else {
-            // Créer une nouvelle offre
             const { rows } = await pool.query(
                 `INSERT INTO custom_offers
                  (request_id, creator_id, price, estimated_days, message, commission_rate, is_hytmodel_creator)
@@ -2136,7 +1988,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
             offer = rows[0];
         }
 
-        // Créer un message système dans la conversation
         await pool.query(
             `INSERT INTO custom_conversation_messages
                  (conversation_id, sender_id, content, attachments)
@@ -2144,7 +1995,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
             [id, req.user.id, `💰 Nouvelle offre : ${(price / 100).toFixed(2)}€ - Délai : ${estimated_days} jour(s)${message ? '\n\n' + message : ''}`]
         );
 
-        // Mettre à jour la conversation
         await pool.query(
             `UPDATE custom_conversations
              SET last_message_at = NOW(), client_unread_count = client_unread_count + 1
@@ -2152,7 +2002,6 @@ router.post("/conversations/:id/offer", requireAuth, async (req, res, next) => {
             [id]
         );
 
-        // Notification au client
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -2182,7 +2031,6 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
         await client.query("BEGIN");
         const { id } = req.params;
 
-        // Vérifier la conversation
         const { rows: convRows } = await client.query(
             `SELECT cc.*, cr.title as request_title
              FROM custom_conversations cc
@@ -2197,12 +2045,10 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
 
         const conversation = convRows[0];
 
-        // Vérifier que c'est le client
         if (conversation.client_id !== req.user.id) {
             return res.status(403).json({ error: "Seul le client peut accepter une offre" });
         }
 
-        // Récupérer l'offre en attente
         const { rows: offerRows } = await client.query(
             `SELECT co.*, u.creator_type, u.role
              FROM custom_offers co
@@ -2217,17 +2063,14 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
 
         const offer = offerRows[0];
 
-        // Calculer les montants
         const isHytStudio = ['STAFF', 'ADMIN'].includes(offer.role) || offer.creator_type === 'HYTSTUDIO';
         const commissionRate = isHytStudio ? 0 : 0.05;
         const commissionAmount = parseFloat(offer.price) * commissionRate;
         const firstPayment = parseFloat(offer.price) / 2;
         const secondPayment = parseFloat(offer.price) - firstPayment;
 
-        // Accepter cette offre
         await client.query(`UPDATE custom_offers SET status = 'ACCEPTED' WHERE id = $1`, [offer.id]);
 
-        // Refuser toutes les autres offres et clôturer leurs conversations
         const { rows: otherOffers } = await client.query(
             `SELECT co.id, co.creator_id, cc.id as conversation_id
              FROM custom_offers co
@@ -2237,13 +2080,11 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
         );
 
         for (const other of otherOffers) {
-            // Refuser l'offre
             await client.query(
                 `UPDATE custom_offers SET status = 'REJECTED' WHERE id = $1`,
                 [other.id]
             );
 
-            // Clôturer la conversation si elle existe
             if (other.conversation_id) {
                 await client.query(
                     `UPDATE custom_conversations
@@ -2253,7 +2094,6 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
                 );
             }
 
-            // Notification au créateur refusé
             await client.query(
                 `INSERT INTO notifications (user_id, type, title, message, data)
                  VALUES ($1, $2, $3, $4, $5)`,
@@ -2267,13 +2107,11 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
             );
         }
 
-        // Mettre à jour la demande
         await client.query(
             `UPDATE custom_requests SET status = 'ASSIGNED' WHERE id = $1`,
             [conversation.request_id]
         );
 
-        // Créer la commande
         const { rows: orderRows } = await client.query(
             `INSERT INTO custom_orders
              (request_id, offer_id, client_id, creator_id, total_price, commission_rate,
@@ -2284,7 +2122,6 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
                 offer.price, commissionRate, commissionAmount, firstPayment, secondPayment, offer.estimated_days]
         );
 
-        // Message système dans la conversation
         await client.query(
             `INSERT INTO custom_conversation_messages
                  (conversation_id, sender_id, content, attachments)
@@ -2292,7 +2129,6 @@ router.post("/conversations/:id/accept-offer", requireAuth, async (req, res, nex
             [id, req.user.id, `✅ Offre acceptée ! Montant : ${(parseFloat(offer.price) / 100).toFixed(2)}€\n\nProchaine étape : Paiement de l'acompte (50%)`]
         );
 
-        // Notification au créateur
         await client.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -2325,7 +2161,6 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
         const { id } = req.params;
         const { reason, close_conversation } = req.body;
 
-        // Vérifier la conversation
         const { rows: convRows } = await pool.query(
             `SELECT cc.*, cr.title as request_title
              FROM custom_conversations cc
@@ -2340,12 +2175,10 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
 
         const conversation = convRows[0];
 
-        // Vérifier que c'est le client
         if (conversation.client_id !== req.user.id) {
             return res.status(403).json({ error: "Seul le client peut refuser une offre" });
         }
 
-        // Récupérer l'offre en attente
         const { rows: offerRows } = await pool.query(
             `SELECT * FROM custom_offers
              WHERE request_id = $1 AND creator_id = $2 AND status = 'PENDING'`,
@@ -2353,14 +2186,12 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
         );
 
         if (offerRows[0]) {
-            // Refuser l'offre
             await pool.query(
                 `UPDATE custom_offers SET status = 'REJECTED' WHERE id = $1`,
                 [offerRows[0].id]
             );
         }
 
-        // Message système dans la conversation
         const rejectMessage = reason
             ? `❌ Offre refusée\n\nRaison : ${reason}`
             : `❌ Offre refusée`;
@@ -2372,7 +2203,6 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
             [id, req.user.id, rejectMessage]
         );
 
-        // Si le client veut clôturer définitivement la conversation
         if (close_conversation) {
             await pool.query(
                 `UPDATE custom_conversations
@@ -2382,7 +2212,6 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
                 [id, reason || 'Clôturé par le client']
             );
 
-            // Message de clôture
             await pool.query(
                 `INSERT INTO custom_conversation_messages
                      (conversation_id, sender_id, content, attachments)
@@ -2391,7 +2220,6 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
             );
         }
 
-        // Notification au créateur
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -2411,7 +2239,6 @@ router.post("/conversations/:id/reject-offer", requireAuth, async (req, res, nex
             ]
         );
 
-        // Mettre à jour les compteurs
         await pool.query(
             `UPDATE custom_conversations
              SET last_message_at = NOW(), creator_unread_count = creator_unread_count + 1
@@ -2437,7 +2264,6 @@ router.post("/conversations/:id/close", requireAuth, async (req, res, next) => {
         const { id } = req.params;
         const { reason } = req.body;
 
-        // Vérifier la conversation
         const { rows: convRows } = await pool.query(
             `SELECT cc.*, cr.title as request_title
              FROM custom_conversations cc
@@ -2452,24 +2278,20 @@ router.post("/conversations/:id/close", requireAuth, async (req, res, next) => {
 
         const conversation = convRows[0];
 
-        // Vérifier que c'est le créateur
         if (conversation.creator_id !== req.user.id) {
             return res.status(403).json({ error: "Seul le créateur peut clôturer cette conversation" });
         }
 
-        // Vérifier que la conversation n'est pas déjà clôturée
         if (conversation.status === 'CLOSED') {
             return res.status(400).json({ error: "Cette conversation est déjà clôturée" });
         }
 
-        // Retirer l'offre en attente si elle existe
         await pool.query(
             `UPDATE custom_offers SET status = 'WITHDRAWN'
              WHERE request_id = $1 AND creator_id = $2 AND status = 'PENDING'`,
             [conversation.request_id, req.user.id]
         );
 
-        // Message système dans la conversation
         const closeMessage = reason
             ? `🚫 Le créateur a clôturé la conversation\n\nRaison : ${reason}`
             : `🚫 Le créateur a clôturé la conversation`;
@@ -2481,7 +2303,6 @@ router.post("/conversations/:id/close", requireAuth, async (req, res, next) => {
             [id, req.user.id, closeMessage]
         );
 
-        // Clôturer la conversation
         await pool.query(
             `UPDATE custom_conversations
              SET status = 'CLOSED', closed_at = NOW(), close_reason = $2,
@@ -2490,7 +2311,6 @@ router.post("/conversations/:id/close", requireAuth, async (req, res, next) => {
             [id, reason || 'Clôturé par le créateur']
         );
 
-        // Message de suppression auto
         await pool.query(
             `INSERT INTO custom_conversation_messages
                  (conversation_id, sender_id, content, attachments)
@@ -2498,7 +2318,6 @@ router.post("/conversations/:id/close", requireAuth, async (req, res, next) => {
             [id, req.user.id, `🔒 Conversation clôturée. Elle sera supprimée dans 48 heures.`]
         );
 
-        // Notification au client
         await pool.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,

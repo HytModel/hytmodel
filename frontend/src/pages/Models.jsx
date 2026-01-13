@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers, Gift } from 'lucide-react'
+import { Search, Filter, X, SlidersHorizontal, Grid3X3, LayoutList, Box, Tag, Layers, Gift, Check } from 'lucide-react'
 import { modelsAPI, gamesAPI, categoriesAPI, tagsAPI, versionsAPI, bundlesAPI } from '../services/api'
 import { useTranslation } from '../context/LanguageContext'
 import ModelCard from '../components/ModelCard'
@@ -30,6 +30,7 @@ export default function Models() {
     const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
     const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '')
     const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest')
+    const [freeOnly, setFreeOnly] = useState(searchParams.get('free') === 'true')
 
     useEffect(() => {
         fetchInitialData()
@@ -50,7 +51,7 @@ export default function Models() {
 
     useEffect(() => {
         fetchModels()
-    }, [searchQuery, selectedGame, selectedCategory, selectedTags, selectedVersions, minPrice, maxPrice, sortBy])
+    }, [searchQuery, selectedGame, selectedCategory, selectedTags, selectedVersions, minPrice, maxPrice, sortBy, freeOnly])
 
     const fetchInitialData = async () => {
         try {
@@ -97,16 +98,22 @@ export default function Models() {
             if (selectedVersions.length > 0) params.versionIds = selectedVersions.join(',')
             if (minPrice) params.minPrice = minPrice
             if (maxPrice) params.maxPrice = maxPrice
+            if (freeOnly) params.freeOnly = true
 
             const { data } = await modelsAPI.searchAdvanced(params)
             let sortedModels = data.models || data || []
 
+            // Filtrer les produits gratuits côté client si le backend ne le supporte pas
+            if (freeOnly) {
+                sortedModels = sortedModels.filter(m => parseFloat(m.price) === 0)
+            }
+
             switch (sortBy) {
                 case 'price-asc':
-                    sortedModels.sort((a, b) => a.price - b.price)
+                    sortedModels.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))
                     break
                 case 'price-desc':
-                    sortedModels.sort((a, b) => b.price - a.price)
+                    sortedModels.sort((a, b) => parseFloat(b.price) - parseFloat(a.price))
                     break
                 case 'rating':
                     sortedModels.sort((a, b) => (b.rating_avg || 0) - (a.rating_avg || 0))
@@ -136,6 +143,7 @@ export default function Models() {
         setMinPrice('')
         setMaxPrice('')
         setSortBy('newest')
+        setFreeOnly(false)
         setSearchParams({})
     }
 
@@ -148,7 +156,7 @@ export default function Models() {
         setSelectedCategory(categoryId)
     }
 
-    const hasActiveFilters = searchQuery || selectedGame || selectedCategory || selectedTags.length > 0 || selectedVersions.length > 0 || minPrice || maxPrice
+    const hasActiveFilters = searchQuery || selectedGame || selectedCategory || selectedTags.length > 0 || selectedVersions.length > 0 || minPrice || maxPrice || freeOnly
 
     const toggleTag = (tagId) => {
         setSelectedTags(prev =>
@@ -173,8 +181,12 @@ export default function Models() {
         if (selectedTags.length > 0) count += selectedTags.length
         if (selectedVersions.length > 0) count += selectedVersions.length
         if (minPrice || maxPrice) count++
+        if (freeOnly) count++
         return count
     }
+
+    // Compter les produits gratuits
+    const freeProductsCount = models.filter(m => parseFloat(m.price) === 0).length
 
     return (
         <div className="min-h-screen pt-20">
@@ -209,6 +221,11 @@ export default function Models() {
                             >
                                 <SlidersHorizontal className="w-5 h-5" />
                                 <span className="hidden sm:inline">{t('models.filters.button')}</span>
+                                {getActiveFiltersCount() > 0 && (
+                                    <span className="w-5 h-5 bg-hyt-accent text-black text-xs font-bold rounded-full flex items-center justify-center">
+                                        {getActiveFiltersCount()}
+                                    </span>
+                                )}
                             </button>
                         )}
 
@@ -277,6 +294,29 @@ export default function Models() {
                             )}
                         </div>
 
+                        {/* Quick Filter: Free Only */}
+                        <div className="mb-6 pb-6 border-b border-hyt-border">
+                            <label
+                                className="flex items-center gap-3 cursor-pointer group"
+                                onClick={() => setFreeOnly(!freeOnly)}
+                            >
+                                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                                    freeOnly
+                                        ? 'bg-green-500 border-green-500'
+                                        : 'border-gray-600 group-hover:border-gray-400'
+                                }`}>
+                                    {freeOnly && <Check className="w-4 h-4 text-white" />}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white font-medium">{t('models.filters.freeOnly')}</span>
+                                    <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full font-medium">
+                                        {t('common.free')}
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
+
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Game Filter */}
                             <div>
@@ -313,11 +353,12 @@ export default function Models() {
                                 <label className="block text-sm text-gray-400 mb-2">{t('models.filters.minPrice')}</label>
                                 <input
                                     type="number"
-                                    placeholder="5"
+                                    placeholder="0"
                                     min="0"
                                     value={minPrice}
                                     onChange={(e) => setMinPrice(Math.max(0, e.target.value))}
                                     className="input-field w-full"
+                                    disabled={freeOnly}
                                 />
                             </div>
 
@@ -330,6 +371,7 @@ export default function Models() {
                                     value={maxPrice}
                                     onChange={(e) => setMaxPrice(Math.max(0, e.target.value))}
                                     className="input-field w-full"
+                                    disabled={freeOnly}
                                 />
                             </div>
                         </div>
@@ -433,6 +475,15 @@ export default function Models() {
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <span className="text-sm text-gray-400">{t('models.filters.activeFilters')}:</span>
 
+                        {freeOnly && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
+                                🎁 {t('common.free')}
+                                <button onClick={() => setFreeOnly(false)} className="ml-1 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </span>
+                        )}
+
                         {searchQuery && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
                                 "{searchQuery}"
@@ -480,9 +531,9 @@ export default function Models() {
                             </span>
                         )}
 
-                        {(minPrice || maxPrice) && (
+                        {(minPrice || maxPrice) && !freeOnly && (
                             <span className="inline-flex items-center gap-1 px-3 py-1 bg-hyt-card rounded-full text-sm text-white">
-                                💰 {minPrice || '5'}€ - {maxPrice || '∞'}€
+                                💰 {minPrice || '0'}€ - {maxPrice || '∞'}€
                                 <button onClick={() => { setMinPrice(''); setMaxPrice('') }} className="ml-1 text-gray-400 hover:text-white">
                                     <X className="w-4 h-4" />
                                 </button>
@@ -497,10 +548,25 @@ export default function Models() {
 
                 {/* Results Count */}
                 {activeTab === 'products' && (
-                    <div className="mb-4">
+                    <div className="mb-4 flex items-center justify-between">
                         <p className="text-gray-400 text-sm">
                             {t('models.results', { count: models.length })}
+                            {freeOnly && (
+                                <span className="ml-2 text-green-400">
+                                    ({t('models.filters.freeOnly')})
+                                </span>
+                            )}
                         </p>
+
+                        {/* Quick free filter toggle */}
+                        {!showFilters && !freeOnly && (
+                            <button
+                                onClick={() => setFreeOnly(true)}
+                                className="text-sm text-green-400 hover:text-green-300 flex items-center gap-1"
+                            >
+                                🎁 {t('models.filters.showFreeOnly')}
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -622,7 +688,10 @@ export default function Models() {
                                 <Box className="w-16 h-16 mx-auto text-gray-600 mb-4" />
                                 <h3 className="text-xl font-semibold text-white mb-2">{t('models.empty.title')}</h3>
                                 <p className="text-gray-500 mb-6">
-                                    {t('models.empty.description')}
+                                    {freeOnly
+                                        ? t('models.empty.noFreeProducts')
+                                        : t('models.empty.description')
+                                    }
                                 </p>
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="btn-secondary">

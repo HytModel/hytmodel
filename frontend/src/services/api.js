@@ -141,7 +141,8 @@ export const cartAPI = {
 // ============ CHECKOUT ============
 export const checkoutAPI = {
     create: () => api.post('/checkout'),
-    getPurchases: () => api.get('/checkout/purchases')
+    getPurchases: () => api.get('/checkout/purchases'),
+    claimFree: (productId) => api.post(`/checkout/claim-free/${productId}`),
 }
 
 // ============ INVOICES ============
@@ -237,7 +238,31 @@ export const sellerAPI = {
     getStats: () => api.get('/seller/dashboard/stats'),
     getChart: (days = 30) => api.get(`/seller/dashboard/chart?days=${days}`),
     getSales: (limit = 20) => api.get(`/seller/dashboard/sales?limit=${limit}`),
-    getTopModels: (days = 30) => api.get(`/seller/dashboard/top-models?days=${days}`)
+    getTopModels: (days = 30) => api.get(`/seller/dashboard/top-models?days=${days}`),
+    getAnalytics: () => api.get('/seller/analytics'),
+}
+
+// ============ CREATOR ANALYTICS API ============
+export const creatorAnalyticsAPI = {
+    // Tout récupérer d'un coup (recommandé)
+    getAll: (params) => {
+        // params peut être { days, gameId, categoryId, tagIds }
+        const queryParams = new URLSearchParams()
+        if (params.days) queryParams.append('days', params.days)
+        if (params.gameId) queryParams.append('gameId', params.gameId)
+        if (params.categoryId) queryParams.append('categoryId', params.categoryId)
+        if (params.tagIds) queryParams.append('tagIds', params.tagIds)
+        if (params.versionIds) queryParams.append('versionIds', params.versionIds)
+
+        return api.get(`/creator/analytics/all?${queryParams.toString()}`)
+    },
+    getFilters: () => api.get('/creator/analytics/filters'),
+    getOverview: (days = 30) => api.get(`/creator/analytics/overview?days=${days}`),
+    getTrends: (days = 30) => api.get(`/creator/analytics/trends?days=${days}`),
+    getModelsPerformance: (days = 30) => api.get(`/creator/analytics/models?days=${days}`),
+    getBestHours: (days = 30) => api.get(`/creator/analytics/best-hours?days=${days}`),
+    getBestDays: (days = 30) => api.get(`/creator/analytics/best-days?days=${days}`),
+    
 }
 
 // ============ PROPOSITIONS & SIGNALEMENTS ============
@@ -327,7 +352,6 @@ export const sellersAPI = {
 // ============ ADMIN ============
 export const adminAPI = {
     // Users
-
     getUsers: (params) => api.get('/admin/users', { params }),
     getUser: (id) => api.get(`/admin/users/${id}`),
     setRole: (userId, role) => api.post('/admin/set-role', { userId, role }),
@@ -343,7 +367,6 @@ export const adminAPI = {
     getCreatorRequests: () => api.get('/admin/creator-requests'),
     approveCreatorRequest: (id, creatorType) => api.post(`/admin/creator-requests/${id}/approve`, { creatorType }),
     rejectCreatorRequest: (id, reason) => api.post(`/admin/creator-requests/${id}/reject`, { reason }),
-
 
     // Vendeurs
     getSellers: () => api.get('/admin/sellers'),
@@ -361,21 +384,35 @@ export const adminAPI = {
     approveProposal: (id) => api.post(`/proposals/${id}/approve`),
     rejectProposal: (id, reason) => api.post(`/proposals/${id}/reject`, { reason }),
 
-
     // Signalements (admin)
     getReports: (status) => api.get('/feedback/reports', { params: { status } }),
     updateReport: (id, data) => api.put(`/feedback/reports/${id}`, data),
 
-    // Analytics avec filtre optionnel par jeu
+    // Analytics avec filtre optionnel par jeu (ancien)
     getAnalytics: (period = '30', gameId = '') => {
         const params = new URLSearchParams({ period });
         if (gameId) params.append('gameId', gameId);
         return api.get(`/admin/analytics?${params.toString()}`);
     },
 
-    // Analytics détaillées pour un jeu spécifique
+    // Analytics détaillées pour un jeu spécifique (ancien)
     getGameAnalytics: (gameId, period = '30') =>
         api.get(`/admin/game-analytics/${gameId}?period=${period}`),
+
+    // ============ NOUVELLES MÉTHODES ANALYTICS ============
+
+    // Analytics avancées avec tous les filtres
+    getAdvancedAnalytics: (queryString) => api.get(`/admin-analytics?${queryString}`),
+
+    // Filtres disponibles pour analytics
+    getAnalyticsFilters: () => api.get('/admin-analytics/filters'),
+
+
+    // Analytics vendeurs avec filtres
+    getSellersAnalytics: (queryString) => api.get(`/admin-analytics/sellers?${queryString}`),
+
+    // Détails par jeu avec filtres
+    getGameAnalyticsAdvanced: (gameId, queryString) => api.get(`/admin-analytics/game/${gameId}?${queryString}`),
 
     // Stats & Dashboard
     getSiteStats: () => api.get('/admin/site-stats'),
@@ -464,6 +501,14 @@ export const customOrdersAPI = {
 
     // ==================== CONVERSATIONS ====================
 
+    // Accepter une offre depuis une conversation
+    acceptConversationOffer: (conversationId) => api.post(`/custom-orders/conversations/${conversationId}/accept`),
+
+    // Rejeter une offre depuis une conversation
+    rejectConversationOffer: (conversationId, data) => api.post(`/custom-orders/conversations/${conversationId}/reject`, data),
+
+    // Clôturer une conversation
+    closeConversation: (conversationId, data) => api.post(`/custom-orders/conversations/${conversationId}/close`, data),
 
     // Démarrer ou récupérer une conversation
     startConversation: (data) => api.post('/custom-orders/conversations', data),

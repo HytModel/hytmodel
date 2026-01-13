@@ -8,21 +8,21 @@ router.get("/:username", async (req, res, next) => {
 
         // Récupérer le profil du vendeur
         const { rows: sellerRows } = await pool.query(
-            `SELECT 
-                u.id,
-                u.username,
-                u.display_name,
-                u.avatar_url,
-                u.bio,
-                u.website_url,
-                u.social_discord,
-                u.social_twitter,
-                u.social_youtube,
-                u.creator_type,
-                u.created_at AS member_since
+            `SELECT
+                 u.id,
+                 u.username,
+                 u.display_name,
+                 u.avatar_url,
+                 u.bio,
+                 u.website_url,
+                 u.social_discord,
+                 u.social_twitter,
+                 u.social_youtube,
+                 u.creator_type,
+                 u.created_at AS member_since
              FROM users u
-             WHERE u.username = $1 
-             AND u.role IN ('CREATOR', 'STAFF', 'ADMIN')`,
+             WHERE u.username = $1
+               AND u.role IN ('CREATOR', 'STAFF', 'ADMIN')`,
             [username]
         );
 
@@ -33,36 +33,44 @@ router.get("/:username", async (req, res, next) => {
         const seller = sellerRows[0];
 
         // Récupérer les stats
+        // NULLIF(m.rating_avg, 0) exclut les modèles sans notes (rating = 0) de la moyenne
         const { rows: statsRows } = await pool.query(
-            `SELECT 
-                COUNT(DISTINCT m.id) AS total_products,
-                COUNT(DISTINCT p.id) AS total_sales,
-                COALESCE(AVG(m.rating_avg), 0) AS average_rating,
-                COALESCE(SUM(m.view_count), 0) AS total_views
+            `SELECT
+                 COUNT(DISTINCT m.id) AS total_products,
+                 COUNT(DISTINCT p.id) AS total_sales,
+                 COALESCE(AVG(NULLIF(m.rating_avg, 0)), 0) AS average_rating,
+                 COALESCE(SUM(m.view_count), 0) AS total_views
              FROM users u
-             LEFT JOIN models m ON m.creator_id = u.id 
-                AND m.status = 'APPROVED' 
-                AND m.deleted_at IS NULL 
-                AND m.is_hidden = FALSE
-             LEFT JOIN purchases p ON p.model_id = m.id
+                      LEFT JOIN models m ON m.creator_id = u.id
+                 AND m.status = 'APPROVED'
+                 AND m.deleted_at IS NULL
+                 AND m.is_hidden = FALSE
+                      LEFT JOIN purchases p ON p.model_id = m.id
              WHERE u.id = $1`,
             [seller.id]
         );
 
-        // Récupérer les produits du vendeur
+        // Récupérer les produits du vendeur avec téléchargements multi-version
         const { rows: products } = await pool.query(
-            `SELECT 
-                m.id, m.title, m.description, m.price, m.thumbnail_url,
-                m.view_count, m.rating_avg, m.rating_count, m.created_at,
-                g.name AS game_name,
-                c.name AS category_name
+            `SELECT
+                 m.id, m.title, m.description, m.price, m.thumbnail_url,
+                 m.view_count, m.rating_avg, m.rating_count, m.created_at,
+                 g.name AS game_name,
+                 c.name AS category_name,
+                 COALESCE(dl.total_downloads, 0) AS download_count
              FROM models m
-             LEFT JOIN games g ON g.id = m.game_id
-             LEFT JOIN categories c ON c.id = m.category_id
-             WHERE m.creator_id = $1 
-             AND m.status = 'APPROVED' 
-             AND m.deleted_at IS NULL 
-             AND m.is_hidden = FALSE
+                      LEFT JOIN games g ON g.id = m.game_id
+                      LEFT JOIN categories c ON c.id = m.category_id
+                      LEFT JOIN (
+                 SELECT model_id, SUM(download_count) AS total_downloads
+                 FROM model_file_versions
+                 WHERE is_active = true
+                 GROUP BY model_id
+             ) dl ON dl.model_id = m.id
+             WHERE m.creator_id = $1
+               AND m.status = 'APPROVED'
+               AND m.deleted_at IS NULL
+               AND m.is_hidden = FALSE
              ORDER BY m.created_at DESC`,
             [seller.id]
         );
@@ -89,30 +97,31 @@ router.get("/", async (req, res, next) => {
         if (sort === 'rating') orderBy = 'average_rating DESC';
         if (sort === 'products') orderBy = 'total_products DESC';
 
+        // NULLIF(m.rating_avg, 0) exclut les modèles sans notes de la moyenne
         const { rows } = await pool.query(
-            `SELECT 
-                u.id,
-                u.username,
-                u.display_name,
-                u.avatar_url,
-                u.bio,
-                u.creator_type,
-                u.created_at AS member_since,
-                COUNT(DISTINCT m.id) AS total_products,
-                COUNT(DISTINCT p.id) AS total_sales,
-                COALESCE(AVG(m.rating_avg), 0) AS average_rating,
-                COALESCE(SUM(m.view_count), 0) AS total_views
+            `SELECT
+                 u.id,
+                 u.username,
+                 u.display_name,
+                 u.avatar_url,
+                 u.bio,
+                 u.creator_type,
+                 u.created_at AS member_since,
+                 COUNT(DISTINCT m.id) AS total_products,
+                 COUNT(DISTINCT p.id) AS total_sales,
+                 COALESCE(AVG(NULLIF(m.rating_avg, 0)), 0) AS average_rating,
+                 COALESCE(SUM(m.view_count), 0) AS total_views
              FROM users u
-             LEFT JOIN models m ON m.creator_id = u.id 
-                AND m.status = 'APPROVED' 
-                AND m.deleted_at IS NULL 
-                AND m.is_hidden = FALSE
-             LEFT JOIN purchases p ON p.model_id = m.id
+                      LEFT JOIN models m ON m.creator_id = u.id
+                 AND m.status = 'APPROVED'
+                 AND m.deleted_at IS NULL
+                 AND m.is_hidden = FALSE
+                      LEFT JOIN purchases p ON p.model_id = m.id
              WHERE u.role IN ('CREATOR', 'STAFF', 'ADMIN')
              GROUP BY u.id
              HAVING COUNT(DISTINCT m.id) > 0
              ORDER BY ${orderBy}
-             LIMIT $1 OFFSET $2`,
+                 LIMIT $1 OFFSET $2`,
             [parseInt(limit), parseInt(offset)]
         );
 
@@ -120,9 +129,9 @@ router.get("/", async (req, res, next) => {
         const { rows: countRows } = await pool.query(
             `SELECT COUNT(DISTINCT u.id) AS total
              FROM users u
-             JOIN models m ON m.creator_id = u.id 
-                AND m.status = 'APPROVED' 
-                AND m.deleted_at IS NULL
+                      JOIN models m ON m.creator_id = u.id
+                 AND m.status = 'APPROVED'
+                 AND m.deleted_at IS NULL
              WHERE u.role IN ('CREATOR', 'STAFF', 'ADMIN')`
         );
 

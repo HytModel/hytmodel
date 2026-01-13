@@ -160,6 +160,48 @@ class CheckoutService {
         );
         return rows[0] || null;
     }
+
+    // Réclamer un produit gratuit
+    async claimFreeProduct(userId, productId) {
+        // Vérifier que le produit existe et est gratuit
+        const { rows: products } = await pool.query(
+            `SELECT id, price FROM models
+             WHERE id = $1 AND deleted_at IS NULL AND status = 'APPROVED'`,
+            [productId]
+        );
+
+        if (products.length === 0) {
+            throw new Error('Produit non trouvé');
+        }
+
+        const product = products[0];
+
+        if (parseFloat(product.price) > 0) {
+            throw new Error('Ce produit n\'est pas gratuit');
+        }
+
+        // Vérifier si déjà possédé
+        const { rowCount } = await pool.query(
+            `SELECT 1 FROM purchases WHERE user_id = $1 AND model_id = $2`,
+            [userId, productId]
+        );
+
+        if (rowCount > 0) {
+            throw new Error('Vous possédez déjà ce produit');
+        }
+
+        // Créer l'achat gratuit
+        await pool.query(
+            `INSERT INTO purchases (user_id, model_id, stripe_session_id, created_at)
+             VALUES ($1, $2, 'FREE', NOW())
+                 ON CONFLICT (user_id, model_id) DO NOTHING`,
+            [userId, productId]
+        );
+
+        return { success: true };
+    }
+
 }
+
 
 module.exports = new CheckoutService();

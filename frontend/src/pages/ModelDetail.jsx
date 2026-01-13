@@ -4,9 +4,9 @@ import {
     ShoppingCart, Download, Star, Eye, Calendar, User,
     Tag, Gamepad2, FolderOpen, Check, ArrowLeft, Share2,
     ChevronLeft, ChevronRight, Youtube, X, ZoomIn, AlertTriangle, Flag,
-    Package, ChevronDown, Link2, ExternalLink, AlertCircle
+    Package, ChevronDown, Link2, ExternalLink, AlertCircle, Gift
 } from 'lucide-react'
-import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI, dependenciesAPI } from '../services/api'
+import { modelsAPI, modelImagesAPI, modelFileVersionsAPI, versionsAPI, dependenciesAPI, checkoutAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 import { useTranslation } from '../context/LanguageContext'
@@ -280,9 +280,10 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             const loadedVersions = versionsRes.data.versions || []
             setFileVersions(loadedVersions)
             setGameVersions(gameVersionsRes.data.versions || [])
-
-            const latestVersion = loadedVersions.find(v => v.is_latest) || loadedVersions[0]
-            setSelectedVersion(latestVersion)
+            if (loadedVersions.length > 0) {
+                const latestVersion = loadedVersions.find(v => v.is_latest) || loadedVersions[0]
+                setSelectedVersion(latestVersion)
+            }
         } catch (error) {
             console.error('Failed to load versions:', error)
         } finally {
@@ -316,8 +317,47 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
     }
 
     const handleDownload = async () => {
-        if (!selectedVersion) {
+        // Déterminer quelle version télécharger
+        let versionToDownload = selectedVersion
+
+        // Si pas de version sélectionnée mais une seule existe, la prendre
+        if (!versionToDownload && fileVersions.length === 1) {
+            versionToDownload = fileVersions[0]
+        }
+
+        // Si pas de version sélectionnée mais plusieurs existent, prendre la latest ou la première
+        if (!versionToDownload && fileVersions.length > 0) {
+            versionToDownload = fileVersions.find(v => v.is_latest) || fileVersions[0]
+        }
+
+        // Si toujours pas de version et qu'il y en a plusieurs, demander de sélectionner
+        if (!versionToDownload && fileVersions.length > 1) {
             toast.error(t('modelDetail.download.errors.selectVersion'))
+            return
+        }
+
+        // Si aucune version du tout, télécharger le fichier legacy
+        if (!versionToDownload && fileVersions.length === 0) {
+            // Téléchargement legacy sans version
+            setDownloading(true)
+            onDownloadStart?.()
+            try {
+                const response = await modelsAPI.download(modelId)
+                const url = window.URL.createObjectURL(new Blob([response.data]))
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', 'download.zip')
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+                toast.success(t('modelDetail.download.success'))
+            } catch (error) {
+                toast.error(error.response?.data?.error || t('modelDetail.download.errors.failed'))
+            } finally {
+                setDownloading(false)
+                onDownloadEnd?.()
+            }
             return
         }
 
@@ -325,12 +365,12 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
         onDownloadStart?.()
 
         try {
-            const response = await modelFileVersionsAPI.download(modelId, selectedVersion.id)
+            const response = await modelFileVersionsAPI.download(modelId, versionToDownload.id)
 
             const url = window.URL.createObjectURL(new Blob([response.data]))
             const link = document.createElement('a')
             link.href = url
-            link.setAttribute('download', selectedVersion.file_name || 'download.zip')
+            link.setAttribute('download', versionToDownload.file_name || 'download.zip')
             document.body.appendChild(link)
             link.click()
             link.remove()
@@ -362,7 +402,8 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
         )
     }
 
-    if (fileVersions.length === 0) {
+// Si aucune version ou une seule version → bouton direct sans liste
+    if (fileVersions.length <= 1) {
         return (
             <LoadingButton
                 onClick={handleDownload}
@@ -371,6 +412,7 @@ function DownloadSection({ modelId, gameId, onDownloadStart, onDownloadEnd }) {
             >
                 <Download className="w-5 h-5" />
                 {t('modelDetail.download.button')}
+                {selectedVersion && ` v${selectedVersion.version_number}`}
             </LoadingButton>
         )
     }
@@ -499,6 +541,7 @@ export default function ModelDetail() {
     const [images, setImages] = useState([])
     const [loading, setLoading] = useState(true)
     const [downloading, setDownloading] = useState(false)
+    const [claimingFree, setClaimingFree] = useState(false)
     const [userRating, setUserRating] = useState(0)
     const [hoverRating, setHoverRating] = useState(0)
     const [selectedImageIndex, setSelectedImageIndex] = useState(0)
@@ -507,6 +550,9 @@ export default function ModelDetail() {
     const [hasPurchased, setHasPurchased] = useState(false)
 
     const inCart = model ? isInCart(model.id) : false
+
+    // Check if product is free
+    const isFree = model ? parseFloat(model.price) === 0 : false
 
     useEffect(() => {
         fetchModel()
@@ -550,6 +596,33 @@ export default function ModelDetail() {
             return
         }
         await addToCart(model.id)
+    }
+
+    // Handle free product claim
+    const handleGetFree = async () => {
+        if (!isAuthenticated) {
+            navigate('/login', { state: { from: `/models/${id}` } })
+            return
+        }
+
+        setClaimingFree(true)
+        try {
+            await checkoutAPI.claimFree(model.id)
+            toast.success(t('modelDetail.download.success'))
+            setHasPurchased(true)
+            // Refresh model data
+            fetchModel()
+        } catch (error) {
+            if (error.response?.status === 400 && error.response?.data?.error?.includes('déjà')) {
+                // Already owned - just update state
+                setHasPurchased(true)
+                fetchModel()
+            } else {
+                toast.error(error.response?.data?.error || t('common.error'))
+            }
+        } finally {
+            setClaimingFree(false)
+        }
     }
 
     const handleRate = async (rating) => {
@@ -651,6 +724,14 @@ export default function ModelDetail() {
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-hyt-accent/10 to-hyt-purple/10">
                                     <span className="text-8xl font-bold text-hyt-accent/30">3D</span>
+                                </div>
+                            )}
+
+                            {/* Badge Gratuit */}
+                            {isFree && (
+                                <div className="absolute top-4 left-4 px-4 py-2 bg-green-500 text-white font-bold rounded-lg flex items-center gap-2 shadow-lg">
+                                    <Gift className="w-5 h-5" />
+                                    {t('common.free')}
                                 </div>
                             )}
 
@@ -763,6 +844,12 @@ export default function ModelDetail() {
                                     {model.category_name}
                                 </span>
                             )}
+                            {isFree && (
+                                <span className="badge bg-green-500/20 text-green-400 flex items-center gap-1.5">
+                                    <Gift className="w-3.5 h-3.5" />
+                                    {t('common.freeProduct')}
+                                </span>
+                            )}
                         </div>
 
                         {/* Title */}
@@ -847,9 +934,20 @@ export default function ModelDetail() {
                         <div className="card mt-8">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-gray-400">{t('modelDetail.price')}</span>
-                                <span className="font-display text-4xl font-bold text-white">
-                                    {parseFloat(model.price).toFixed(2)}€
-                                </span>
+                                {isFree ? (
+                                    <div className="text-right">
+                                        <span className="font-display text-4xl font-bold text-green-400">
+                                            {t('modelDetail.free')}
+                                        </span>
+                                        <p className="text-sm text-green-400/70 mt-1">
+                                            {t('common.freeProduct')}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <span className="font-display text-4xl font-bold text-white">
+                                        {parseFloat(model.price).toFixed(2)}€
+                                    </span>
+                                )}
                             </div>
 
                             <div className="space-y-3">
@@ -886,27 +984,40 @@ export default function ModelDetail() {
                                     </>
                                 ) : (
                                     <>
-                                        <button
-                                            onClick={handleAddToCart}
-                                            disabled={inCart}
-                                            className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
-                                                inCart
-                                                    ? 'bg-hyt-success text-white cursor-default'
-                                                    : 'btn-primary'
-                                            }`}
-                                        >
-                                            {inCart ? (
-                                                <>
-                                                    <Check className="w-5 h-5" />
-                                                    {t('modelDetail.inCart')}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ShoppingCart className="w-5 h-5" />
-                                                    {t('modelDetail.addToCart')}
-                                                </>
-                                            )}
-                                        </button>
+                                        {/* Free product: Get for free button */}
+                                        {isFree ? (
+                                            <LoadingButton
+                                                onClick={handleGetFree}
+                                                loading={claimingFree}
+                                                className="w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white transition-colors"
+                                            >
+                                                <Gift className="w-5 h-5" />
+                                                {t('modelDetail.getForFree')}
+                                            </LoadingButton>
+                                        ) : (
+                                            /* Paid product: Add to cart button */
+                                            <button
+                                                onClick={handleAddToCart}
+                                                disabled={inCart}
+                                                className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                    inCart
+                                                        ? 'bg-hyt-success text-white cursor-default'
+                                                        : 'btn-primary'
+                                                }`}
+                                            >
+                                                {inCart ? (
+                                                    <>
+                                                        <Check className="w-5 h-5" />
+                                                        {t('modelDetail.inCart')}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ShoppingCart className="w-5 h-5" />
+                                                        {t('modelDetail.addToCart')}
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
 
                                         <div className="flex gap-3">
                                             <button

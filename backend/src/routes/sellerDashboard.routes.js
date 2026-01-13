@@ -35,4 +35,12 @@ router.get(
     sellerDashboardController.getTopModels
 );
 
+// Analytics vendeur
+router.get(
+    "/seller/analytics",
+    requireAuth,
+    requireRole("CREATOR", "STAFF", "ADMIN"),
+    sellerDashboardController.getAnalytics
+);
+
 module.exports = router;

@@ -72,7 +72,9 @@ app.use("/api/invoices", require("./routes/invoices.routes"));
 app.use("/api/stripe", require("./routes/stripe.routes"));
 app.use("/api/admin", require("./routes/admin.routes"));
 app.use("/api", require("./routes/sellerDashboard.routes"));
+app.use("/api/seller", require("./routes/Seller-analytics-routes"));
 app.use("/api", require("./routes/adminDashboard.routes"));
+app.use('/api/admin-analytics', require('./routes/adminAnalytics.routes'));
 app.use("/api/tags", require("./routes/tags.routes"));
 app.use("/api/games", require("./routes/games.routes"));
 app.use("/api/categories", require("./routes/categories.routes"));
@@ -85,6 +87,9 @@ app.use("/api/bundles", require("./routes/bundles.routes"));
 app.use("/api/dependencies", require("./routes/dependencies.routes"));
 app.use("/api/model-versions", require("./routes/modelVersions.routes"));
 app.use("/api/custom-orders", require("./routes/customOrders.routes"));
+app.use("/api/creator/analytics", require("./routes/creatoranalytics.routes"));
+
+
 
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));

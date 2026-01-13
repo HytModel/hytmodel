@@ -1,6 +1,8 @@
 export default {
     // Common
     common: {
+        free: 'Free',
+        freeProduct: 'Free product',
         loading: 'Loading...',
         cancel: 'Cancel',
         close: 'Close',
@@ -130,6 +132,8 @@ export default {
 
     // Model Detail
     modelDetail: {
+        free: 'Free',
+        getForFree: 'Get for free',
         backToProducts: 'Back to products',
         description: 'Description',
         tags: 'Tags',
@@ -195,6 +199,8 @@ export default {
             bundles: 'Bundles'
         },
         filters: {
+            freeOnly: 'Free only',
+            showFreeOnly: 'Show free products',
             button: 'Filters',
             title: 'Advanced filters',
             clearAll: 'Clear all',
@@ -207,9 +213,9 @@ export default {
             maxPrice: 'Max price (€)',
             gameVersions: 'Game versions',
             tags: 'Tags',
-            available: '{{count}} available',
-            versionsSelected: '{{count}} version(s) selected',
-            tagsSelected: '{{count}} tag(s) selected',
+            available: '{count} available',
+            versionsSelected: '{count} version(s) selected',
+            tagsSelected: '{count} tag(s) selected',
             selectGameForVersions: 'Select a game to filter by version',
             sortBy: 'Sort by',
             sort: {
@@ -220,15 +226,16 @@ export default {
                 priceDesc: 'Price: high to low'
             }
         },
-        results: '{{count}} result(s) found',
+        results: '{count} result(s) found',
         bundles: {
-            productCount: '{{count}} products',
+            productCount: '{count} products',
             empty: {
                 title: 'No bundles available',
                 description: 'Sellers have not created any bundles yet'
             }
         },
         empty: {
+            noFreeProducts: 'No free products available',
             title: 'No products found',
             description: 'Try modifying your search criteria',
             clearFilters: 'Clear filters'
@@ -239,10 +246,10 @@ export default {
     myProducts: {
         title: 'My products',
         backToDashboard: 'Back to dashboard',
-        count: '{{count}} product(s)',
+        count: '{count} product(s)',
         addProduct: 'Add a product',
-        sales: '{{count}} sales',
-        confirmDelete: 'Are you sure you want to delete "{{title}}"?',
+        sales: '{count} sales',
+        confirmDelete: 'Are you sure you want to delete "{title}"?',
         stats: {
             total: 'Total',
             online: 'Online',
@@ -273,8 +280,8 @@ export default {
             delete: 'Delete'
         },
         reports: {
-            count: '{{count}} report(s)',
-            active: '{{count}} active',
+            count: '{count} report(s)',
+            active: '{count} active',
             noDescription: 'No description',
             staffNote: 'Staff note',
             yourResponse: 'Your response',
@@ -319,7 +326,7 @@ export default {
     // My Purchases
     myPurchases: {
         title: 'My purchases',
-        count: '{{count}} product(s) purchased',
+        count: '{count} product(s) purchased',
         download: 'Download',
         viewProduct: 'View product',
         empty: {
@@ -373,7 +380,7 @@ export default {
             submit: 'Submit my request'
         },
         errors: {
-            fileTooLarge: '{{name}} is too large (max 50MB)',
+            fileTooLarge: '{name} is too large (max 50MB)',
             maxFiles: 'Maximum 5 files allowed',
             titleDescriptionRequired: 'Title and description required',
             descriptionMinLength: 'Description must be at least 50 characters',
@@ -422,7 +429,7 @@ export default {
             fileFormats: 'ZIP, RAR, 7Z, TAR, GZ (max 500MB)',
             compatibleVersions: 'Compatible game versions',
             noGameVersions: 'No game versions available',
-            versionsSelected: '{{count}} version(s) selected',
+            versionsSelected: '{count} version(s) selected',
             changelog: 'Release notes (changelog)',
             changelogPlaceholder: 'Describe the changes in this version...',
             mainVersion: 'Main version',
@@ -511,7 +518,7 @@ export default {
             notConnected: 'Not connected',
             connect: 'Connect',
             disconnect: 'Disconnect',
-            confirmDisconnect: 'Disconnect your {{provider}} account?'
+            confirmDisconnect: 'Disconnect your {provider} account?'
         },
         success: {
             updated: 'Profile updated',
@@ -519,7 +526,7 @@ export default {
             twoFAEnabled: 'Two-factor authentication enabled',
             twoFADisabled: 'Two-factor authentication disabled',
             codesCopied: 'Codes copied',
-            accountDisconnected: '{{provider}} account disconnected',
+            accountDisconnected: '{provider} account disconnected',
             sessionRevoked: 'Session revoked',
             allSessionsRevoked: 'All sessions have been revoked'
         },
@@ -669,8 +676,19 @@ export default {
         },
         filters: {
             search: 'Search...',
+            filters: 'Filters',
+            game: 'Game',
+            category: 'Category',
             allGames: 'All games',
-            allCategories: 'All categories'
+            allCategories: 'All categories',
+            freeOnly: 'Free',
+            reset: 'Reset',
+            activeFilters: 'Active filters',
+            clearAll: 'Clear all',
+        },
+        results: {
+            products: 'products',
+            product: 'product',
         },
         sort: {
             newest: 'Newest',
@@ -800,12 +818,16 @@ export default {
             add: 'Add',
             errors: {
                 maxImages: 'Maximum 10 images allowed',
-                tooLarge: '{{name}} is too large (max 5MB)',
-                tooSmall: '{{name}} is too small (minimum 400x400 pixels)',
-                invalid: '{{name}} is not a valid image'
+                tooLarge: '{name} is too large (max 5MB)',
+                tooSmall: '{name} is too small (minimum 400x400 pixels)',
+                invalid: '{name} is not a valid image'
             }
         },
         info: {
+            freeProduct: 'Free product',
+            freeProductHint: 'Offer this product for free to users',
+            freeProductEnabled: 'This product will be free',
+            freeProductDescription: 'Users will be able to get it without payment',
             title: 'Information',
             productTitle: 'Title',
             titlePlaceholder: 'Ex: HD Texture Pack',
@@ -859,7 +881,7 @@ export default {
                 searchProduct: 'Search for a product...',
                 noPredefined: 'No dependencies available for this game',
                 proposeHint: 'Propose one in the "Propose" tab',
-                noDepFound: 'No dependency found for "{{query}}"',
+                noDepFound: 'No dependency found for "{query}"',
                 noProducts: 'No other products available for this game',
                 noProductFound: 'No product found',
                 selectVersion: 'Select a version',
@@ -1011,9 +1033,9 @@ export default {
             },
             errors: {
                 maxImages: 'Maximum 10 images allowed',
-                tooLarge: '{{name}} is too large (max 5MB)',
-                tooSmall: '{{name}} is too small (minimum 400x400 pixels)',
-                invalid: '{{name}} is not a valid image',
+                tooLarge: '{name} is too large (max 5MB)',
+                tooSmall: '{name} is too small (minimum 400x400 pixels)',
+                invalid: '{name} is not a valid image',
                 updateFailed: 'Error updating'
             }
         },
@@ -1063,7 +1085,7 @@ export default {
     // Download Version Selector
     downloadSelector: {
         download: 'Download',
-        downloadVersion: 'Download v{{version}}',
+        downloadVersion: 'Download v{version}',
         filterByGameVersion: 'Filter by game version',
         allVersions: 'All versions',
         fileVersion: 'File version',
@@ -1072,7 +1094,7 @@ export default {
         noCompatibleVersion: 'No compatible version',
         viewAllVersions: 'View all versions',
         compatibleWith: 'Compatible with:',
-        versionsAvailable: '{{count}} versions available',
+        versionsAvailable: '{count} versions available',
         success: {
             started: 'Download started'
         },
@@ -1084,7 +1106,7 @@ export default {
 
     // Dashboard
     dashboard: {
-        greeting: 'Hello, {{username}}',
+        greeting: 'Hello, {username}',
         welcomeMessage: 'Welcome to your dashboard',
         addProduct: 'Add a product',
         tabs: {
@@ -1096,23 +1118,35 @@ export default {
         },
         quickActions: {
             myPurchases: 'My purchases',
-            productsCount: '{{count}} products',
+            productsCount: '{count} products',
             invoices: 'Invoices',
             viewAll: 'View all',
             myProducts: 'My products',
             manage: 'Manage',
             settings: 'Settings',
-            configure: 'Configure'
+            configure: 'Configure',
+            analytics: "Analytics",
+            statistics: "Statistics"
         },
         stats: {
             totalRevenue: 'Total revenue',
             totalSales: 'Total sales',
             lastSale: 'Last sale',
             lastPayout: 'Last payout',
-            none: 'None'
+            none: 'None',
+            last30Days: "Last 30 days",
+            customOrders: "Custom Orders",
+            completed: "completed"
+        },
+        topProducts: {
+            title: "Best Selling Products",
+            subtitle: "Your top sellers",
+            sales: "sales",
+            empty: "No sales yet",
+            emptyDescription: "Your best sellers will appear here"
         },
         customOrdersCta: {
-            title: '{{count}} custom request(s) available',
+            title: '{count} custom request(s) available',
             description: 'Clients are looking for your skills! Make an offer and land new orders.'
         },
         proposalsCta: {
@@ -1187,6 +1221,115 @@ export default {
         }
     },
 
+    creatorAnalytics: {
+        title: "Analytics",
+        subtitle: "Detailed statistics of your sales",
+        retry: "Retry",
+        noData: "No data available",
+        breakdown: {
+            title: "Revenue breakdown",
+            products: "Products",
+            bundles: "Bundles",
+            customOrders: "Custom orders",
+            sales: "sales",
+            revenue: "Revenue",
+            count: "Sales",
+            noSales: "No sales",
+            noSalesDescription: "You haven't made any sales during this period."
+        },
+        filters: {
+            title: "Filters",
+            button: "Filters",
+            clearAll: "Clear all",
+            activeFilters: "Active filters",
+            game: "Game",
+            category: "Category",
+            tags: "Tags",
+            gameVersions: "Game versions",
+            allGames: "All games",
+            allCategories: "All categories",
+            selectGameForVersions: "Select a game to see available versions",
+            available: "{count} available",
+            versionsSelected: "{count} version(s) selected",
+            tagsSelected: "{count} tag(s) selected",
+            note: "Note: Filters mainly apply to product performance. Global revenue and breakdown are not filtered."
+        },
+        period: {
+            daysShort: "d",
+            year: "1yr"
+        },
+        kpis: {
+            revenue: "Revenue",
+            sales: "Sales",
+            totalViews: "Total views",
+            conversion: "Conversion"
+        },
+        stats: {
+            downloads: "Downloads",
+            avgRating: "Average rating",
+            uniqueBuyers: "Unique buyers",
+            activeProducts: "Active products"
+        },
+        insights: {
+            title: "Recommendations",
+            revenueGrowth: {
+                title: "📈 Excellent growth!",
+                message: "Your revenue increased by {value}% compared to the previous period."
+            },
+            revenueDecline: {
+                title: "⚠️ Revenue decline",
+                message: "Consider promoting your products or adding new ones."
+            },
+            lowConversion: {
+                title: "💡 Improve your conversions",
+                message: "Your conversion rate is low. Try improving your descriptions and images."
+            },
+            excellentRating: {
+                title: "⭐ Excellent ratings!",
+                message: "Your average rating of {value}/5 is excellent. Keep it up!"
+            },
+            productsToOptimize: {
+                title: "🎯 Products to optimize",
+                message: "{value} product(s) have views but no sales. Review their prices or descriptions."
+            }
+        },
+        bestHours: {
+            title: "Best selling hours"
+        },
+        bestDays: {
+            title: "Best selling days"
+        },
+        days: {
+            sunday: "Sunday",
+            monday: "Monday",
+            tuesday: "Tuesday",
+            wednesday: "Wednesday",
+            thursday: "Thursday",
+            friday: "Friday",
+            saturday: "Saturday"
+        },
+        products: {
+            title: "Performance by product",
+            product: "Product",
+            views: "Views",
+            downloads: "Downl.",
+            sales: "Sales",
+            conv: "Conv.",
+            revenue: "Revenue"
+        },
+        empty: {
+            title: "No data yet",
+            description: "Statistics will appear once you have sales",
+            addProduct: "Add a product"
+        },
+        errors: {
+            title: "Loading error",
+            loadFailed: "Failed to load analytics"
+        }
+    },
+
+
+
     // Custom Request Detail
     customRequestDetail: {
         backToRequests: 'Back to requests',
@@ -1230,6 +1373,16 @@ export default {
         rejected: {
             title: 'Request rejected',
             reason: 'Reason:'
+        },
+        acceptModal: {
+            title: 'Accept this offer?',
+            message: 'You are about to accept the offer from {creator} for {price}€. Other offers will be automatically rejected.',
+            confirm: 'Accept offer'
+        },
+        rejectModal: {
+            title: 'Reject this offer?',
+            message: 'Are you sure you want to reject this offer? This action cannot be undone.',
+            confirm: 'Reject'
         },
         searchingCreator: {
             title: 'Looking for creator',
@@ -1344,7 +1497,7 @@ export default {
             addMore: 'Add more files',
             selectFiles: 'Select files',
             messagePlaceholder: 'Delivery message (optional)...',
-            button: 'Deliver ({{count}} file(s))',
+            button: 'Deliver ({count} file(s))',
             defaultMessage: 'Delivery completed!'
         },
         review: {
@@ -1360,14 +1513,14 @@ export default {
         withdraw: {
             title: 'Withdrawal',
             description: 'You can cancel the order in progress.',
-            refund25: 'You get back 25% of the deposit',
-            creator20: 'Creator receives 20% (work done)',
+            refund25: 'You get back 50% of the deposit',
+            creator20: 'Creator receives 40% (work done)',
             button: 'Withdraw'
         },
         problem: {
             title: 'A problem?',
             description: 'If the files do not work properly, report it.',
-            previousClaims: '{{count}} previous claim(s) resolved',
+            previousClaims: '{count} previous claim(s) resolved',
             button: 'Report a problem'
         },
         claim: {
@@ -1376,7 +1529,7 @@ export default {
             clientMessage: 'Your claim is being processed.'
         },
         fixes: {
-            title: 'Fixes received ({{count}})',
+            title: 'Fixes received ({count})',
             version: 'Version',
             accepted: 'Accepted',
             rejected: 'Rejected',
@@ -1398,7 +1551,7 @@ export default {
             delivered: 'Order delivered!',
             approved: 'Delivery validated!',
             revisionRequested: 'Revision request sent',
-            withdrawn: 'Withdrawal completed. Refund: €{{amount}}',
+            withdrawn: 'Withdrawal completed. Refund: €{amount}',
             claimOpened: 'Claim sent. The creator and our team have been notified.',
             fixSent: 'Fix sent to client',
             fixAccepted: 'Fix accepted! Claim closed.',
@@ -1455,6 +1608,14 @@ export default {
                 minDays: 'Minimum delay: 1 day'
             }
         },
+        acceptModal: {
+            title: 'Accept this offer?',
+            price: 'Total price',
+            delay: 'Estimated delay',
+            paymentInfo: 'You will need to pay a deposit of {amount}€ (50%) to start the order.',
+            description: 'By accepting, an order will be created and you can continue discussing with the creator.',
+            confirm: 'Accept offer'
+        },
         rejectModal: {
             title: 'Reject offer',
             reasonLabel: 'Reason (optional)',
@@ -1493,7 +1654,7 @@ export default {
         deadline: 'Deadline',
         attachments: 'Attachments',
         file: 'File',
-        offersReceived: '{{count}} offer(s) received',
+        offersReceived: '{count} offer(s) received',
         messages: 'Messages',
         contact: 'Contact',
         makeOffer: 'Make an offer',
@@ -1533,7 +1694,7 @@ export default {
             clientDeadline: 'Client deadline',
             messageLabel: 'Message to client',
             messagePlaceholder: 'Present your approach, your skills, ask questions if needed...',
-            minChars: '{{count}}/20 minimum characters',
+            minChars: '{count}/20 minimum characters',
             send: 'Send offer',
             success: 'Offer sent!',
             errors: {
@@ -1608,7 +1769,7 @@ export default {
     // Cart
     cart: {
         title: 'My cart',
-        productCount: '{{count}} product(s)',
+        productCount: '{count} product(s)',
         clearCart: 'Clear cart',
         confirmClear: 'Do you really want to clear your cart?',
         checkout: 'Proceed to checkout',
@@ -1642,9 +1803,9 @@ export default {
 
     // Bundle Detail
     bundleDetail: {
-        includedProducts: 'Included products ({{count}})',
+        includedProducts: 'Included products ({count})',
         included: 'Included',
-        youSave: 'You save €{{amount}}',
+        youSave: 'You save €{amount}',
         discountApplied: 'Discount applied',
         products: 'Products',
         yourBundle: 'This is your bundle',
@@ -1652,7 +1813,7 @@ export default {
         viewPurchases: 'View my purchases',
         buyBundle: 'Buy bundle',
         purchaseInfo: 'By purchasing this bundle, you get all included products.',
-        validUntil: 'Offer valid until {{date}}',
+        validUntil: 'Offer valid until {date}',
         success: {
             purchased: 'Bundle purchased successfully!'
         },
@@ -1685,7 +1846,7 @@ export default {
             popular: 'POPULAR',
             ofRevenue: 'of your revenue',
             forPlatform: 'for the platform',
-            commission: 'Platform commission: {{percent}}%'
+            commission: 'Platform commission: {percent}%'
         },
         form: {
             presentYourself: 'Present yourself',
@@ -1707,7 +1868,7 @@ export default {
         },
         status: {
             pendingTitle: 'Application under review',
-            pendingDescription: 'Your application was submitted on {{date}}. Our team is currently reviewing it.',
+            pendingDescription: 'Your application was submitted on {date}. Our team is currently reviewing it.',
             pendingHint: 'You will receive a response in the coming days.',
             approvedTitle: 'Congratulations! 🎉',
             approvedDescription: 'Your application has been approved! You can now sell on HytModel.',
@@ -1773,24 +1934,24 @@ export default {
             selectGame: 'Select a game to manage its categories',
             selectGameToView: 'Select a game to view its categories',
             new: 'New category',
-            newTitleFor: 'New category for {{game}}',
+            newTitleFor: 'New category for {game}',
             editTitle: 'Edit category',
-            noneForGame: 'No categories for {{game}}',
+            noneForGame: 'No categories for {game}',
             createFirst: 'Create first category',
-            countForGame: '{{count}} category(ies) for {{game}}',
+            countForGame: '{count} category(ies) for {game}',
             namePlaceholder: 'Ex: Vehicles, Buildings...'
         },
         tags: {
             selectGame: 'Select a game to manage its tags',
             selectGameToView: 'Select a game to view its tags',
             new: 'New tag',
-            newTitleFor: 'New tag for {{game}}',
+            newTitleFor: 'New tag for {game}',
             editTitle: 'Edit tag',
             searchPlaceholder: 'Search for a tag...',
             noFound: 'No tags found',
-            noneForGame: 'No tags for {{game}}',
+            noneForGame: 'No tags for {game}',
             createFirst: 'Create first tag',
-            countForGame: '{{count}} tag(s) for {{game}}',
+            countForGame: '{count} tag(s) for {game}',
             nameLabel: 'Tag name',
             namePlaceholder: 'Ex: HD, Animated, Optimized...'
         },
@@ -1798,13 +1959,13 @@ export default {
             selectGame: 'Select a game to manage its versions',
             selectGameToView: 'Select a game to view its versions',
             new: 'New version',
-            newTitleFor: 'New version for {{game}}',
+            newTitleFor: 'New version for {game}',
             editTitle: 'Edit version',
             searchPlaceholder: 'Search for a version...',
             noFound: 'No versions found',
-            noneForGame: 'No versions for {{game}}',
+            noneForGame: 'No versions for {game}',
             createFirst: 'Create first version',
-            countForGame: '{{count}} version(s) for {{game}}',
+            countForGame: '{count} version(s) for {game}',
             versionLabel: 'Version',
             versionPlaceholder: 'Ex: 1.20.4, b3258, ESX 1.9...',
             versionHint: 'Enter the game version number or name'
@@ -1817,20 +1978,20 @@ export default {
             editTitle: 'Edit dependency',
             searchPlaceholder: 'Search for a dependency...',
             noFound: 'No dependencies found',
-            noneForGame: 'No dependencies for {{game}}',
+            noneForGame: 'No dependencies for {game}',
             create: 'Create a dependency',
             disabled: 'Disabled',
-            usedBy: 'Used by {{count}} product(s)',
+            usedBy: 'Used by {count} product(s)',
             website: 'Website',
             logoOptional: 'Logo (optional)',
             namePlaceholder: 'Ex: Fabric, Forge, OptiFine...'
         },
         confirmDelete: {
-            game: 'Delete game "{{name}}"? This may affect associated products.',
-            category: 'Delete category "{{name}}"?',
-            tag: 'Delete tag "{{name}}"?',
-            version: 'Delete version "{{name}}"?',
-            dependency: 'Delete dependency "{{name}}"?'
+            game: 'Delete game "{name}"? This may affect associated products.',
+            category: 'Delete category "{name}"?',
+            tag: 'Delete tag "{name}"?',
+            version: 'Delete version "{name}"?',
+            dependency: 'Delete dependency "{name}"?'
         },
         success: {
             gameCreated: 'Game created',
@@ -1899,7 +2060,7 @@ export default {
         eligible: {
             noEligible: 'No eligible sellers',
             willAppearHere: 'Sellers with 1000+ sales will appear here',
-            info: '{{count}} seller(s) have reached 1000+ sales and are eligible for Affiliate status (90% of revenue)'
+            info: '{count} seller(s) have reached 1000+ sales and are eligible for Affiliate status (90% of revenue)'
         },
         searchPlaceholder: 'Search for a seller...',
         noSellersFound: 'No sellers found',
@@ -2040,7 +2201,7 @@ export default {
             seller: 'Seller',
             reportedBy: 'Reported by',
             reportDescription: 'Report description',
-            sellerResponseOn: 'Seller response ({{date}})',
+            sellerResponseOn: 'Seller response ({date})',
             staffNote: 'Staff note',
             viewProduct: 'View product'
         },
@@ -2093,7 +2254,7 @@ export default {
         noDependencies: 'No dependencies',
         noProposals: 'No proposals',
         disabled: 'Disabled',
-        usedBy: 'Used by {{count}} product(s)',
+        usedBy: 'Used by {count} product(s)',
         proposedBy: 'Proposed by',
         reason: 'Reason',
         confirmDelete: 'Delete this dependency? Linked products will lose this association.',
@@ -2174,10 +2335,10 @@ export default {
         },
         requests: {
             noRequests: 'No requests',
-            noRequestsWithStatus: 'No requests with status "{{status}}"',
+            noRequestsWithStatus: 'No requests with status "{status}"',
             noRequestsInSystem: 'No requests in the system',
             by: 'By',
-            offersCount: '{{count}} offer(s)',
+            offersCount: '{count} offer(s)',
             description: 'Description',
             game: 'Game',
             category: 'Category',
@@ -2243,11 +2404,11 @@ export default {
         views: 'views',
         kpis: {
             totalRevenue: 'Total revenue',
-            salesCount: '{{count}} sales',
+            salesCount: '{count} sales',
             avgCart: 'Average cart',
             perTransaction: 'Per transaction',
             totalViews: 'Total views',
-            uniqueVisitors: '{{count}} unique visitors',
+            uniqueVisitors: '{count} unique visitors',
             conversionRate: 'Conversion rate',
             visitorsToBuyers: 'Visitors → Buyers'
         },
@@ -2258,7 +2419,7 @@ export default {
             topVersions: 'Best selling versions',
             forThisGame: 'For this game',
             bestSellers: 'Best-selling products',
-            top10For: 'Top 10 for {{game}}'
+            top10For: 'Top 10 for {game}'
         },
         charts: {
             salesByGame: 'Sales by game',
@@ -2314,10 +2475,10 @@ export default {
             totalReports: 'Total reported'
         },
         alerts: {
-            pendingReports: '{{count}} pending report(s)',
+            pendingReports: '{count} pending report(s)',
             reportsNeedAttention: 'Some products have been reported and need your attention',
             viewReports: 'View reports',
-            pendingCustomOrders: '{{count}} pending custom order(s)',
+            pendingCustomOrders: '{count} pending custom order(s)',
             customOrdersNeedValidation: 'Clients are waiting for their request to be validated',
             viewRequests: 'View requests'
         },
@@ -2360,7 +2521,7 @@ export default {
             changed: 'Changed',
             detailTitle: 'Modification details',
             newProduct: 'New product - No modifications',
-            changesDetected: '{{count}} modification(s) detected',
+            changesDetected: '{count} modification(s) detected',
             previousHiddenReason: 'Previous hidden reason',
             fields: {
                 title: 'Title',
@@ -2395,7 +2556,7 @@ export default {
         },
         products: {
             title: 'Product management',
-            count: '{{count}} product(s)',
+            count: '{count} product(s)',
             searchPlaceholder: 'Search by title or creator...',
             allStatuses: 'All statuses',
             noProducts: 'No products found',
@@ -2418,13 +2579,13 @@ export default {
             },
             hideModal: {
                 title: 'Hide product',
-                description: 'You are about to hide "{{title}}". The seller will be notified of the reason.',
+                description: 'You are about to hide "{title}". The seller will be notified of the reason.',
                 reasonLabel: 'Reason for hiding',
                 reasonPlaceholder: 'Ex: Inappropriate content, copyright, insufficient quality...'
             },
             deleteModal: {
                 title: 'Delete product',
-                description: 'Are you sure you want to permanently delete "{{title}}"? This action is irreversible.'
+                description: 'Are you sure you want to permanently delete "{title}"? This action is irreversible.'
             },
             success: {
                 approved: 'Product approved',
@@ -2450,7 +2611,7 @@ export default {
         subtitle: 'Create bundles to increase your sales',
         createBundle: 'Create a bundle',
         confirmDelete: 'Delete this bundle?',
-        stats: '{{products}} products • {{sales}} sales',
+        stats: '{products} products • {sales} sales',
         status: {
             active: 'Active',
             inactive: 'Inactive'
@@ -2482,7 +2643,7 @@ export default {
             productsLabel: 'Included products (minimum 2)',
             searchPlaceholder: 'Search for a product...',
             noProducts: 'No approved products found',
-            selectedCount: '{{count}} product(s) selected',
+            selectedCount: '{count} product(s) selected',
             startDate: 'Start date (optional)',
             endDate: 'End date (optional)',
             create: 'Create bundle',
@@ -2504,7 +2665,7 @@ export default {
         errors: {
             loadFailed: 'Error loading bundles',
             minProducts: 'Select at least 2 products',
-            minPrice: 'Final price (€{{price}}) is below minimum €5',
+            minPrice: 'Final price (€{price}) is below minimum €5',
             deleteFailed: 'Error deleting',
             generic: 'Error'
         }
@@ -2517,15 +2678,15 @@ export default {
         minCharsLabel: 'minimum characters',
         errors: {
             fieldRequired: 'This field is required',
-            minChars: 'Minimum {{count}} characters required'
+            minChars: 'Minimum {count} characters required'
         },
         withdraw: {
             title: 'Withdraw',
             subtitle: 'This action is irreversible',
             depositPaid: 'Deposit paid',
-            youGet: 'You get back (25%)',
-            creatorGets: 'Creator receives (20%)',
-            platformFee: 'Platform fee (5%)',
+            youGet: 'You get back (50%)',
+            creatorGets: 'Creator receives (40%)',
+            platformFee: 'Platform fee (10%)',
             reasonLabel: 'Reason for withdrawal (optional)',
             reasonPlaceholder: 'Explain why you want to cancel...',
             confirm: 'Confirm withdrawal'
@@ -2549,7 +2710,7 @@ export default {
         },
         delivery: {
             title: 'Confirm delivery?',
-            message: 'You are about to deliver {{count}} file(s)',
+            message: 'You are about to deliver {count} file(s)',
             info: 'The client can then validate or request modifications.',
             deliver: 'Deliver'
         },
@@ -2561,7 +2722,7 @@ export default {
         },
         rejectFix: {
             title: 'Reject fix',
-            version: 'Version {{version}}',
+            version: 'Version {version}',
             info: 'Explain precisely what is not working so the creator can fix it effectively.',
             whatWrong: "What's wrong?",
             placeholder: "Ex: The file still won't open, colors don't match my request, still missing...",
@@ -2570,7 +2731,7 @@ export default {
         },
         acceptFix: {
             title: 'Accept fix?',
-            version: 'Version {{version}}',
+            version: 'Version {version}',
             info: 'By accepting, the claim will be closed and the corrected files will replace the final files.',
             downloadInfo: 'You can download the corrected files once payment is complete',
             accept: 'Accept'
@@ -2616,7 +2777,7 @@ export default {
 
     // ModelCard
     modelCard: {
-        viewShop: "View {{name}}'s shop"
+        viewShop: "View {name}'s shop"
     },
 
     // Footer
@@ -2642,7 +2803,11 @@ export default {
         madeWith: 'Made with',
         inFrance: 'in France'
     },
-
+    language: {
+        title: 'Language',
+        subtitle: 'Choose the interface language'
+    },
+    freeOnly: 'Free only',
     // Navigation
     nav: {
         products: 'Products',
@@ -2669,9 +2834,9 @@ export default {
         language: 'Language',
         timeAgo: {
             now: 'Just now',
-            minutes: '{{count}}m ago',
-            hours: '{{count}}h ago',
-            days: '{{count}}d ago'
+            minutes: '{count}m ago',
+            hours: '{count}h ago',
+            days: '{count}d ago'
         }
     }
 }

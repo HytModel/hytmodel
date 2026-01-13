@@ -44,9 +44,10 @@ class ModelsController {
                 return res.status(400).json({ error: "Category is required" });
             }
 
-            // Validation prix minimum 5€
-            if (!price || Number(price) < 5) {
-                return res.status(400).json({ error: "Le prix minimum est de 5€" });
+            // Validation prix : 0 (gratuit) ou minimum 5€
+            const priceNum = Number(price);
+            if (isNaN(priceNum) || priceNum < 0 || (priceNum > 0 && priceNum < 5)) {
+                return res.status(400).json({ error: "Le prix doit être 0€ (gratuit) ou minimum 5€" });
             }
 
             // Parser les tableaux depuis JSON strings
@@ -56,7 +57,7 @@ class ModelsController {
             const model = await modelsService.createModelWithDetails({
                 title,
                 description,
-                price: Number(price),
+                price: priceNum,
                 creatorId: req.user.id,
                 filePath: req.file.path,
                 gameId,
@@ -78,9 +79,10 @@ class ModelsController {
             const modelId = req.params.id;
             const { title, description, price, gameId, categoryId, tagIds, versionIds, youtubeUrl } = req.body;
 
-            // Validation prix minimum 5€
-            if (!price || Number(price) < 5) {
-                return res.status(400).json({ error: "Le prix minimum est de 5€" });
+            // Validation prix : 0 (gratuit) ou minimum 5€
+            const priceNum = Number(price);
+            if (isNaN(priceNum) || priceNum < 0 || (priceNum > 0 && priceNum < 5)) {
+                return res.status(400).json({ error: "Le prix doit être 0€ (gratuit) ou minimum 5€" });
             }
 
             const isOwner = await modelsService.isOwner(modelId, req.user.id);
@@ -97,7 +99,7 @@ class ModelsController {
             const updated = await modelsService.updateModel(modelId, {
                 title,
                 description,
-                price: Number(price),
+                price: priceNum,
                 gameId,
                 categoryId,
                 tagIds: parsedTagIds,

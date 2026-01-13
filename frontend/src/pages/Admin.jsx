@@ -33,7 +33,8 @@ import {
     Timer,
     Activity,
     PieChart,
-    PenTool
+    PenTool,
+    CreditCard
 } from 'lucide-react'
 import { adminAPI, modelsAPI, dependenciesAPI, customOrdersAPI } from '../services/api'
 import { useTranslation } from '../context/LanguageContext'
@@ -52,7 +53,7 @@ const getImageUrl = (url) => {
 }
 
 // Composant Stats Card
-function StatCard({ title, value, icon: Icon, color, trend }) {
+function StatCard({ title, value, icon: Icon, color, trend, subtitle }) {
     const { t } = useTranslation()
     return (
         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
@@ -60,7 +61,10 @@ function StatCard({ title, value, icon: Icon, color, trend }) {
                 <div>
                     <p className="text-gray-400 text-sm mb-1">{title}</p>
                     <p className="text-2xl font-bold text-white">{value}</p>
-                    {trend && (
+                    {subtitle && (
+                        <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+                    )}
+                    {trend !== undefined && (
                         <p className={`text-sm mt-1 ${trend > 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {trend > 0 ? '+' : ''}{trend}% {t('admin.stats.vsLastMonth')}
                         </p>
@@ -75,7 +79,7 @@ function StatCard({ title, value, icon: Icon, color, trend }) {
 }
 
 // Mini Stats Card (plus compact)
-function MiniStatCard({ title, value, icon: Icon, color }) {
+function MiniStatCard({ title, value, icon: Icon, color, subtitle }) {
     return (
         <div className="bg-hyt-dark border border-hyt-border rounded-lg p-3 flex items-center gap-2 min-w-0">
             <div className={`p-2 rounded-lg flex-shrink-0 ${color}`}>
@@ -84,6 +88,7 @@ function MiniStatCard({ title, value, icon: Icon, color }) {
             <div className="min-w-0 flex-1">
                 <p className="text-gray-400 text-xs truncate">{title}</p>
                 <p className="text-base font-bold text-white">{value}</p>
+                {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
             </div>
         </div>
     )
@@ -165,6 +170,13 @@ function AdminOverview() {
         )
     }
 
+    // Calcul des montants (les valeurs sont en centimes)
+    const totalRevenue = (stats?.totalRevenue || 0) / 100
+    const platformCommission = (stats?.platformCommission || 0) / 100
+    const stripeFees = (stats?.totalStripeFees || 0) / 100
+    const sellerEarnings = (stats?.sellerEarnings || 0) / 100
+    const totalDownloads = stats?.totalDownloads || siteStats.downloads || 0
+
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">{t('admin.overview.title')}</h2>
@@ -173,48 +185,52 @@ function AdminOverview() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     title={t('admin.stats.totalRevenue')}
-                    value={`${((stats?.totalRevenue || 0) / 100).toFixed(2)} €`}
+                    value={`${totalRevenue.toFixed(2)} €`}
+                    subtitle={`${stats?.salesCount || 0} ventes`}
                     icon={DollarSign}
                     color="bg-green-500/20 text-green-500"
                 />
                 <StatCard
-                    title={t('admin.stats.platformCommission')}
-                    value={`${((stats?.platformCommission || 0) / 100).toFixed(2)} €`}
+                    title="Revenus Plateforme"
+                    value={`${platformCommission.toFixed(2)} €`}
+                    subtitle="Commissions + ventes HytStudio"
                     icon={TrendingUp}
                     color="bg-hyt-accent/20 text-hyt-accent"
                 />
                 <StatCard
-                    title={t('admin.stats.sales')}
-                    value={stats?.salesCount || 0}
-                    icon={Package}
-                    color="bg-hyt-purple/20 text-hyt-purple"
+                    title="Frais Stripe"
+                    value={`${stripeFees.toFixed(2)} €`}
+                    subtitle="1.5% + 0.25€ par transaction"
+                    icon={CreditCard}
+                    color="bg-red-500/20 text-red-500"
                 />
                 <StatCard
-                    title={t('admin.stats.activeSellers')}
-                    value={stats?.sellersCount || 0}
+                    title="Versé aux créateurs"
+                    value={`${sellerEarnings.toFixed(2)} €`}
+                    subtitle={`${stats?.sellersCount || 0} vendeurs actifs`}
                     icon={Users}
-                    color="bg-yellow-500/20 text-yellow-500"
+                    color="bg-purple-500/20 text-purple-500"
                 />
             </div>
 
             {/* Stats secondaires - Site & Signalements */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <MiniStatCard
-                    title={t('admin.stats.visits')}
+                    title="Vues produits"
                     value={siteStats.visits.toLocaleString()}
-                    icon={Globe}
+                    icon={Eye}
                     color="bg-blue-500/20 text-blue-500"
                 />
                 <MiniStatCard
-                    title={t('admin.stats.downloads')}
-                    value={siteStats.downloads.toLocaleString()}
+                    title="Téléchargements"
+                    value={totalDownloads.toLocaleString()}
                     icon={Download}
                     color="bg-green-500/20 text-green-500"
                 />
                 <MiniStatCard
-                    title={t('admin.stats.avgTime')}
-                    value={siteStats.avgTime}
-                    icon={Timer}
+                    title="Acheteurs"
+                    value={(stats?.buyersCount || 0).toLocaleString()}
+                    icon={Users}
                     color="bg-purple-500/20 text-purple-500"
                 />
                 <MiniStatCard
@@ -235,6 +251,43 @@ function AdminOverview() {
                     icon={AlertTriangle}
                     color="bg-gray-500/20 text-gray-400"
                 />
+            </div>
+
+            {/* Résumé financier */}
+            <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Résumé Financier</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-hyt-border">
+                            <span className="text-gray-400">Revenus bruts (clients)</span>
+                            <span className="text-white font-medium">{totalRevenue.toFixed(2)} €</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-hyt-border">
+                            <span className="text-gray-400">- Frais Stripe</span>
+                            <span className="text-red-400 font-medium">-{stripeFees.toFixed(2)} €</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-hyt-border">
+                            <span className="text-gray-400">= Net après Stripe</span>
+                            <span className="text-white font-medium">{(totalRevenue - stripeFees).toFixed(2)} €</span>
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-hyt-border">
+                            <span className="text-gray-400">Revenus plateforme</span>
+                            <span className="text-hyt-accent font-bold">{platformCommission.toFixed(2)} €</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-hyt-border">
+                            <span className="text-gray-400">Versé aux créateurs</span>
+                            <span className="text-purple-400 font-medium">{sellerEarnings.toFixed(2)} €</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                            <span className="text-gray-400">Vérification</span>
+                            <span className={`font-medium ${Math.abs(totalRevenue - stripeFees - platformCommission - sellerEarnings) < 0.01 ? 'text-green-400' : 'text-red-400'}`}>
+                                {(platformCommission + sellerEarnings + stripeFees).toFixed(2)} € = {totalRevenue.toFixed(2)} €
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Alertes Signalements et Commandes sur mesure */}
@@ -446,7 +499,9 @@ function ModificationDetailModal({ model, onClose }) {
         changes.push({ label: t('admin.modifications.fields.description'), old: prev.description, new: model.description, isLong: true })
     }
     if (prev.price !== undefined && parseFloat(prev.price) !== parseFloat(model.price)) {
-        changes.push({ label: t('admin.modifications.fields.price'), old: `${parseFloat(prev.price).toFixed(2)}€`, new: `${parseFloat(model.price).toFixed(2)}€` })
+        const oldPrice = parseFloat(prev.price) === 0 ? t('common.free') : `${parseFloat(prev.price).toFixed(2)}€`
+        const newPrice = parseFloat(model.price) === 0 ? t('common.free') : `${parseFloat(model.price).toFixed(2)}€`
+        changes.push({ label: t('admin.modifications.fields.price'), old: oldPrice, new: newPrice })
     }
     if (prev.youtube_url !== model.youtube_url) {
         changes.push({ label: 'YouTube', old: prev.youtube_url || t('admin.modifications.none'), new: model.youtube_url || t('admin.modifications.none') })
@@ -678,9 +733,9 @@ function PendingModels({ onCountChange }) {
                                         <p className="text-gray-400 text-sm">{t('admin.products.by')} {model.creator_username}</p>
 
                                         <div className="flex flex-wrap gap-4 mt-2">
-                                            <span className="text-hyt-accent font-medium">
-                                                {parseFloat(model.price).toFixed(2)} €
-                                            </span>
+                                                <span className={`font-medium ${parseFloat(model.price) === 0 ? 'text-green-400' : 'text-hyt-accent'}`}>
+                                                    {parseFloat(model.price) === 0 ? t('common.free') : `${parseFloat(model.price).toFixed(2)} €`}
+                                                </span>
                                             {model.game_name && (
                                                 <span className="text-gray-400 text-sm">{model.game_name}</span>
                                             )}
@@ -1304,8 +1359,8 @@ function AdminModels() {
                                     <p className="text-gray-400 text-sm">
                                         {t('admin.products.by')} <span className="text-hyt-accent">{model.creator_username || t('admin.products.unknown')}</span>
                                     </p>
-                                    <p className="text-white font-medium">
-                                        {parseFloat(model.price).toFixed(2)} €
+                                    <p className={`font-medium ${parseFloat(model.price) === 0 ? 'text-green-400' : 'text-white'}`}>
+                                        {parseFloat(model.price) === 0 ? t('common.free') : `${parseFloat(model.price).toFixed(2)} €`}
                                     </p>
                                     {model.is_hidden && model.hidden_reason && (
                                         <div className="mt-2 flex items-start gap-2 text-sm text-yellow-500">

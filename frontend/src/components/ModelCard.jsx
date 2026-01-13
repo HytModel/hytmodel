@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Star, Eye, Download, Check, User } from 'lucide-react'
+import { ShoppingCart, Star, Eye, Download, Check, User, Gift } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
@@ -13,10 +13,13 @@ export default function ModelCard({ model, showActions = true }) {
 
     const inCart = isInCart(model.id)
 
+    // Check if product is free
+    const isFree = parseFloat(model.price) === 0
+
     const handleAddToCart = async (e) => {
         e.preventDefault()
         e.stopPropagation()
-        if (!inCart) {
+        if (!inCart && !isFree) {
             await addToCart(model.id)
         }
     }
@@ -61,8 +64,16 @@ export default function ModelCard({ model, showActions = true }) {
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-hyt-dark/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                {/* Tags */}
-                {model.tags && model.tags.length > 0 && (
+                {/* Badge Gratuit */}
+                {isFree && (
+                    <div className="absolute top-3 left-3 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full flex items-center gap-1 shadow-lg z-10">
+                        <Gift className="w-3 h-3" />
+                        {t('common.free')}
+                    </div>
+                )}
+
+                {/* Tags - décalés si produit gratuit */}
+                {!isFree && model.tags && model.tags.length > 0 && (
                     <div className="absolute top-3 left-3 flex flex-wrap gap-1">
                         {model.tags.slice(0, 2).map((tag, index) => (
                             <span
@@ -100,8 +111,8 @@ export default function ModelCard({ model, showActions = true }) {
                     </div>
                 )}
 
-                {/* Quick Actions */}
-                {showActions && isAuthenticated && (
+                {/* Quick Actions - Only for paid products */}
+                {showActions && isAuthenticated && !isFree && (
                     <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={handleAddToCart}
@@ -118,6 +129,15 @@ export default function ModelCard({ model, showActions = true }) {
                                 <ShoppingCart className="w-4 h-4" />
                             )}
                         </button>
+                    </div>
+                )}
+
+                {/* Free product indicator on hover */}
+                {showActions && isFree && (
+                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="p-2.5 rounded-lg bg-green-500 text-white">
+                            <Gift className="w-4 h-4" />
+                        </div>
                     </div>
                 )}
             </div>
@@ -198,9 +218,16 @@ export default function ModelCard({ model, showActions = true }) {
                         )}
                     </div>
 
-                    <span className="font-display font-bold text-lg text-white">
-                        {Number(model.price).toFixed(2)}€
-                    </span>
+                    {/* Price or Free badge */}
+                    {isFree ? (
+                        <span className="font-display font-bold text-lg text-green-400">
+                            {t('common.free')}
+                        </span>
+                    ) : (
+                        <span className="font-display font-bold text-lg text-white">
+                            {Number(model.price).toFixed(2)}€
+                        </span>
+                    )}
                 </div>
             </div>
         </Link>

@@ -312,8 +312,11 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
     const { t } = useTranslation()
     const [reason, setReason] = useState('')
 
-    const clientRefund = order ? Number(order.first_payment_amount) * 0.25 : 0
-    const creatorPayment = order ? Number(order.first_payment_amount) * 0.20 : 0
+    // Convertir de centimes en euros (÷ 100)
+    const depositInEuros = order ? Number(order.first_payment_amount) / 100 : 0
+    const clientRefund = depositInEuros * 0.50
+    const creatorPayment = depositInEuros * 0.40
+    const platformFee = depositInEuros * 0.10
 
     useEffect(() => {
         if (!isOpen) setReason('')
@@ -338,7 +341,7 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                     <div className="flex justify-between items-center">
                         <span className="text-gray-400">{t('modals.withdraw.depositPaid')}</span>
                         <span className="text-white font-medium">
-                            {order ? Number(order.first_payment_amount).toFixed(2) : 0}€
+                            {depositInEuros.toFixed(2)}€
                         </span>
                     </div>
                     <div className="border-t border-hyt-border pt-3 space-y-2">
@@ -353,7 +356,7 @@ export function WithdrawModal({ isOpen, onClose, onConfirm, order, loading }) {
                         <div className="flex justify-between items-center">
                             <span className="text-gray-400">{t('modals.withdraw.platformFee')}</span>
                             <span className="text-gray-500 font-medium">
-                                {(Number(order?.first_payment_amount || 0) * 0.05).toFixed(2)}€
+                                {platformFee.toFixed(2)}€
                             </span>
                         </div>
                     </div>
@@ -635,6 +638,9 @@ export function DeliveryConfirmModal({ isOpen, onClose, onConfirm, filesCount, l
 export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loading }) {
     const { t } = useTranslation()
 
+    // Convertir de centimes en euros (÷ 100)
+    const balanceInEuros = order ? (Number(order.second_payment_amount) / 100) : 0
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
             <div className="p-6">
@@ -659,7 +665,7 @@ export function ApproveDeliveryModal({ isOpen, onClose, onConfirm, order, loadin
                         {t('modals.approveDelivery.nextStep')}
                     </p>
                     <p className="text-white font-bold text-lg text-center mt-1">
-                        {order ? Number(order.second_payment_amount).toFixed(2) : 0}€
+                        {balanceInEuros.toFixed(2)}€
                     </p>
                 </div>
 

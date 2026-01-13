@@ -1,7 +1,19 @@
 const pool = require("../db/pool");
 
 class AdminService {
+    // Taux de commission par type de créateur
+    getCommissionRate(creatorType) {
+        switch (creatorType) {
+            case 'HYTSTUDIO': return 0      // 0% commission (100% au créateur)
+            case 'AFFILIATED': return 0.10  // 10% commission (90% au créateur)
+            default: return 0.20            // 20% commission (80% au créateur)
+        }
+    }
 
+    // Calculer les frais Stripe (1.5% + 0.25€)
+    calculateStripeFees(amount) {
+        return (amount * 0.015) + 0.25
+    }
 
     // Changer le rôle d'un utilisateur
     async setUserRole(userId, role) {
@@ -60,7 +72,7 @@ class AdminService {
         );
     }
 
-    // Statistiques globales
+    // Statistiques globales (ancienne méthode - gardée pour compatibilité)
     async getGlobalStats() {
         const stats = await pool.query(`
             SELECT
@@ -72,6 +84,83 @@ class AdminService {
         `);
 
         return stats.rows[0];
+    }
+
+    // NOUVEAU : Statistiques du dashboard avec calculs corrects
+    async getDashboardStats() {
+        // Récupérer toutes les ventes avec les infos du créateur
+        const { rows: sales } = await pool.query(`
+            SELECT 
+                p.id,
+                p.price_paid,
+                p.created_at,
+                m.creator_id,
+                u.creator_type
+            FROM purchases p
+            JOIN models m ON m.id = p.model_id
+            JOIN users u ON u.id = m.creator_id
+            WHERE p.price_paid > 0
+        `);
+
+        let totalGrossRevenue = 0      // Revenus bruts (prix payés par les clients)
+        let totalStripeFees = 0        // Frais Stripe totaux (x2 : encaissement + payout)
+        let totalPlatformCommission = 0 // Commission plateforme
+        let totalNetToCreators = 0     // Net versé aux créateurs
+        const salesCount = sales.length
+
+        for (const sale of sales) {
+            const pricePaid = parseFloat(sale.price_paid)
+            const commissionRate = this.getCommissionRate(sale.creator_type)
+
+            // Frais Stripe sur l'encaissement (paiement client)
+            const stripeFeesIn = this.calculateStripeFees(pricePaid)
+
+            // Montant après frais Stripe d'encaissement
+            const afterStripeIn = pricePaid - stripeFeesIn
+
+            // Commission plateforme
+            const platformCommission = pricePaid * commissionRate
+
+            // Montant pour le créateur avant payout
+            const creatorAmount = afterStripeIn - platformCommission
+
+            // Frais Stripe sur le payout (vers le créateur)
+            const stripeFeesOut = creatorAmount > 0 ? this.calculateStripeFees(creatorAmount) : 0
+
+            // Net final au créateur
+            const netToCreator = Math.max(0, creatorAmount - stripeFeesOut)
+
+            totalGrossRevenue += pricePaid
+            totalStripeFees += stripeFeesIn + stripeFeesOut
+            totalPlatformCommission += platformCommission
+            totalNetToCreators += netToCreator
+        }
+
+        // Revenu net plateforme = Commission - frais Stripe sur les payouts
+        // (les frais sur encaissement sont déjà déduits avant la commission)
+        const platformNetRevenue = totalPlatformCommission
+
+        // Nombre de vendeurs actifs (qui ont au moins une vente)
+        const { rows: sellersCount } = await pool.query(`
+            SELECT COUNT(DISTINCT m.creator_id) as count
+            FROM purchases p
+            JOIN models m ON m.id = p.model_id
+        `)
+
+        return {
+            // Revenus bruts totaux (ce que les clients ont payé)
+            totalRevenue: Math.round(totalGrossRevenue * 100), // En centimes
+            // Commission plateforme totale
+            platformCommission: Math.round(totalPlatformCommission * 100),
+            // Frais Stripe totaux
+            totalStripeFees: Math.round(totalStripeFees * 100),
+            // Net versé aux créateurs
+            totalNetToCreators: Math.round(totalNetToCreators * 100),
+            // Nombre de ventes
+            salesCount: salesCount,
+            // Nombre de vendeurs actifs
+            sellersCount: parseInt(sellersCount[0]?.count || 0)
+        }
     }
 
     // Modèles en attente d'approbation (avec raison de modification et anciennes valeurs)

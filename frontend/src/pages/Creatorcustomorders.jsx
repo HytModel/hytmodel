@@ -13,6 +13,12 @@ import toast from 'react-hot-toast'
 // Fonction pour l'URL des images
 const getImageUrl = (url) => {
     if (!url) return null
+    // Si c'est un objet, extraire l'URL
+    if (typeof url === 'object') {
+        url = url.url || url.file_path || url.path || null
+        if (!url) return null
+    }
+    if (typeof url !== 'string') return null
     if (url.startsWith('http')) return url
     return `http://localhost:3001${url}`
 }
@@ -85,7 +91,7 @@ function MakeOfferModal({ request, onClose, onSuccess }) {
         try {
             await customOrdersAPI.makeOffer({
                 request_id: request.id,
-                price: Math.round(parseFloat(price)),
+                price: Math.round(parseFloat(price) * 100),
                 estimated_days: parseInt(estimatedDays),
                 message: message.trim()
             })
@@ -301,9 +307,9 @@ function AvailableRequestCard({ request, onMakeOffer, onContact }) {
                             <p className="text-xs text-gray-500">{t('creatorCustomOrders.budget')}</p>
                             <p className="font-bold text-hyt-accent">
                                 {request.budget_min && request.budget_max ? (
-                                    `${Number(request.budget_min).toFixed(0)}€ - ${Number(request.budget_max).toFixed(0)}€`
+                                    `${Number(request.budget_min / 100).toFixed(0)}€ - ${Number(request.budget_max / 100).toFixed(0)}€`
                                 ) : request.budget_max ? (
-                                    `Max ${Number(request.budget_max).toFixed(0)}€`
+                                    `Max ${Number(request.budget_max / 100).toFixed(0)}€`
                                 ) : (
                                     t('creatorCustomOrders.toDefine')
                                 )}
@@ -456,7 +462,7 @@ function NegotiationCard({ conversation, onClick }) {
                         {conversation.budget_min && conversation.budget_max && (
                             <span className="text-gray-400">
                                 <Euro className="w-4 h-4 inline mr-1" />
-                                {Number(conversation.budget_min).toFixed(0)}€ - {Number(conversation.budget_max).toFixed(0)}€
+                                {Number(conversation.budget_min / 100).toFixed(0)}€ - {Number(conversation.budget_max / 100).toFixed(0)}€
                             </span>
                         )}
                         {conversation.game_name && (
@@ -472,7 +478,7 @@ function NegotiationCard({ conversation, onClick }) {
                 <div className="text-right">
                     {conversation.offer_status === 'PENDING' ? (
                         <div className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                            {t('creatorCustomOrders.offer')}: {Number(conversation.offer_price).toFixed(2)}€
+                            {t('creatorCustomOrders.offer')}: {Number(conversation.offer_price / 100).toFixed(2)}€
                         </div>
                     ) : conversation.offer_id ? (
                         <div className="px-3 py-1 bg-gray-500/20 text-gray-400 rounded-full text-sm">
@@ -548,7 +554,7 @@ function ActiveOrderCard({ order, onDeliver }) {
                         <div className="text-right">
                             <p className="text-xs text-gray-500">{t('creatorCustomOrders.amount')}</p>
                             <p className="font-bold text-green-500">
-                                {Number(order.total_price).toFixed(2)}€
+                                {Number(order.total_price / 100).toFixed(2)}€
                             </p>
                         </div>
 

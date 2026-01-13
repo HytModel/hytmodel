@@ -4,12 +4,56 @@ import { motion } from 'framer-motion'
 import {
     ArrowLeft, Clock, CheckCircle, XCircle, Euro, Calendar,
     Gamepad2, FolderOpen, FileText, Loader2, User, Star,
-    MessageSquare, Download, AlertCircle, PenTool, Users
+    MessageSquare, Download, AlertCircle, PenTool, Users, X
 } from 'lucide-react'
 import { customOrdersAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
+
+// Modal de confirmation
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText, confirmColor = 'bg-hyt-accent hover:bg-hyt-accent/90', loading }) {
+    const { t } = useTranslation()
+
+    if (!isOpen) return null
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-hyt-card border border-hyt-border rounded-xl w-full max-w-md"
+            >
+                <div className="flex items-center justify-between p-4 border-b border-hyt-border">
+                    <h3 className="text-lg font-semibold text-white">{title}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-6">
+                    <p className="text-gray-300">{message}</p>
+                </div>
+                <div className="flex gap-3 p-4 border-t border-hyt-border">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 btn-ghost"
+                        disabled={loading}
+                    >
+                        {t('common.cancel')}
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        disabled={loading}
+                        className={`flex-1 px-4 py-2 rounded-lg text-black font-medium flex items-center justify-center gap-2 ${confirmColor}`}
+                    >
+                        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {confirmText}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    )
+}
 
 export default function CustomRequestDetail() {
     const { id } = useParams()
@@ -40,6 +84,10 @@ export default function CustomRequestDetail() {
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(null)
 
+    // Modales
+    const [acceptModal, setAcceptModal] = useState({ isOpen: false, offerId: null, offer: null })
+    const [rejectModal, setRejectModal] = useState({ isOpen: false, offerId: null })
+
     useEffect(() => {
         loadRequest()
     }, [id])
@@ -67,14 +115,18 @@ export default function CustomRequestDetail() {
         }
     }
 
-    const handleAcceptOffer = async (offerId) => {
-        if (!confirm(t('customRequestDetail.confirmAccept'))) return
+    const handleAcceptOffer = (offer) => {
+        setAcceptModal({ isOpen: true, offerId: offer.id, offer })
+    }
 
+    const confirmAcceptOffer = async () => {
+        const offerId = acceptModal.offerId
         setActionLoading(offerId)
         try {
             const { data } = await customOrdersAPI.acceptOffer(offerId)
             toast.success(t('customRequestDetail.success.offerAccepted'))
-            navigate(`/custom-orders/${data.order.id}`)
+            setAcceptModal({ isOpen: false, offerId: null, offer: null })
+            navigate(`/custom-orders/orders/${data.order.id}`)
         } catch (error) {
             toast.error(error.response?.data?.error || t('customRequestDetail.errors.acceptFailed'))
         } finally {
@@ -82,13 +134,17 @@ export default function CustomRequestDetail() {
         }
     }
 
-    const handleRejectOffer = async (offerId) => {
-        if (!confirm(t('customRequestDetail.confirmReject'))) return
+    const handleRejectOffer = (offerId) => {
+        setRejectModal({ isOpen: true, offerId })
+    }
 
+    const confirmRejectOffer = async () => {
+        const offerId = rejectModal.offerId
         setActionLoading(offerId)
         try {
             await customOrdersAPI.rejectOffer(offerId)
             toast.success(t('customRequestDetail.success.offerRejected'))
+            setRejectModal({ isOpen: false, offerId: null })
             loadRequest()
         } catch (error) {
             toast.error(error.response?.data?.error || t('customRequestDetail.errors.generic'))
@@ -325,7 +381,7 @@ export default function CustomRequestDetail() {
 
                                                 <div className="text-right">
                                                     <p className="text-2xl font-bold text-white">
-                                                        {parseFloat(offer.price).toFixed(2)}€
+                                                        {(parseFloat(offer.price) / 100).toFixed(2)}€
                                                     </p>
                                                     <p className="text-sm text-gray-400">
                                                         {offer.estimated_days} {t('customRequestDetail.days', { count: offer.estimated_days })}
@@ -357,7 +413,7 @@ export default function CustomRequestDetail() {
                                                             {t('customRequestDetail.reject')}
                                                         </button>
                                                         <button
-                                                            onClick={() => handleAcceptOffer(offer.id)}
+                                                            onClick={() => handleAcceptOffer(offer)}
                                                             disabled={actionLoading === offer.id}
                                                             className="px-4 py-2 text-sm bg-hyt-accent text-black font-medium rounded-lg hover:bg-hyt-accent/90 transition-colors flex items-center gap-2"
                                                         >
@@ -448,7 +504,7 @@ export default function CustomRequestDetail() {
                                                             conv.offer_status === 'ACCEPTED' ? 'bg-green-500/20 text-green-400' :
                                                                 'bg-gray-500/20 text-gray-400'
                                                     }`}>
-                                                        {conv.offer_status === 'PENDING' ? `${Number(conv.offer_price).toFixed(0)}€` :
+                                                        {conv.offer_status === 'PENDING' ? `${(Number(conv.offer_price) / 100).toFixed(0)}€` :
                                                             conv.offer_status === 'ACCEPTED' ? t('customRequestDetail.offerStatus.accepted') : t('customRequestDetail.offerStatus.rejected')}
                                                     </span>
                                                 </div>
@@ -491,10 +547,10 @@ export default function CustomRequestDetail() {
                                         <span className="text-gray-400">{t('customRequestDetail.budget')} :</span>
                                         <span className="text-white">
                                             {request.budget_min && request.budget_max
-                                                ? `${request.budget_min}€ - ${request.budget_max}€`
+                                                ? `${(request.budget_min / 100).toFixed(0)}€ - ${(request.budget_max / 100).toFixed(0)}€`
                                                 : request.budget_max
-                                                    ? `Max ${request.budget_max}€`
-                                                    : `Min ${request.budget_min}€`
+                                                    ? `Max ${(request.budget_max / 100).toFixed(0)}€`
+                                                    : `Min ${(request.budget_min / 100).toFixed(0)}€`
                                             }
                                         </span>
                                     </div>
@@ -531,6 +587,33 @@ export default function CustomRequestDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal accepter offre */}
+            <ConfirmModal
+                isOpen={acceptModal.isOpen}
+                onClose={() => setAcceptModal({ isOpen: false, offerId: null, offer: null })}
+                onConfirm={confirmAcceptOffer}
+                title={t('customRequestDetail.acceptModal.title')}
+                message={t('customRequestDetail.acceptModal.message', {
+                    price: acceptModal.offer ? (parseFloat(acceptModal.offer.price) / 100).toFixed(2) : '0',
+                    creator: acceptModal.offer?.creator_username || ''
+                })}
+                confirmText={t('customRequestDetail.acceptModal.confirm')}
+                confirmColor="bg-green-500 hover:bg-green-600"
+                loading={actionLoading !== null}
+            />
+
+            {/* Modal refuser offre */}
+            <ConfirmModal
+                isOpen={rejectModal.isOpen}
+                onClose={() => setRejectModal({ isOpen: false, offerId: null })}
+                onConfirm={confirmRejectOffer}
+                title={t('customRequestDetail.rejectModal.title')}
+                message={t('customRequestDetail.rejectModal.message')}
+                confirmText={t('customRequestDetail.rejectModal.confirm')}
+                confirmColor="bg-red-500 hover:bg-red-600"
+                loading={actionLoading !== null}
+            />
         </div>
     )
 }

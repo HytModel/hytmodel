@@ -236,10 +236,10 @@ export default function CustomOrders() {
                                                         <span className="flex items-center gap-1">
                                                             <Euro className="w-4 h-4" />
                                                             {request.budget_min && request.budget_max
-                                                                ? `${request.budget_min}€ - ${request.budget_max}€`
+                                                                ? `${(request.budget_min / 100).toFixed(0)}€ - ${(request.budget_max / 100).toFixed(0)}€`
                                                                 : request.budget_max
-                                                                    ? `Max ${request.budget_max}€`
-                                                                    : `Min ${request.budget_min}€`
+                                                                    ? `Max ${(request.budget_max / 100).toFixed(0)}€`
+                                                                    : `Min ${(request.budget_min / 100).toFixed(0)}€`
                                                             }
                                                         </span>
                                                     )}
@@ -338,7 +338,7 @@ export default function CustomOrders() {
                                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                                                     <span className="flex items-center gap-1">
                                                         <Euro className="w-4 h-4" />
-                                                        {parseFloat(order.total_price).toFixed(2)}€
+                                                        {(parseFloat(order.total_price) / 100).toFixed(2)}€
                                                     </span>
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="w-4 h-4" />
