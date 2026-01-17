@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Trash2, ArrowRight, ShoppingBag, CreditCard } from 'lucide-react'
+import { ShoppingCart, Trash2, ArrowRight, ShoppingBag, CreditCard, CheckSquare, Square } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
@@ -14,6 +14,7 @@ export default function Cart() {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const [checkoutLoading, setCheckoutLoading] = useState(false)
+    const [acceptedTerms, setAcceptedTerms] = useState(false)
 
     const handleRemove = async (modelId) => {
         await removeFromCart(modelId)
@@ -28,6 +29,11 @@ export default function Cart() {
     const handleCheckout = async () => {
         if (!isAuthenticated) {
             navigate('/login', { state: { from: '/cart' } })
+            return
+        }
+
+        if (!acceptedTerms) {
+            toast.error(t('cart.errors.mustAcceptTerms'))
             return
         }
 
@@ -163,14 +169,74 @@ export default function Cart() {
                                     </div>
                                 </div>
 
-                                <LoadingButton
+                                {/* Acceptation des CGU */}
+                                <div className="mb-4">
+                                    <label
+                                        className="flex items-start gap-3 cursor-pointer group"
+                                        onClick={() => setAcceptedTerms(!acceptedTerms)}
+                                    >
+                                        <div className="mt-0.5 flex-shrink-0">
+                                            {acceptedTerms ? (
+                                                <CheckSquare className="w-5 h-5 text-hyt-accent" />
+                                            ) : (
+                                                <Square className="w-5 h-5 text-gray-500 group-hover:text-gray-400 transition-colors" />
+                                            )}
+                                        </div>
+                                        <span className="text-sm text-gray-400 leading-relaxed">
+                                            {t('cart.terms.accept')}{' '}
+                                            <Link
+                                                to="/terms"
+                                                target="_blank"
+                                                className="text-hyt-accent hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {t('cart.terms.termsLink')}
+                                            </Link>
+                                            {' '}{t('cart.terms.and')}{' '}
+                                            <Link
+                                                to="/privacy"
+                                                target="_blank"
+                                                className="text-hyt-accent hover:underline"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {t('cart.terms.privacyLink')}
+                                            </Link>
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Notice droit de rétractation */}
+                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
+                                    <p className="text-xs text-yellow-200/80 leading-relaxed">
+                                        {t('cart.terms.noRefundNotice')}
+                                    </p>
+                                </div>
+
+                                {/* Bouton Checkout */}
+                                <button
                                     onClick={handleCheckout}
-                                    loading={checkoutLoading}
-                                    className="btn-primary w-full flex items-center justify-center gap-2"
+                                    disabled={checkoutLoading || !acceptedTerms}
+                                    className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+                                        acceptedTerms
+                                            ? 'btn-primary'
+                                            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                    }`}
                                 >
-                                    <CreditCard className="w-5 h-5" />
-                                    {t('cart.checkout')}
-                                </LoadingButton>
+                                    {checkoutLoading ? (
+                                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <CreditCard className="w-5 h-5" />
+                                            {t('cart.checkout')}
+                                        </>
+                                    )}
+                                </button>
+
+                                {!acceptedTerms && (
+                                    <p className="text-xs text-center text-gray-500 mt-2">
+                                        {t('cart.terms.required')}
+                                    </p>
+                                )}
 
                                 <p className="text-xs text-gray-500 text-center mt-4">
                                     {t('cart.securePayment')}

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from '../context/LanguageContext'
-import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI, customOrdersAPI } from '../services/api'
+import { sellerAPI, checkoutAPI, invoicesAPI, stripeAPI, proposalsAPI, dependenciesAPI, gamesAPI, customOrdersAPI, authAPI } from '../services/api'
 import Loading from '../components/Loading'
 import SellerProposals from './SellerProposals'
 import toast from 'react-hot-toast'
@@ -18,7 +18,7 @@ import CreatorCustomOrders from './CreatorCustomOrders'
 
 
 export default function Dashboard() {
-    const { user, isCreator } = useAuth()
+    const { user, isCreator, refreshUser } = useAuth()
     const { t } = useTranslation()
     const [stats, setStats] = useState(null)
     const [analytics, setAnalytics] = useState(null)
@@ -29,6 +29,14 @@ export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('overview')
     const [proposalsCount, setProposalsCount] = useState(0)
     const [customOrdersCount, setCustomOrdersCount] = useState(0)
+
+    // Statut Stripe (synced from API)
+    const [stripeStatus, setStripeStatus] = useState({
+        connected: false,
+        onboarded: false,
+        charges_enabled: false,
+        payouts_enabled: false
+    })
 
     // Propositions de dépendances
     const [depProposals, setDepProposals] = useState([])
@@ -76,6 +84,25 @@ export default function Dashboard() {
         try {
             const purchasesRes = await checkoutAPI.getPurchases()
             setPurchases(purchasesRes.data.purchases || [])
+
+            // Sync le statut Stripe si l'utilisateur a un compte connecté
+            if (user?.stripe_account_id) {
+                try {
+                    const { data } = await stripeAPI.getConnectStatus()
+                    setStripeStatus({
+                        connected: data.connected || false,
+                        onboarded: data.onboarded || false,
+                        charges_enabled: data.charges_enabled || false,
+                        payouts_enabled: data.payouts_enabled || false
+                    })
+                    // Rafraîchir le user dans le contexte si la fonction existe
+                    if (typeof refreshUser === 'function') {
+                        await refreshUser()
+                    }
+                } catch (e) {
+                    console.error('Failed to sync Stripe status:', e)
+                }
+            }
 
             const canAccessCreatorFeatures = isCreator() || ['STAFF', 'ADMIN'].includes(user?.role)
 
@@ -192,6 +219,90 @@ export default function Dashboard() {
         if (!url) return null
         if (url.startsWith('http')) return url
         return `http://localhost:3001${url}`
+    }
+
+    // Composant pour afficher le statut Stripe
+    const StripeStatusCard = () => {
+        // Pas de compte Stripe du tout
+        if (!user?.stripe_account_id) {
+            return (
+                <div className="card mb-8 border-hyt-warning/30 bg-hyt-warning/5">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-hyt-warning/10 flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="w-6 h-6 text-hyt-warning" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.title')}</h3>
+                            <p className="text-gray-400 text-sm mb-4">{t('dashboard.stripe.description')}</p>
+                            <button onClick={handleConnectStripe} disabled={connectingStripe} className="btn-primary">
+                                {connectingStripe ? t('dashboard.stripe.connecting') : t('dashboard.stripe.connect')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        // Compte créé mais onboarding pas terminé
+        if (!stripeStatus.onboarded) {
+            return (
+                <div className="card mb-8 border-orange-500/30 bg-orange-500/5">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                            <Clock className="w-6 h-6 text-orange-500" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.inProgress.title')}</h3>
+                            <p className="text-gray-400 text-sm mb-2">
+                                {t('dashboard.stripe.inProgress.description')}
+                            </p>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="flex items-center gap-2 text-sm">
+                                    {stripeStatus.charges_enabled ? (
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                        <XCircle className="w-4 h-4 text-gray-500" />
+                                    )}
+                                    <span className={stripeStatus.charges_enabled ? 'text-green-400' : 'text-gray-500'}>
+                                        {t('dashboard.stripe.status.payments')}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    {stripeStatus.payouts_enabled ? (
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                        <XCircle className="w-4 h-4 text-gray-500" />
+                                    )}
+                                    <span className={stripeStatus.payouts_enabled ? 'text-green-400' : 'text-gray-500'}>
+                                        {t('dashboard.stripe.status.payouts')}
+                                    </span>
+                                </div>
+                            </div>
+                            <button onClick={handleConnectStripe} disabled={connectingStripe} className="btn-primary">
+                                {connectingStripe ? t('dashboard.stripe.connecting') : t('dashboard.stripe.continue')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )
+        }
+
+        // Compte complètement configuré
+        return (
+            <div className="card mb-8 border-green-500/30 bg-green-500/5">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="w-6 h-6 text-green-500" />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.configured.title')}</h3>
+                        <p className="text-gray-400 text-sm">
+                            {t('dashboard.stripe.configured.description')}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     if (loading) {
@@ -649,23 +760,8 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                {/* Stripe Connect */}
-                                {!user?.stripe_account_id && (
-                                    <div className="card mb-8 border-hyt-warning/30 bg-hyt-warning/5">
-                                        <div className="flex items-start gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-hyt-warning/10 flex items-center justify-center flex-shrink-0">
-                                                <CreditCard className="w-6 h-6 text-hyt-warning" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-white mb-1">{t('dashboard.stripe.title')}</h3>
-                                                <p className="text-gray-400 text-sm mb-4">{t('dashboard.stripe.description')}</p>
-                                                <button onClick={handleConnectStripe} disabled={connectingStripe} className="btn-primary">
-                                                    {connectingStripe ? t('dashboard.stripe.connecting') : t('dashboard.stripe.connect')}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                                {/* Stripe Connect - Utilise le nouveau composant */}
+                                <StripeStatusCard />
 
                                 {/* Recent Sales */}
                                 {recentSales.length > 0 && (

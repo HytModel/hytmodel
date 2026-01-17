@@ -120,6 +120,17 @@ export default function Navbar() {
         }
     }
 
+    const handleDeleteAllNotifications = async () => {
+        if (!confirm(t('nav.confirmDeleteAll'))) return
+        try {
+            await notificationsAPI.deleteAll()
+            setNotifications([])
+            setUnreadCount(0)
+        } catch (error) {
+            console.error('Failed to delete all notifications:', error)
+        }
+    }
+
     const formatTimeAgo = (date) => {
         const now = new Date()
         const diff = now - new Date(date)
@@ -273,15 +284,26 @@ export default function Navbar() {
                                             {/* Header */}
                                             <div className="flex items-center justify-between px-4 py-3 border-b border-hyt-border">
                                                 <h3 className="font-semibold text-white">{t('nav.notifications')}</h3>
-                                                {unreadCount > 0 && (
-                                                    <button
-                                                        onClick={handleMarkAllAsRead}
-                                                        className="text-xs text-hyt-accent hover:underline flex items-center gap-1"
-                                                    >
-                                                        <CheckCheck className="w-3 h-3" />
-                                                        {t('nav.markAllRead')}
-                                                    </button>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    {unreadCount > 0 && (
+                                                        <button
+                                                            onClick={handleMarkAllAsRead}
+                                                            className="text-xs text-hyt-accent hover:underline flex items-center gap-1"
+                                                            title={t('nav.markAllRead')}
+                                                        >
+                                                            <CheckCheck className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                    {notifications.length > 0 && (
+                                                        <button
+                                                            onClick={handleDeleteAllNotifications}
+                                                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                                                            title={t('nav.deleteAll')}
+                                                        >
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Notifications List */}

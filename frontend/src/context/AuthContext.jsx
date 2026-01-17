@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
 
     // Au démarrage : vérifie si un token existe
     useEffect(() => {
-        const initAuth = () => {
+        const initAuth = async () => {
             try {
                 const token = localStorage.getItem('token')
                 const savedUser = localStorage.getItem('user')
@@ -19,8 +19,20 @@ export function AuthProvider({ children }) {
 
                 if (token && savedUser) {
                     const parsedUser = JSON.parse(savedUser)
-                    console.log('Setting user:', parsedUser)
+                    console.log('Setting user from localStorage:', parsedUser)
                     setUser(parsedUser)
+
+                    // Rafraîchir les données depuis le serveur pour avoir les dernières infos
+                    try {
+                        const { data } = await authAPI.me()
+                        if (data.user) {
+                            console.log('User refreshed from server:', data.user)
+                            setUser(data.user)
+                            localStorage.setItem('user', JSON.stringify(data.user))
+                        }
+                    } catch (e) {
+                        console.error('Failed to refresh user on init:', e)
+                    }
                 }
             } catch (e) {
                 console.error('Error loading auth:', e)
@@ -69,10 +81,11 @@ export function AuthProvider({ children }) {
             if (!data.user.avatar_url && !data.user.display_name) {
                 setTimeout(async () => {
                     try {
-                        const { data: profileData } = await profileAPI.get()
-                        const updatedUser = { ...data.user, ...profileData }
-                        setUser(updatedUser)
-                        localStorage.setItem('user', JSON.stringify(updatedUser))
+                        const { data: meData } = await authAPI.me()
+                        if (meData.user) {
+                            setUser(meData.user)
+                            localStorage.setItem('user', JSON.stringify(meData.user))
+                        }
                     } catch (e) {
                         console.error('Failed to fetch profile after login:', e)
                     }
@@ -95,34 +108,23 @@ export function AuthProvider({ children }) {
         toast.success('Déconnexion réussie')
     }
 
-    // Rafraîchir les infos utilisateur (après modif profil, avatar, etc.)
+    // Rafraîchir les infos utilisateur (après modif profil, Stripe, etc.)
     const refreshUser = async () => {
         try {
             const token = localStorage.getItem('token')
-            if (!token) return
+            if (!token) return null
 
-            const { data } = await profileAPI.get()
+            // Utiliser authAPI.me() pour avoir TOUTES les infos y compris Stripe
+            const { data } = await authAPI.me()
 
-            // Mettre à jour le state et le localStorage
-            const updatedUser = {
-                ...user,
-                ...data,
-                // S'assurer que les champs importants sont présents
-                avatar_url: data.avatar_url,
-                display_name: data.display_name,
-                bio: data.bio,
-                website_url: data.website_url,
-                social_discord: data.social_discord,
-                social_twitter: data.social_twitter,
-                social_youtube: data.social_youtube,
-                two_factor_enabled: data.two_factor_enabled
+            if (data.user) {
+                setUser(data.user)
+                localStorage.setItem('user', JSON.stringify(data.user))
+                console.log('User refreshed:', data.user)
+                return data.user
             }
 
-            setUser(updatedUser)
-            localStorage.setItem('user', JSON.stringify(updatedUser))
-
-            console.log('User refreshed:', updatedUser)
-            return updatedUser
+            return null
         } catch (error) {
             console.error('Failed to refresh user:', error)
             return null

@@ -4,7 +4,7 @@ class CheckoutService {
     // Récupérer les items du panier pour le checkout
     async getCheckoutItems(cartId) {
         const { rows } = await pool.query(
-            `SELECT m.id, m.title, m.price
+            `SELECT m.id, m.title, m.price, m.creator_id
              FROM cart_items ci
                       JOIN models m ON m.id = ci.model_id
              WHERE ci.cart_id = $1

@@ -3,6 +3,19 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const generateInvoicePdf = require("../utils/generateInvoicePdf");
 const generateSellerNotePdf = require("../utils/generateSellerInvoicePdf");
 
+// Helper: Vérifie si c'est un compte interne (pas de transfert Stripe)
+const isInternalAccount = (creatorType) => {
+    return ['HYTSTUDIO', 'ADMIN', 'STAFF'].includes(creatorType);
+};
+
+// Helper: Détermine le taux de commission
+const getCommissionRate = (creatorType, isCustomOrder = false) => {
+    if (isInternalAccount(creatorType)) return 0; // Comptes internes = 0%
+    if (creatorType === 'AFFILIATED' && isCustomOrder) return 0.05; // 5%
+    if (creatorType === 'AFFILIATED') return 0.10; // 10%
+    return 0.15; // 15% par défaut
+};
+
 class WebhookController {
     async handleStripeWebhook(req, res) {
         const sig = req.headers["stripe-signature"];
@@ -19,6 +32,7 @@ class WebhookController {
 
         // Gérer les différents types d'événements
         switch (event.type) {
+            // ========== CHECKOUT & PAYMENT EVENTS ==========
             case "checkout.session.completed":
                 await this.handleCheckoutComplete(event.data.object);
                 break;
@@ -28,12 +42,106 @@ class WebhookController {
             case "payment_intent.payment_failed":
                 console.log("❌ Payment failed:", event.data.object.id);
                 break;
+
+            // ========== STRIPE CONNECT EVENTS ==========
+            case "account.updated":
+                await this.handleAccountUpdated(event.data.object);
+                break;
+            case "account.application.authorized":
+                console.log("🔗 Account authorized:", event.data.object.id);
+                break;
+            case "capability.updated":
+                await this.handleCapabilityUpdated(event.data.object);
+                break;
+            case "person.created":
+                console.log("👤 Person created for account:", event.account);
+                break;
+            case "person.updated":
+                console.log("👤 Person updated for account:", event.account);
+                break;
+            case "account.external_account.created":
+                console.log("🏦 Bank account added to:", event.account);
+                break;
+            case "account.external_account.updated":
+                console.log("🏦 Bank account updated for:", event.account);
+                break;
+
             default:
                 console.log(`Unhandled event type: ${event.type}`);
         }
 
         res.json({ received: true });
     }
+
+    // ========== STRIPE CONNECT HANDLERS ==========
+
+    async handleAccountUpdated(account) {
+        const stripeAccountId = account.id;
+
+        const detailsSubmitted = account.details_submitted || false;
+        const chargesEnabled = account.charges_enabled || false;
+        const payoutsEnabled = account.payouts_enabled || false;
+
+        const isFullyOnboarded = detailsSubmitted && chargesEnabled && payoutsEnabled;
+
+        console.log(`📋 Account ${stripeAccountId} updated:`, {
+            details_submitted: detailsSubmitted,
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+            fully_onboarded: isFullyOnboarded
+        });
+
+        try {
+            const { rowCount } = await pool.query(
+                `UPDATE users
+                 SET stripe_charges_enabled = $1,
+                     stripe_payouts_enabled = $2,
+                     stripe_onboarded = $3,
+                     stripe_onboarded_at = CASE
+                                               WHEN $3 = TRUE AND (stripe_onboarded = FALSE OR stripe_onboarded IS NULL) THEN NOW()
+                                               ELSE stripe_onboarded_at
+                         END
+                 WHERE stripe_account_id = $4`,
+                [chargesEnabled, payoutsEnabled, isFullyOnboarded, stripeAccountId]
+            );
+
+            if (rowCount > 0) {
+                if (isFullyOnboarded) {
+                    console.log(`✅ Seller ${stripeAccountId} fully onboarded!`);
+                } else {
+                    console.log(`⏳ Seller ${stripeAccountId} onboarding in progress...`);
+                }
+            } else {
+                console.warn(`⚠️ No user found with stripe_account_id: ${stripeAccountId}`);
+            }
+        } catch (error) {
+            console.error("❌ Error updating account status:", error.message);
+        }
+    }
+
+    async handleCapabilityUpdated(capability) {
+        const accountId = capability.account;
+        const capabilityId = capability.id;
+        const status = capability.status;
+
+        console.log(`🔧 Capability ${capabilityId} for ${accountId}: ${status}`);
+
+        if (capabilityId === "transfers" && status === "active") {
+            try {
+                await pool.query(
+                    `UPDATE users
+                     SET stripe_payouts_enabled = TRUE
+                     WHERE stripe_account_id = $1`,
+                    [accountId]
+                );
+                console.log(`✅ Transfers capability activated for ${accountId}`);
+            } catch (error) {
+                console.error("❌ Error updating transfers capability:", error.message);
+            }
+        }
+    }
+
+    // ========== CHECKOUT HANDLERS ==========
 
     async handleCheckoutComplete(session) {
         console.log("✅ Checkout completed:", session.id);
@@ -50,7 +158,6 @@ class WebhookController {
         try {
             await client.query("BEGIN");
 
-            // Vérifier le type d'achat
             if (metadata.type === "bundle") {
                 await this.handleBundlePurchase(client, metadata, session);
             } else if (metadata.type === "cart") {
@@ -60,7 +167,6 @@ class WebhookController {
             } else if (metadata.type === "custom_order_final") {
                 await this.handleCustomOrderFinalPayment(client, metadata, session);
             } else {
-                // Achat simple d'un modèle
                 await this.handleModelPurchase(client, metadata, session);
             }
 
@@ -80,7 +186,6 @@ class WebhookController {
 
         console.log(`📦 Processing bundle purchase: ${bundle_id} for user ${user_id}`);
 
-        // Vérifier que l'achat n'existe pas déjà
         const { rows: existing } = await client.query(
             `SELECT id FROM bundle_purchases WHERE bundle_id = $1 AND user_id = $2`,
             [bundle_id, user_id]
@@ -91,7 +196,6 @@ class WebhookController {
             return;
         }
 
-        // Récupérer le bundle avec les infos
         const { rows: bundleRows } = await client.query(
             `SELECT b.*, u.username as creator_username
              FROM bundles b
@@ -107,7 +211,6 @@ class WebhookController {
 
         const bundle = bundleRows[0];
 
-        // Enregistrer l'achat du bundle
         const { rows: purchaseRows } = await client.query(
             `INSERT INTO bundle_purchases (bundle_id, user_id, price_paid, stripe_session_id)
              VALUES ($1, $2, $3, $4)
@@ -115,7 +218,6 @@ class WebhookController {
             [bundle_id, user_id, bundle.final_price, session.id]
         );
 
-        // Récupérer les produits du bundle
         const { rows: items } = await client.query(
             `SELECT bi.model_id, m.title, m.price
              FROM bundle_items bi
@@ -124,7 +226,6 @@ class WebhookController {
             [bundle_id]
         );
 
-        // Vérifier quels produits l'utilisateur possède déjà
         const { rows: ownedProducts } = await client.query(
             `SELECT model_id FROM purchases WHERE user_id = $1 AND model_id = ANY($2)`,
             [user_id, items.map(i => i.model_id)]
@@ -132,7 +233,6 @@ class WebhookController {
 
         const ownedIds = ownedProducts.map(p => p.model_id);
 
-        // Ajouter les produits non possédés aux achats
         for (const item of items) {
             if (!ownedIds.includes(item.model_id)) {
                 await client.query(
@@ -144,7 +244,6 @@ class WebhookController {
             }
         }
 
-        // Récupérer les infos utilisateur pour la facture
         const { rows: userRows } = await client.query(
             `SELECT username, email FROM users WHERE id = $1`,
             [user_id]
@@ -191,21 +290,13 @@ class WebhookController {
         // Générer la note de paiement pour le vendeur
         try {
             const { rows: creatorRows } = await client.query(
-                `SELECT username, email, creator_type FROM users WHERE id = $1`,
+                `SELECT username, email, creator_type, stripe_account_id FROM users WHERE id = $1`,
                 [bundle.creator_id]
             );
             const creator = creatorRows[0];
 
-            // Déterminer le taux de commission selon le type de créateur
-            // HytStudio: 0%, Affilié: 10%, Non-affilié: 15%
-            let commissionRate;
-            if (creator.creator_type === 'HYTSTUDIO') {
-                commissionRate = 0;
-            } else if (creator.creator_type === 'AFFILIATED') {
-                commissionRate = 0.10;
-            } else {
-                commissionRate = 0.15;
-            }
+            // Utiliser le helper pour le taux de commission
+            const commissionRate = getCommissionRate(creator.creator_type);
 
             const paymentNoteNumber = `PAY-B-${Date.now()}`;
             const grossAmountCents = Math.round(parseFloat(bundle.final_price) * 100);
@@ -253,6 +344,23 @@ class WebhookController {
                  WHERE id = $4`,
                 [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, bundle.creator_id]
             );
+
+            // Transfert Stripe Connect - PAS pour les comptes internes
+            if (!isInternalAccount(creator.creator_type) && creator.stripe_account_id && netAmountCents > 0) {
+                try {
+                    await stripe.transfers.create({
+                        amount: netAmountCents,
+                        currency: "eur",
+                        destination: creator.stripe_account_id,
+                        transfer_group: `bundle_${bundle_id}`
+                    });
+                    console.log(`✅ Transfer to bundle creator completed: ${(netAmountCents / 100).toFixed(2)}€`);
+                } catch (transferError) {
+                    console.error("Stripe transfer error for bundle:", transferError);
+                }
+            } else if (isInternalAccount(creator.creator_type)) {
+                console.log(`💰 Internal bundle sale (${creator.creator_type}) - No transfer, platform keeps: ${(grossAmountCents / 100).toFixed(2)}€`);
+            }
         } catch (paymentError) {
             console.error("Error generating seller payment PDF:", paymentError);
         }
@@ -282,8 +390,7 @@ class WebhookController {
         console.log(`🛒 Processing cart purchase for user ${user_id}:`, modelIds);
 
         const purchasedItems = [];
-        // Grouper les achats par vendeur pour générer une note par vendeur
-        const sellerPayments = {}; // { seller_id: { seller, items: [], total: 0 } }
+        const sellerPayments = {};
 
         for (const modelId of modelIds) {
             const { rows: modelRows } = await client.query(
@@ -319,7 +426,6 @@ class WebhookController {
                 price: parseFloat(model.price)
             });
 
-            // Grouper par vendeur
             if (!sellerPayments[model.creator_id]) {
                 sellerPayments[model.creator_id] = {
                     seller: {
@@ -337,7 +443,6 @@ class WebhookController {
             sellerPayments[model.creator_id].total += parseFloat(model.price);
         }
 
-        // Vider le panier
         await client.query(
             `DELETE FROM cart_items WHERE cart_id = (SELECT id FROM carts WHERE user_id = $1)`,
             [user_id]
@@ -384,17 +489,10 @@ class WebhookController {
             const sellerData = sellerPayments[sellerId];
 
             try {
-                // Déterminer le taux de commission selon le type de créateur
-                let commissionRate;
-                if (sellerData.seller.creator_type === 'HYTSTUDIO') {
-                    commissionRate = 0;
-                } else if (sellerData.seller.creator_type === 'AFFILIATED') {
-                    commissionRate = 0.10;
-                } else {
-                    commissionRate = 0.15;
-                }
+                // Utiliser le helper pour le taux de commission
+                const commissionRate = getCommissionRate(sellerData.seller.creator_type);
 
-                const paymentNoteNumber = `PAY-C-${Date.now()}`;
+                const paymentNoteNumber = `PAY-C-${Date.now()}-${sellerId.slice(0, 8)}`;
                 const grossAmountCents = Math.round(sellerData.total * 100);
                 const commissionAmountCents = Math.round(grossAmountCents * commissionRate);
                 const netAmountCents = grossAmountCents - commissionAmountCents;
@@ -438,8 +536,8 @@ class WebhookController {
                     [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, sellerId]
                 );
 
-                // Transfert Stripe Connect si configuré
-                if (sellerData.seller.stripe_account_id && netAmountCents > 0) {
+                // Transfert Stripe Connect - PAS pour les comptes internes
+                if (!isInternalAccount(sellerData.seller.creator_type) && sellerData.seller.stripe_account_id && netAmountCents > 0) {
                     try {
                         await stripe.transfers.create({
                             amount: netAmountCents,
@@ -451,6 +549,8 @@ class WebhookController {
                     } catch (transferError) {
                         console.error(`Stripe transfer error for seller ${sellerId}:`, transferError);
                     }
+                } else if (isInternalAccount(sellerData.seller.creator_type)) {
+                    console.log(`💰 Internal sale (${sellerData.seller.creator_type}) - No transfer, platform keeps: ${(grossAmountCents / 100).toFixed(2)}€`);
                 }
             } catch (paymentError) {
                 console.error(`Error generating seller payment for ${sellerId}:`, paymentError);
@@ -529,16 +629,8 @@ class WebhookController {
 
         // Générer la note de paiement pour le vendeur
         try {
-            // Déterminer le taux de commission selon le type de créateur
-            // HytStudio: 0%, Affilié: 10%, Non-affilié: 15%
-            let commissionRate;
-            if (model.creator_type === 'HYTSTUDIO') {
-                commissionRate = 0;
-            } else if (model.creator_type === 'AFFILIATED') {
-                commissionRate = 0.10;
-            } else {
-                commissionRate = 0.15;
-            }
+            // Utiliser le helper pour le taux de commission
+            const commissionRate = getCommissionRate(model.creator_type);
 
             const paymentNoteNumber = `PAY-${Date.now()}`;
             const grossAmountCents = Math.round(parseFloat(model.price) * 100);
@@ -584,8 +676,8 @@ class WebhookController {
                 [grossAmountCents / 100, commissionAmountCents / 100, netAmountCents / 100, model.creator_id]
             );
 
-            // Transfert Stripe Connect si configuré
-            if (model.creator_stripe_id && netAmountCents > 0) {
+            // Transfert Stripe Connect - PAS pour les comptes internes
+            if (!isInternalAccount(model.creator_type) && model.creator_stripe_id && netAmountCents > 0) {
                 try {
                     await stripe.transfers.create({
                         amount: netAmountCents,
@@ -597,6 +689,8 @@ class WebhookController {
                 } catch (transferError) {
                     console.error("Stripe transfer error:", transferError);
                 }
+            } else if (isInternalAccount(model.creator_type)) {
+                console.log(`💰 Internal sale (${model.creator_type}) - No transfer, platform keeps: ${(grossAmountCents / 100).toFixed(2)}€`);
             }
         } catch (paymentError) {
             console.error("Error generating seller payment:", paymentError);
@@ -628,7 +722,6 @@ class WebhookController {
 
         const order = rows[0];
 
-        // Mettre à jour la commande
         await client.query(
             `UPDATE custom_orders
              SET first_payment_paid = TRUE,
@@ -639,14 +732,12 @@ class WebhookController {
             [order_id, session.payment_intent]
         );
 
-        // Mettre à jour la demande
         await client.query(
             `UPDATE custom_requests SET status = 'IN_PROGRESS'
              WHERE id = (SELECT request_id FROM custom_orders WHERE id = $1)`,
             [order_id]
         );
 
-        // Message système - CORRIGÉ: diviser par 100 pour afficher en euros
         const amountInEuros = (Number(order.first_payment_amount) / 100).toFixed(2);
         await client.query(
             `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
@@ -654,7 +745,6 @@ class WebhookController {
             [order_id, user_id, `💳 Acompte de ${amountInEuros}€ reçu ! Le créateur peut commencer le travail.`]
         );
 
-        // Notification au créateur
         await client.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -667,7 +757,6 @@ class WebhookController {
             ]
         );
 
-        // Générer la facture - CORRIGÉ: diviser par 100 pour les euros
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -693,7 +782,7 @@ class WebhookController {
                     title: `Commande sur mesure: ${order.request_title} (Acompte 50%)`,
                     price: amountPaidEuros
                 }],
-                totalAmount: Math.round(amountPaidCentimes), // Centimes pour le PDF
+                totalAmount: Math.round(amountPaidCentimes),
                 createdAt: new Date()
             });
 
@@ -735,7 +824,6 @@ class WebhookController {
 
         const order = rows[0];
 
-        // Mettre à jour la commande
         await client.query(
             `UPDATE custom_orders
              SET second_payment_paid = TRUE,
@@ -747,13 +835,11 @@ class WebhookController {
             [order_id, session.payment_intent]
         );
 
-        // Mettre à jour la demande
         await client.query(
             `UPDATE custom_requests SET status = 'COMPLETED' WHERE id = $1`,
             [order.request_id]
         );
 
-        // Incrémenter les commandes du créateur
         await client.query(
             `UPDATE affiliated_creators
              SET completed_orders = completed_orders + 1
@@ -761,7 +847,6 @@ class WebhookController {
             [order.creator_id]
         );
 
-        // Message système - CORRIGÉ: diviser par 100 pour afficher en euros
         const amountInEuros = (Number(order.second_payment_amount) / 100).toFixed(2);
         await client.query(
             `INSERT INTO custom_order_messages (order_id, sender_id, message_type, content, attachments)
@@ -769,7 +854,6 @@ class WebhookController {
             [order_id, user_id, `💳 Paiement final de ${amountInEuros}€ reçu ! Commande terminée. 🎉`]
         );
 
-        // Notification au créateur
         await client.query(
             `INSERT INTO notifications (user_id, type, title, message, data)
              VALUES ($1, $2, $3, $4, $5)`,
@@ -782,23 +866,21 @@ class WebhookController {
             ]
         );
 
-        // Calculer le montant créateur - CORRIGÉ: tout est en centimes dans la DB
         const totalPaidCentimes = parseFloat(order.first_payment_amount) + parseFloat(order.second_payment_amount);
         const commissionAmountCentimes = parseFloat(order.commission_amount);
         const creatorAmountCentimes = totalPaidCentimes - commissionAmountCentimes;
 
-        // Convertir en euros pour les logs et Stripe
         const totalPaidEuros = totalPaidCentimes / 100;
         const commissionAmountEuros = commissionAmountCentimes / 100;
         const creatorAmountEuros = creatorAmountCentimes / 100;
 
         console.log(`💰 Creator payment: ${creatorAmountEuros.toFixed(2)}€ (commission: ${commissionAmountEuros.toFixed(2)}€)`);
 
-        // Transfert Stripe Connect si configuré - Stripe attend des centimes
-        if (order.creator_stripe_id) {
+        // Transfert Stripe Connect - PAS pour les comptes internes
+        if (!isInternalAccount(order.creator_type) && order.creator_stripe_id && creatorAmountCentimes > 0) {
             try {
                 await stripe.transfers.create({
-                    amount: Math.round(creatorAmountCentimes), // Déjà en centimes
+                    amount: Math.round(creatorAmountCentimes),
                     currency: "eur",
                     destination: order.creator_stripe_id,
                     transfer_group: `custom_order_${order_id}`
@@ -807,9 +889,11 @@ class WebhookController {
             } catch (transferError) {
                 console.error("Stripe transfer error:", transferError);
             }
+        } else if (isInternalAccount(order.creator_type)) {
+            console.log(`💰 Internal custom order (${order.creator_type}) - No transfer, platform keeps: ${totalPaidEuros.toFixed(2)}€`);
         }
 
-        // Enregistrer le paiement vendeur - Stocker en euros dans seller_payments
+        // Enregistrer le paiement vendeur
         try {
             const paymentNoteNumber = `PAY-CO-${Date.now()}`;
 
@@ -824,11 +908,11 @@ class WebhookController {
             const pdfPath = await generateSellerNotePdf({
                 invoiceNumber: paymentNoteNumber,
                 seller: { username: order.creator_username, email: order.creator_email },
-                grossAmount: Math.round(totalPaidCentimes), // Centimes pour le PDF
+                grossAmount: Math.round(totalPaidCentimes),
                 commissionAmount: Math.round(commissionAmountCentimes),
                 netAmount: Math.round(creatorAmountCentimes),
-                commissionRate: parseFloat(order.commission_rate), // 0 pour HYTSTUDIO, 0.05 pour AFFILIATED
-                creatorType: order.creator_type, // 'HYTSTUDIO' ou 'AFFILIATED'
+                commissionRate: parseFloat(order.commission_rate),
+                creatorType: order.creator_type,
                 stripeTransferId: session.payment_intent,
                 createdAt: new Date(),
                 isCustomOrder: true,
@@ -842,7 +926,6 @@ class WebhookController {
 
             console.log(`💰 Seller payment recorded: ${paymentNoteNumber}`);
 
-            // Mettre à jour les revenus du créateur (en euros)
             await client.query(
                 `UPDATE users SET
                                   total_earnings = COALESCE(total_earnings, 0) + $1,
@@ -855,7 +938,7 @@ class WebhookController {
             console.error("Error recording seller payment:", paymentError);
         }
 
-        // Générer la facture finale - CORRIGÉ: diviser par 100 pour les euros
+        // Générer la facture finale
         try {
             const { rows: userRows } = await client.query(
                 `SELECT username, email FROM users WHERE id = $1`,
@@ -881,7 +964,7 @@ class WebhookController {
                     title: `Commande sur mesure: ${order.request_title} (Solde 50%)`,
                     price: amountPaidEuros
                 }],
-                totalAmount: Math.round(amountPaidCentimes), // Centimes pour le PDF
+                totalAmount: Math.round(amountPaidCentimes),
                 createdAt: new Date()
             });
 

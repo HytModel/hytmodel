@@ -44,6 +44,7 @@ export const notificationsAPI = {
     markAsRead: (id) => api.put(`/notifications/${id}/read`),
     markAllAsRead: () => api.put('/notifications/read-all'),
     delete: (id) => api.delete(`/notifications/${id}`),
+    deleteAll: () => api.delete('/notifications'),  // <-- NOUVEAU
 }
 
 // ============ MODELS ============
@@ -493,7 +494,9 @@ export const modelImagesAPI = {
 
 // ============ STRIPE ============
 export const stripeAPI = {
-    createConnectAccount: () => api.post('/stripe/connect/create')
+    createConnectAccount: () => api.post('/stripe/connect/create'),
+    getConnectStatus: () => api.get('/stripe/connect/status'),
+    getDashboardLink: () => api.get('/stripe/connect/dashboard')
 }
 
 export const customOrdersAPI = {

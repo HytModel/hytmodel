@@ -95,4 +95,16 @@ router.delete("/", requireAuth, async (req, res, next) => {
     }
 });
 
+router.delete("/", requireAuth, async (req, res, next) => {
+    try {
+        await pool.query(
+            "DELETE FROM notifications WHERE user_id = $1",
+            [req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
 module.exports = router;

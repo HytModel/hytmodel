@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Download, Package, ArrowRight, Loader2, FileText } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useTranslation } from '../context/LanguageContext'
-import { checkoutAPI } from '../services/api'
+import { checkoutAPI, modelsAPI } from '../services/api'
+import toast from 'react-hot-toast'
 
 export default function CheckoutSuccess() {
     const [searchParams] = useSearchParams()
@@ -12,6 +13,8 @@ export default function CheckoutSuccess() {
     const { t } = useTranslation()
     const [purchases, setPurchases] = useState([])
     const [loading, setLoading] = useState(true)
+    const [downloading, setDownloading] = useState({})
+    const hasAutoDownloaded = useRef(false)
 
     useEffect(() => {
         // Rafraîchir le panier (sera vide car vidé par le webhook)
@@ -33,17 +36,80 @@ export default function CheckoutSuccess() {
         // Charger les achats avec un petit délai pour laisser le webhook finir
         setTimeout(() => {
             loadPurchases()
-        }, 1500)
+        }, 2000)
     }, [])
 
     const loadPurchases = async () => {
         try {
             const { data } = await checkoutAPI.getPurchases()
-            setPurchases(data.purchases || [])
+            const recentPurchases = data.purchases || []
+            setPurchases(recentPurchases)
+
+            // Téléchargement automatique des achats récents (< 5 minutes)
+            if (!hasAutoDownloaded.current && recentPurchases.length > 0) {
+                hasAutoDownloaded.current = true
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+
+                const newPurchases = recentPurchases.filter(p =>
+                    new Date(p.purchased_at) > fiveMinutesAgo
+                )
+
+                if (newPurchases.length > 0) {
+                    setTimeout(() => {
+                        autoDownloadPurchases(newPurchases)
+                    }, 1000)
+                }
+            }
         } catch (error) {
             console.error('Failed to load purchases:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    // Téléchargement automatique
+    const autoDownloadPurchases = async (purchasesToDownload) => {
+        toast.success(t('checkoutSuccess.downloadingFiles', { count: purchasesToDownload.length }))
+
+        for (let i = 0; i < purchasesToDownload.length; i++) {
+            const purchase = purchasesToDownload[i]
+            setTimeout(() => {
+                handleDownload(purchase.model_id, purchase.title)
+            }, i * 1500)
+        }
+    }
+
+    // Télécharger un fichier
+    const handleDownload = async (modelId, title) => {
+        setDownloading(prev => ({ ...prev, [modelId]: true }))
+
+        try {
+            const response = await modelsAPI.download(modelId)
+
+            const url = window.URL.createObjectURL(new Blob([response.data]))
+            const link = document.createElement('a')
+            link.href = url
+
+            const contentDisposition = response.headers['content-disposition']
+            let filename = `${title}.zip`
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+                if (match && match[1]) {
+                    filename = match[1].replace(/['"]/g, '')
+                }
+            }
+
+            link.setAttribute('download', filename)
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            window.URL.revokeObjectURL(url)
+
+        } catch (error) {
+            console.error('Download error:', error)
+            toast.error(t('checkoutSuccess.downloadError', { title }))
+        } finally {
+            setDownloading(prev => ({ ...prev, [modelId]: false }))
         }
     }
 
@@ -82,19 +148,39 @@ export default function CheckoutSuccess() {
                                     key={purchase.id}
                                     className="flex items-center justify-between p-3 bg-hyt-dark rounded-lg"
                                 >
-                                    <div>
-                                        <p className="text-white font-medium">{purchase.title}</p>
-                                        <p className="text-gray-500 text-sm">
-                                            {Number(purchase.price).toFixed(2)}€
-                                        </p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-lg bg-hyt-card overflow-hidden flex-shrink-0">
+                                            {purchase.thumbnail_url ? (
+                                                <img
+                                                    src={purchase.thumbnail_url}
+                                                    alt={purchase.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Package className="w-6 h-6 text-gray-600" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-medium">{purchase.title}</p>
+                                            <p className="text-gray-500 text-sm">
+                                                {Number(purchase.price).toFixed(2)}€
+                                            </p>
+                                        </div>
                                     </div>
-                                    <Link
-                                        to={`/models/${purchase.model_id}`}
-                                        className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
+                                    <button
+                                        onClick={() => handleDownload(purchase.model_id, purchase.title)}
+                                        disabled={downloading[purchase.model_id]}
+                                        className="btn-primary text-sm py-2 px-4 flex items-center gap-2 disabled:opacity-50"
                                     >
-                                        <Download className="w-4 h-4" />
+                                        {downloading[purchase.model_id] ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Download className="w-4 h-4" />
+                                        )}
                                         {t('checkoutSuccess.download')}
-                                    </Link>
+                                    </button>
                                 </div>
                             ))}
                         </div>

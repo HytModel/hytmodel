@@ -31,6 +31,13 @@ import MyProducts from './pages/MyProducts'
 import EditProduct from './pages/EditProduct'
 import BecomeCreator from './pages/BecomeCreator'
 import CreatorAnalytics from './pages/CreatorAnalytics'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
+import Cookies from './pages/Cookies'
+import Contact from './pages/Contact'
+import Help from './pages/Help'
+import Faq from './pages/Faq'
+import DashboardSettings from './pages/DashboardSettings'
 
 // Commandes sur mesure
 import CustomOrders from './pages/CustomOrders'
@@ -88,6 +95,12 @@ export default function App() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/seller/:username" element={<SellerProfile />} />
                     <Route path="/bundles/:id" element={<BundleDetail />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/cookies" element={<Cookies />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/help" element={<Help />} />
+                    <Route path="/faq" element={<Faq />} />
 
                     {/* Auth (invités seulement) */}
                     <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
@@ -122,6 +135,7 @@ export default function App() {
                     <Route path="/upload" element={<CreatorRoute><Upload /></CreatorRoute>} />
                     <Route path="/dashboard/models" element={<CreatorRoute><MyProducts /></CreatorRoute>} />
                     <Route path="/dashboard/models/:id/edit" element={<CreatorRoute><EditProduct /></CreatorRoute>} />
+                    <Route path="/dashboard/settings" element={<CreatorRoute><DashboardSettings /></CreatorRoute>} />
 
                     {/* Admin - avec /* pour les sous-routes */}
                     <Route path="/admin/*" element={<AdminRoute><Admin /></AdminRoute>} />

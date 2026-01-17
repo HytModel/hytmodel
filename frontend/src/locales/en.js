@@ -451,6 +451,10 @@ export default {
     profile: {
         title: 'My Profile',
         save: 'Save',
+        language:{
+            title: "Language",
+            subtitle: "Choose your preferred language"
+        },
         tabs: {
             profile: 'Profile',
             security: 'Security',
@@ -1154,10 +1158,23 @@ export default {
             description: 'Suggest new categories, tags or versions to enrich the platform!'
         },
         stripe: {
-            title: 'Set up your payments',
-            description: 'Connect your Stripe account to receive payments automatically.',
-            connect: 'Connect Stripe',
-            connecting: 'Connecting...'
+            title: "Configure your payments",
+            description: "Connect your Stripe account to receive payments automatically.",
+            connect: "Connect Stripe",
+            connecting: "Connecting...",
+            continue: "Continue setup",
+            inProgress: {
+                title: "Stripe setup in progress",
+                description: "Your Stripe account is not fully configured yet. Complete the setup to receive payments."
+            },
+            configured: {
+                title: "Stripe configured ✓",
+                description: "Your account is ready to receive payments."
+            },
+            status: {
+                payments: "Payments",
+                payouts: "Payouts"
+            }
         },
         recentSales: {
             title: 'Recent sales',
@@ -1218,6 +1235,101 @@ export default {
         errors: {
             stripeConnect: 'Error connecting to Stripe',
             generic: 'Error'
+        }
+    },
+
+    "dashboardSettings": {
+        "title": "Seller Settings",
+        "subtitle": "Manage your payments and preferences",
+
+        "toast": {
+            "statusUpdated": "Status updated",
+            "updateError": "Error updating status",
+            "stripeConnectError": "Error connecting to Stripe",
+            "dashboardError": "Error opening Stripe dashboard"
+        },
+
+        "stripe": {
+            "title": "Stripe Connect",
+            "subtitle": "Receive your payments automatically",
+            "refreshStatus": "Refresh status",
+            "connect": "Connect Stripe",
+            "connecting": "Connecting...",
+            "continue": "Continue",
+            "dashboard": "Stripe Dashboard",
+            "accountId": "Stripe account ID",
+
+            "notConnected": {
+                "title": "Account not connected",
+                "description": "Connect your Stripe account to receive your sales payments directly to your bank account.",
+                "feature1": "Automatic payments",
+                "feature2": "Secure transfers",
+                "feature3": "Quick setup"
+            },
+
+            "status": {
+                "information": "Information",
+                "payments": "Payments",
+                "payouts": "Payouts",
+                "completed": "Completed",
+                "pending": "Pending",
+                "enabled": "Enabled",
+                "disabled": "Disabled"
+            },
+
+            "configured": {
+                "title": "Account fully configured",
+                "description": "You can receive payments and payouts are active."
+            },
+
+            "incomplete": {
+                "title": "Configuration incomplete",
+                "description": "Complete the setup to receive your payments."
+            },
+
+            "actions": {
+                "viewPayments": "View my payments",
+                "viewPaymentsDesc": "Transfer history",
+                "bankInfo": "Bank info",
+                "bankInfoDesc": "Edit my IBAN"
+            }
+        },
+
+        "commission": {
+            "title": "Commission",
+            "subtitle": "Your commission rate on sales",
+            "accountType": "Account type",
+            "rate": "Commission rate",
+
+            "types": {
+                "affiliated": "Affiliated",
+                "standard": "Standard"
+            },
+
+            "descriptions": {
+                "hytstudio": "As a HytStudio member, you pay no commission on your sales.",
+                "affiliated": "As an affiliated creator, you benefit from a preferential rate of 10%.",
+                "standard": "The standard commission is 15% on each sale."
+            }
+        },
+
+        "otherSettings": {
+            "title": "Other settings",
+
+            "profile": {
+                "title": "My profile",
+                "description": "Edit my personal information"
+            },
+
+            "store": {
+                "title": "My store",
+                "description": "View my public seller page"
+            },
+
+            "invoices": {
+                "title": "My payment notes",
+                "description": "Payment history received"
+            }
         }
     },
 
@@ -1785,8 +1897,17 @@ export default {
             vatIncluded: 'VAT included',
             total: 'Total'
         },
+        terms: {
+            accept: "I accept the",
+            termsLink: "Terms of Service",
+            and: "and the",
+            privacyLink: "Privacy Policy",
+            noRefundNotice: "By completing this purchase, I acknowledge that the immediate download of digital products results in waiving my right of withdrawal in accordance with consumer protection laws.",
+            required: "Please accept the terms to continue"
+        },
         errors: {
-            checkoutFailed: 'Error during checkout'
+            checkoutFailed: 'Error during checkout',
+            mustAcceptTerms: "You must accept the terms to continue"
         }
     },
 
@@ -1846,7 +1967,10 @@ export default {
             popular: 'POPULAR',
             ofRevenue: 'of your revenue',
             forPlatform: 'for the platform',
-            commission: 'Platform commission: {percent}%'
+            commission: 'Platform commission: {percent}%',
+            noCustomOrders: "No access to custom orders",
+            customOrdersAccess: "Access to custom orders",
+            onCustomOrders: "on custom orders"
         },
         form: {
             presentYourself: 'Present yourself',
@@ -2816,6 +2940,8 @@ export default {
         notifications: 'Notifications',
         markAllRead: 'Mark all read',
         noNotifications: 'No notifications',
+        deleteAll: "Delete all",
+        confirmDeleteAll: "Are you sure you want to delete all your notifications?",
         view: 'View',
         markAsRead: 'Mark as read',
         delete: 'Delete',
@@ -2837,6 +2963,757 @@ export default {
             minutes: '{count}m ago',
             hours: '{count}h ago',
             days: '{count}d ago'
+        }
+    },
+    legal: {
+        lastUpdate: "Last updated",
+        contact: "Contact",
+        contactText: "For any questions regarding this page:",
+        email: "Email",
+        discord: "Discord",
+
+        // Terms of Service
+        terms: {
+            title: "Terms of Service",
+            preamble: {
+                title: "Preamble",
+                p1: "These Terms of Service (hereinafter \"Terms\") define the terms and conditions of use of the Hyt Studio platform (hereinafter \"the Platform\" or \"the Site\"), accessible at www.hytstudio.com, as well as the rights and obligations of the parties in this context.",
+                p2: "Hyt Studio is a marketplace dedicated to selling digital products in the gaming universe: 3D models, textures, plugins, maps, configurations, and other digital resources for content creators and video game developers.",
+                p3: "Using the Platform implies full acceptance of these Terms. If you do not accept these conditions, please do not use the Platform."
+            },
+            article1: {
+                title: "Legal notices and identification",
+                subtitle1: "Platform Publisher",
+                p1: "The Hyt Studio Platform is published by [COMPANY NAME / ENTREPRENEUR], [legal form], with a capital of [AMOUNT] euros, registered in the Trade and Companies Register of [CITY] under number [RCS NUMBER], with headquarters located at [FULL ADDRESS].",
+                vat: "VAT number: [VAT NUMBER]",
+                emailContact: "Contact email: contact@hytstudio.com",
+                director: "Publication director: [DIRECTOR NAME]",
+                subtitle2: "Hosting Provider",
+                p2: "The Platform is hosted by [HOSTING PROVIDER NAME], [legal form], with headquarters at [ADDRESS], reachable at [PHONE/EMAIL]."
+            },
+            article2: {
+                title: "Definitions",
+                intro: "For proper understanding of these Terms, the following terms have the meanings indicated below:",
+                platform: "\"Platform\" or \"Site\"",
+                platformDef: "refers to the Hyt Studio website accessible at www.hytstudio.com and its associated mobile applications.",
+                user: "\"User\"",
+                userDef: "refers to any natural or legal person who accesses the Platform and uses its services, whether registered or not.",
+                buyer: "\"Buyer\"",
+                buyerDef: "refers to any registered User who purchases one or more Products on the Platform.",
+                creator: "\"Creator\" or \"Seller\"",
+                creatorDef: "refers to any registered User who offers digital Products for sale on the Platform.",
+                affiliated: "\"Affiliated Creator\"",
+                affiliatedDef: "refers to a Creator who has obtained affiliate status with Hyt Studio, benefiting from a reduced commission of 10% on their sales.",
+                nonAffiliated: "\"Non-Affiliated Creator\"",
+                nonAffiliatedDef: "refers to a standard Creator subject to a 15% commission on their sales.",
+                product: "\"Product\"",
+                productDef: "refers to any digital content offered for sale on the Platform: 3D models, textures, plugins, maps, scripts, configurations, or any other digital file.",
+                customOrder: "\"Custom Order\"",
+                customOrderDef: "refers to a personalized request made by a Buyer for the creation of a specific Product by a Creator.",
+                account: "\"Account\"",
+                accountDef: "refers to the User's personal space on the Platform, accessible after registration."
+            },
+            article3: {
+                title: "Access to the Platform and registration",
+                subtitle1: "Access to the Platform",
+                p1: "Access to the Platform is free. Browsing the Product catalog is accessible to any User without registration. However, purchasing Products and selling require creating an Account.",
+                subtitle2: "Registration conditions",
+                p2: "To create an Account, the User must:",
+                condition1: "Be at least 18 years old or have authorization from their legal representative",
+                condition2: "Provide accurate, complete, and up-to-date information (username, email address, password)",
+                condition3: "Accept these Terms and the Privacy Policy",
+                condition4: "Not create multiple accounts for fraudulent purposes",
+                subtitle3: "Account Security",
+                p3: "The User is solely responsible for the confidentiality of their login credentials. The password must meet the following security criteria:",
+                password1: "At least 8 characters",
+                password2: "At least one uppercase letter",
+                password3: "At least one number",
+                p4: "Any use of the Account is presumed to be made by the holder. In case of suspected fraudulent use, the User must immediately inform Hyt Studio at contact@hytstudio.com."
+            },
+            article4: {
+                title: "Services offered",
+                subtitle1: "For Buyers",
+                p1: "The Platform allows Buyers to:",
+                buyer1: "Browse and search for digital Products by game, category, or tags",
+                buyer2: "Purchase Products via secure payment",
+                buyer3: "Instantly download purchased Products",
+                buyer4: "Access their library of purchased Products",
+                buyer5: "Leave reviews and ratings on Products",
+                buyer6: "Submit custom order requests",
+                subtitle2: "For Creators",
+                p2: "The Platform allows Creators to:",
+                creator1: "Create a store and sell their digital Products",
+                creator2: "Manage their Products (descriptions, prices, versions, compatibility)",
+                creator3: "Access a dashboard with sales statistics",
+                creator4: "Receive payments via Stripe Connect",
+                creator5: "Respond to custom order requests"
+            },
+            article5: {
+                title: "Creator status and commissions",
+                subtitle1: "Becoming a Creator",
+                p1: "To become a Creator on the Platform, the User must submit a request that will be reviewed by the Hyt Studio team. Acceptance is at Hyt Studio's discretion and may be refused without justification.",
+                subtitle2: "Creator types and commissions",
+                p2: "Hyt Studio distinguishes several Creator statuses with different commission rates:",
+                nonAffiliatedTitle: "Non-Affiliated Creator:",
+                nonAffiliatedDesc: "15% commission taken by Hyt Studio. The Creator keeps 85% of the sale price.",
+                affiliatedTitle: "Affiliated Creator:",
+                affiliatedDesc: "10% commission taken by Hyt Studio. The Creator keeps 90% of the sale price. This status is granted upon request and validation by Hyt Studio.",
+                hytStudioTitle: "HytStudio:",
+                hytStudioDesc: "Products created and sold directly by Hyt Studio. 100% of revenue goes to Hyt Studio.",
+                subtitle3: "Creator payments",
+                p3: "Payments to Creators are made automatically via Stripe Connect after each sale, minus the applicable commission. The Creator must have a valid and verified Stripe Connect account to receive payments."
+            },
+            article6: {
+                title: "Products and content",
+                subtitle1: "Creator responsibility",
+                p1: "Creators are solely responsible for the Products they sell. They guarantee that they hold all necessary intellectual property rights and that their Products do not infringe on third-party rights.",
+                subtitle2: "Prohibited content",
+                p2: "It is strictly prohibited to sell Products:",
+                forbidden1: "Containing illegal, defamatory, discriminatory, or pornographic content",
+                forbidden2: "Violating third-party intellectual property rights (trademarks, copyrights, patents)",
+                forbidden3: "Containing viruses, malware, or any malicious code",
+                forbidden4: "Enabling cheating or violating video game terms of service",
+                forbidden5: "Containing personal data of third parties without their consent",
+                subtitle3: "Moderation",
+                p3: "Hyt Studio reserves the right to remove any Product that does not comply with these Terms, without notice or compensation. Users can report any inappropriate content via the integrated reporting system."
+            },
+            article7: {
+                title: "Prices and payment",
+                subtitle1: "Prices",
+                p1: "Product prices are displayed in euros (€) and include all applicable taxes. Creators freely set the price of their Products within any limits imposed by Hyt Studio.",
+                subtitle2: "Payment methods",
+                p2: "Payment is made exclusively through the secure Stripe payment platform. Accepted payment methods include credit cards (Visa, Mastercard, American Express) and other methods offered by Stripe.",
+                subtitle3: "Invoicing",
+                p3: "An electronic invoice is automatically generated for each purchase and made available in the Buyer's personal space. Creators also receive accounting documents summarizing their sales and commissions."
+            },
+            article8: {
+                title: "Delivery and download",
+                subtitle1: "Instant download",
+                p1: "As Products are digital content, delivery is by instant download upon payment confirmation. The Buyer can access their purchases from their personal library.",
+                subtitle2: "Updates",
+                p2: "When a Creator updates a Product, Buyers who have already purchased that Product can download the new version at no additional cost, subject to compatibility with their game version."
+            },
+            article9: {
+                title: "Right of withdrawal",
+                important: "Important:",
+                p1: "In accordance with Article L.221-28 of the Consumer Code, the right of withdrawal does not apply to contracts for the supply of digital content not provided on a tangible medium whose execution has begun with the consumer's prior express consent and express waiver of their right of withdrawal.",
+                p2: "By proceeding with the purchase and download of a Product, the Buyer acknowledges having been informed and expressly accepts that:",
+                point1: "Contract execution begins immediately after payment",
+                point2: "They expressly waive their right of withdrawal",
+                point3: "No refund can be requested after downloading the Product"
+            },
+            article10: {
+                title: "Intellectual property",
+                subtitle1: "Rights to the Platform",
+                p1: "All elements of the Platform (texts, graphics, software, photographs, images, sounds, logos, trademarks) are the exclusive property of Hyt Studio or its partners and are protected by French and international intellectual property laws.",
+                subtitle2: "Product usage license",
+                p2: "Purchasing a Product grants the Buyer a personal, non-exclusive, and non-transferable license. Unless explicitly stated otherwise by the Creator, the Buyer is not authorized to:",
+                license1: "Resell, redistribute, or share the Product",
+                license2: "Modify the Product for resale",
+                license3: "Use the Product for creations intended for resale without an appropriate commercial license",
+                subtitle3: "Creator guarantee",
+                p3: "The Creator guarantees being the exclusive holder of all intellectual property rights to the Products they sell, or having the necessary authorizations. They agree to indemnify Hyt Studio for any third-party claims regarding intellectual property infringement."
+            },
+            article11: {
+                title: "Liability",
+                subtitle1: "Intermediary role",
+                p1: "Hyt Studio acts as a technical intermediary between Creators and Buyers. As such, Hyt Studio is not the seller of Products offered by third-party Creators and cannot be held responsible for the content, quality, or compliance of Products sold by them.",
+                subtitle2: "Platform availability",
+                p2: "Hyt Studio strives to ensure Platform availability 24/7 but does not guarantee permanent availability. Interruptions for maintenance or updates may occur. Hyt Studio cannot be held liable for damages resulting from temporary unavailability.",
+                subtitle3: "Limitation of liability",
+                p3: "To the extent permitted by law, Hyt Studio's liability is limited to direct and foreseeable damages. Hyt Studio cannot be held liable for indirect damages, data loss, lost profits, or commercial harm."
+            },
+            article12: {
+                title: "Personal data protection",
+                subtitle1: "Data controller",
+                p1: "Hyt Studio is responsible for processing personal data collected on the Platform, in accordance with the General Data Protection Regulation (GDPR) and the French Data Protection Act.",
+                subtitle2: "Data collected",
+                p2: "Personal data collected may include:",
+                data1: "Identification data: username, email address",
+                data2: "Connection data: IP address, connection logs",
+                data3: "Transaction data: purchase history, amounts",
+                data4: "Payment data: handled by Stripe (Hyt Studio does not store banking data)",
+                subtitle3: "User rights",
+                p3: "Under GDPR, Users have the following rights:",
+                right1: "Right to access their personal data",
+                right2: "Right to rectify inaccurate data",
+                right3: "Right to erasure (\"right to be forgotten\")",
+                right4: "Right to data portability",
+                right5: "Right to object to processing",
+                right6: "Right to restriction of processing",
+                p4: "These rights can be exercised by email at contact@hytstudio.com. For more information, see our Privacy Policy."
+            },
+            article13: {
+                title: "Cookies",
+                p1: "The Platform uses cookies to ensure proper functioning, improve user experience, and compile traffic statistics. Users can configure their browser to accept or refuse cookies. Refusing certain cookies may limit access to some features.",
+                p2: "For more information on cookies used, see our Cookie Policy."
+            },
+            article14: {
+                title: "Reporting and dispute resolution",
+                subtitle1: "Reporting",
+                p1: "Any User can report a Product or behavior contrary to these Terms via the Platform's integrated reporting system. Hyt Studio commits to reviewing each report within a reasonable timeframe.",
+                subtitle2: "Mediation",
+                p2: "In accordance with Articles L.612-1 and following of the Consumer Code, in case of dispute, the consumer may use a consumer mediator free of charge. Mediator contact details will be provided upon request.",
+                subtitle3: "Customer service",
+                p3: "For any complaint, the User can contact customer service by email at contact@hytstudio.com or via the contact form on the Platform."
+            },
+            article15: {
+                title: "Suspension and termination",
+                subtitle1: "Suspension by Hyt Studio",
+                p1: "Hyt Studio reserves the right to suspend or terminate any Account in case of violation of these Terms, fraudulent activity, or behavior detrimental to the Platform or its Users, without notice or compensation.",
+                subtitle2: "Termination by User",
+                p2: "The User may request deletion of their Account at any time by sending a request to contact@hytstudio.com. Account deletion does not result in refund of purchases made or commissions already collected by Hyt Studio.",
+                subtitle3: "Effects of termination",
+                p3: "Upon termination, the Buyer retains access to already downloaded Products. The Creator loses access to their store but retains the right to payments due for sales made before termination."
+            },
+            article16: {
+                title: "Modifications to terms",
+                p1: "Hyt Studio reserves the right to modify these Terms at any time. Users will be informed of any substantial modification by email or notification on the Platform. Continued use of the Platform after notification of modifications constitutes acceptance of the new Terms.",
+                p2: "The applicable Terms are those in effect at the date of Platform use or order placement."
+            },
+            article17: {
+                title: "Applicable law and jurisdiction",
+                p1: "These Terms are governed by French law. In case of dispute regarding the interpretation, validity, or execution of these Terms, the parties will endeavor to find an amicable solution.",
+                p2: "Failing amicable agreement, any dispute will be submitted to the competent courts in accordance with applicable rules of jurisdiction.",
+                p3: "In accordance with Article L.612-1 of the Consumer Code, the consumer has the option of resorting to alternative dispute resolution."
+            },
+            article18: {
+                title: "Miscellaneous provisions",
+                subtitle1: "Entirety",
+                p1: "These Terms constitute the entire agreement between the User and Hyt Studio regarding use of the Platform and replace all prior agreements.",
+                subtitle2: "Partial nullity",
+                p2: "If any provision of these Terms is declared null or unenforceable, the other provisions will remain in effect and the null provision will be replaced by a valid provision as close as possible to the original intent.",
+                subtitle3: "Non-waiver",
+                p3: "Failure by Hyt Studio to exercise a right or require performance of an obligation shall not constitute a waiver of that right or obligation."
+            }
+        },
+
+        // Privacy Policy
+        privacy: {
+            title: "Privacy Policy",
+            intro: {
+                p1: "At Hyt Studio, we place paramount importance on protecting your personal data. This Privacy Policy informs you about how we collect, use, store, and protect your information when you use our platform.",
+                p2: "By using Hyt Studio, you accept the practices described in this policy. We invite you to read it carefully."
+            },
+            article1: {
+                title: "Data controller",
+                p1: "The data controller is:",
+                company: "Hyt Studio",
+                address: "[Full address]",
+                p2: "For any questions regarding your personal data, you can contact us at the above address."
+            },
+            article2: {
+                title: "Data collected",
+                p1: "We collect different categories of data depending on your use of the platform:",
+                identification: "Identification data",
+                id1: "Username",
+                id2: "Email address",
+                id3: "Profile picture (optional)",
+                id4: "Biography (optional)",
+                technical: "Technical data",
+                tech1: "IP address",
+                tech2: "Browser type and version",
+                tech3: "Operating system",
+                tech4: "Pages visited and actions performed",
+                tech5: "Date and time of connection",
+                transaction: "Transaction data",
+                trans1: "Purchase history",
+                trans2: "Transaction amounts",
+                trans3: "Products bought or sold",
+                paymentNote: "Important note:",
+                paymentNoteText: "Payment data (card number, etc.) is processed directly by our provider Stripe. Hyt Studio never stores your banking information."
+            },
+            article3: {
+                title: "Purposes of processing",
+                p1: "Your personal data is collected for the following purposes:",
+                purpose1: "Account management:",
+                purpose1Desc: "creation, authentication, profile personalization",
+                purpose2: "Service provision:",
+                purpose2Desc: "buying and selling products, downloads, custom orders",
+                purpose3: "Payments:",
+                purpose3Desc: "transaction processing, invoicing, creator payouts",
+                purpose4: "Communication:",
+                purpose4Desc: "notifications, service emails, customer support",
+                purpose5: "Platform improvement:",
+                purpose5Desc: "statistical analysis, bug detection, optimization",
+                purpose6: "Security:",
+                purpose6Desc: "fraud prevention, protection against unauthorized access",
+                purpose7: "Legal obligations:",
+                purpose7Desc: "compliance with tax and accounting regulations"
+            },
+            article4: {
+                title: "Legal basis for processing",
+                p1: "Processing of your data is based on the following legal bases:",
+                legal1: "Contract performance:",
+                legal1Desc: "processing necessary for providing our services (Article 6.1.b GDPR)",
+                legal2: "Consent:",
+                legal2Desc: "for marketing communications and certain cookies (Article 6.1.a GDPR)",
+                legal3: "Legitimate interest:",
+                legal3Desc: "improving our services, platform security (Article 6.1.f GDPR)",
+                legal4: "Legal obligation:",
+                legal4Desc: "invoice retention, tax declarations (Article 6.1.c GDPR)"
+            },
+            article5: {
+                title: "Data recipients",
+                p1: "Your data may be shared with:",
+                dest1: "Our internal team:",
+                dest1Desc: "only authorized personnel for service needs",
+                dest2: "Stripe:",
+                dest2Desc: "for payment processing",
+                dest3: "Hosting provider:",
+                dest3Desc: "for secure data storage",
+                dest4: "Technical providers:",
+                dest4Desc: "emailing services, analytics (anonymized data)",
+                dest5: "Competent authorities:",
+                dest5Desc: "in case of legal obligation",
+                noSale: "We never sell your personal data to third parties."
+            },
+            article6: {
+                title: "Retention period",
+                p1: "We retain your data for the following periods:",
+                dataType: "Data type",
+                duration: "Retention period",
+                account: "Account data",
+                accountDuration: "Account duration + 3 years after deletion",
+                transactions: "Transaction data",
+                transactionsDuration: "10 years (accounting obligation)",
+                invoices: "Invoices",
+                invoicesDuration: "10 years (tax obligation)",
+                logs: "Connection logs",
+                logsDuration: "1 year",
+                cookiesData: "Cookies",
+                cookiesDuration: "13 months maximum"
+            },
+            article7: {
+                title: "Your rights",
+                p1: "Under GDPR, you have the following rights over your personal data:",
+                access: "Right of access",
+                accessDesc: "Obtain a copy of all data we hold about you.",
+                rectification: "Right to rectification",
+                rectificationDesc: "Correct inaccurate or incomplete data.",
+                erasure: "Right to erasure",
+                erasureDesc: "Request deletion of your data (\"right to be forgotten\").",
+                portability: "Right to portability",
+                portabilityDesc: "Retrieve your data in a structured and readable format.",
+                opposition: "Right to object and restrict",
+                oppositionDesc: "Object to certain processing or request its restriction.",
+                exerciseRights: "To exercise these rights, contact us at contact@hytstudio.com. We will respond within one month."
+            },
+            article8: {
+                title: "Data security",
+                p1: "We implement appropriate technical and organizational measures to protect your data:",
+                security1: "SSL/TLS encryption for all communications",
+                security2: "Passwords hashed with secure algorithms",
+                security3: "Restricted data access (principle of least privilege)",
+                security4: "Regular encrypted backups",
+                security5: "Intrusion monitoring and detection",
+                security6: "Regular security updates"
+            },
+            article9: {
+                title: "International transfers",
+                p1: "Your data is primarily stored within the European Union. If transfer to a third country is necessary, we ensure appropriate safeguards are in place:",
+                transfer1: "European Commission adequacy decision",
+                transfer2: "Standard contractual clauses",
+                transfer3: "Approved certification or code of conduct"
+            },
+            article10: {
+                title: "Cookies",
+                p1: "Our platform uses cookies. For more information on cookies used and how to manage them, see our Cookie Policy."
+            },
+            article11: {
+                title: "Minors",
+                p1: "Hyt Studio is intended for persons aged 18 and over. We do not knowingly collect personal data from minors. If you are a parent or guardian and believe your child has provided us with personal data, please contact us."
+            },
+            article12: {
+                title: "Changes to this policy",
+                p1: "We may update this Privacy Policy. In case of substantial changes, we will inform you by email or notification on the platform. The last update date is shown at the top of this page."
+            },
+            article13: {
+                title: "Complaint",
+                p1: "If you believe the processing of your personal data constitutes a GDPR violation, you have the right to lodge a complaint with the supervisory authority:",
+                cnil: "CNIL (French Data Protection Authority)",
+                cnilAddress: "3 Place de Fontenoy, TSA 80715, 75334 Paris Cedex 07, France"
+            }
+        },
+
+        // Cookies
+        cookies: {
+            title: "Cookie Policy",
+            whatIs: {
+                title: "What is a cookie?",
+                p1: "A cookie is a small text file placed on your device (computer, smartphone, tablet) when visiting a website. It allows the site to remember information about your visit, such as your preferred language or login credentials.",
+                p2: "Cookies can be \"first-party\" (placed by Hyt Studio) or \"third-party\" (placed by our partners). They can be \"session\" cookies (deleted when browser closes) or \"persistent\" (kept for a defined period)."
+            },
+            why: {
+                title: "Why do we use cookies?",
+                p1: "Hyt Studio uses cookies to:",
+                reason1: "Ensure functioning",
+                reason1Desc: "of the site (authentication, cart, security)",
+                reason2: "Remember your preferences",
+                reason2Desc: "(theme, language, settings)",
+                reason3: "Analyze usage",
+                reason3Desc: "of the site to improve it",
+                reason4: "Measure effectiveness",
+                reason4Desc: "of our communications"
+            },
+            types: {
+                title: "Types of cookies used",
+                necessary: {
+                    name: "Essential cookies",
+                    description: "These cookies are essential for site operation. They enable navigation, authentication, and security.",
+                    required: "Always active"
+                },
+                functional: {
+                    name: "Functional cookies",
+                    description: "These cookies improve your experience by remembering your preferences (language, theme, etc.)."
+                },
+                analytics: {
+                    name: "Analytics cookies",
+                    description: "These cookies help us understand how visitors use the site to improve our services."
+                },
+                marketing: {
+                    name: "Marketing cookies",
+                    description: "These cookies are used to show you relevant ads and measure campaign effectiveness."
+                },
+                cookieName: "Name",
+                cookiePurpose: "Purpose",
+                cookieDuration: "Duration"
+            },
+            manage: {
+                title: "How to manage your cookies?",
+                platform: "Via our platform",
+                platformDesc: "You can change your preferences at any time using the buttons above or by clicking the \"Manage cookies\" link at the bottom of each page.",
+                browser: "Via your browser",
+                browserDesc: "You can also configure your browser to accept or refuse cookies. Here are links to instructions for major browsers:",
+                warning: "Warning:",
+                warningText: "Disabling certain cookies may affect site functionality. For example, without authentication cookies, you cannot stay logged in."
+            },
+            thirdParty: {
+                title: "Third-party cookies",
+                p1: "Some third-party services may place cookies on your device:",
+                stripe: "For secure payment processing.",
+                analytics: "For audience analysis."
+            },
+            updates: {
+                title: "Updates to this policy",
+                p1: "We may update this policy to reflect changes in our cookie usage. The last update date is shown at the top of this page. We encourage you to check this page regularly."
+            },
+            learnMore: {
+                title: "Learn more",
+                p1: "For more information on cookies and your rights:",
+                cnilLink: "CNIL - Cookies and trackers",
+                privacyLink: "Our Privacy Policy",
+                termsLink: "Our Terms of Service"
+            },
+            buttons: {
+                acceptAll: "Accept all",
+                rejectAll: "Reject all (except essential)"
+            }
+        }
+    },
+    // ============ CONTACT ============
+    contact: {
+        title: "Contact Us",
+        subtitle: "Have a question, suggestion, or need help? Don't hesitate to reach out.",
+        backToHome: "Back to home",
+
+        form: {
+            name: "Name",
+            namePlaceholder: "Your name",
+            email: "Email",
+            emailPlaceholder: "your@email.com",
+            subject: "Subject",
+            subjectPlaceholder: "What is it about?",
+            message: "Message",
+            messagePlaceholder: "Describe your request in detail...",
+            send: "Send message",
+            sending: "Sending..."
+        },
+
+        info: {
+            email: "Email",
+            discordDesc: "Join our community to get help quickly.",
+            joinDiscord: "Join Discord",
+            responseTime: "Response time",
+            responseTimeDesc: "We typically respond within 24 to 48 business hours.",
+            needHelp: "Need quick help?",
+            needHelpDesc: "Check our FAQ to find instant answers.",
+            viewFaq: "View FAQ"
+        },
+
+        success: "Message sent successfully!",
+        errors: {
+            requiredFields: "Please fill in all required fields",
+            sendFailed: "Error sending message"
+        }
+    },
+
+    // ============ HELP / FAQ ============
+    help: {
+        title: "Help Center",
+        subtitle: "Quickly find answers to your most frequently asked questions.",
+        backToHome: "Back to home",
+        searchPlaceholder: "Search for a question...",
+        noResults: "No results found for your search",
+
+        categories: {
+            all: "All",
+            account: "Account",
+            purchase: "Purchases",
+            download: "Download",
+            creator: "Creator",
+            payment: "Payment"
+        },
+
+        faq: {
+            title: "Frequently Asked Questions",
+            subtitle: "Quickly find answers to all your questions about HytModel",
+            backToHome: "Back to home",
+            searchPlaceholder: "Search for a question...",
+            resultsCount: "{count} result(s) found",
+            noResults: "No results found",
+            noResultsHint: "Try other keywords or contact us",
+
+            categories: {
+                all: "All",
+                general: "General",
+                account: "Account",
+                purchase: "Purchases",
+                download: "Download",
+                creator: "Creators",
+                custom: "Custom Orders",
+                bundle: "Bundles",
+                payment: "Payments",
+                legal: "Legal"
+            },
+
+            needHelp: {
+                title: "Didn't find your answer?",
+                description: "Our team is here to help. Don't hesitate to contact us directly.",
+                contactUs: "Contact us",
+                joinDiscord: "Join Discord"
+            },
+
+            questions: {
+                // ============ GENERAL ============
+                general: {
+                    whatIs: {
+                        q: "What is HytModel?",
+                        a: "HytModel is a marketplace specializing in the sale of 3D models, textures, assets, and resources primarily for Minecraft and Hytale. Our platform connects talented creators with developers, server creators, and enthusiasts looking for quality content for their projects."
+                    },
+                    productTypes: {
+                        q: "What types of products can be found on HytModel?",
+                        a: "You will find on HytModel:\n\n• 3D models (characters, mobs, items, blocks, vehicles, buildings...)\n• Textures and resource packs\n• Maps and environments\n• Animations\n• Plugins and scripts\n• Thematic bundles\n\nMost of our assets are optimized for Minecraft and Hytale, but we also accept creations for other platforms."
+                    },
+                    whichGames: {
+                        q: "Which games are the assets designed for?",
+                        a: "HytModel primarily specializes in assets for:\n\n• Minecraft (Java & Bedrock)\n• Hytale\n\nHowever, we also accept creations for other games and platforms. Each product clearly indicates which game or platform it is optimized for."
+                    },
+                    languages: {
+                        q: "Is the site available in multiple languages?",
+                        a: "Yes, HytModel is available in French and English. You can change the language at any time via the language selector in the menu."
+                    }
+                },
+
+                // ============ ACCOUNT ============
+                account: {
+                    create: {
+                        q: "How do I create an account?",
+                        a: "To create an account:\n\n1. Click 'Login' at the top right\n2. Click 'Create an account'\n3. Fill out the form (email, password)\n4. Validate your email via the link sent\n\nYou can also sign up directly with your Discord account for faster registration."
+                    },
+                    forgotPassword: {
+                        q: "I forgot my password, what should I do?",
+                        a: "Don't panic! On the login page, click 'Forgot password'. Enter the email address associated with your account and you will receive a reset link valid for 24 hours."
+                    },
+                    modifyInfo: {
+                        q: "How do I change my personal information?",
+                        a: "Log in to your account, then access your profile via the user menu. You can modify:\n\n• Your display name\n• Your avatar\n• Your biography\n• Your social links\n• Your email address\n• Your password"
+                    },
+                    delete: {
+                        q: "How do I delete my account?",
+                        a: "To delete your account, contact our team via the Contact page specifying your deletion request.\n\n⚠️ Warning: This action is irreversible. You will permanently lose access to all your purchases and, if you are a creator, your products will be removed from sale."
+                    },
+                    suspended: {
+                        q: "My account has been suspended, why?",
+                        a: "An account can be suspended for several reasons:\n\n• Violation of terms of use\n• Suspicious activity detected\n• Unresolved payment dispute\n• Multiple reports\n\nIf you believe this is an error, contact our support with the details of your situation."
+                    }
+                },
+
+                // ============ PURCHASES ============
+                purchase: {
+                    howToBuy: {
+                        q: "How do I buy a product?",
+                        a: "Buying on HytModel is simple:\n\n1. Browse the catalog or use the search\n2. Click on a product to see the details\n3. Click 'Add to cart'\n4. Go to your cart and validate\n5. Accept the Terms of Service and proceed to payment\n6. The download starts automatically!"
+                    },
+                    paymentMethods: {
+                        q: "What payment methods do you accept?",
+                        a: "We accept the following payment methods via Stripe:\n\n• Credit cards (Visa, Mastercard, American Express)\n• Apple Pay\n• Google Pay\n\nAll payments are 100% secure and encrypted."
+                    },
+                    paymentFailed: {
+                        q: "My payment was declined, what should I do?",
+                        a: "If your payment is declined:\n\n1. Check that the card information is correct\n2. Make sure your card is not expired\n3. Check that you have sufficient funds\n4. Contact your bank (sometimes online purchases are blocked)\n5. Try another card or payment method\n\nIf the problem persists, contact our support."
+                    },
+                    invoice: {
+                        q: "Can I get an invoice?",
+                        a: "Yes! All your invoices are automatically generated and available in your 'My purchases' area. You can download them in PDF format at any time. Invoices contain all required legal information."
+                    },
+                    promoCode: {
+                        q: "How do I use a promo code?",
+                        a: "During checkout, you will see a 'Promo code' field before finalizing your order. Enter your code and click 'Apply'. The discount will be immediately visible on the total amount."
+                    }
+                },
+
+                // ============ DOWNLOAD ============
+                download: {
+                    howTo: {
+                        q: "How do I download my purchases?",
+                        a: "After a successful purchase:\n\n1. You are redirected to a confirmation page\n2. The download starts automatically\n3. If not, click the download button\n\nYou can also find all your purchases in 'My purchases' in your user area."
+                    },
+                    limit: {
+                        q: "How many times can I download a product?",
+                        a: "There is no limit! Once purchased, you can download your product as many times as you want, with no time limit. Your purchases remain accessible for life in your library."
+                    },
+                    formats: {
+                        q: "What formats are the files in?",
+                        a: "Files are usually provided in .zip archive containing:\n\n• 3D models: FBX, OBJ, GLTF, Blend\n• Textures: PNG, JPG, TGA\n• Documentation: PDF, TXT\n\nThe exact format is indicated on each product page. Check compatibility with your software before purchasing."
+                    },
+                    notWorking: {
+                        q: "The download is not working, what should I do?",
+                        a: "If you experience download problems:\n\n1. Check your internet connection\n2. Temporarily disable your ad blocker\n3. Try another browser\n4. Clear your browser cache\n5. Make sure you are logged into the correct account\n\nIf the problem persists, contact our support with error details."
+                    },
+                    corrupted: {
+                        q: "The downloaded file is corrupted or incomplete",
+                        a: "If your file seems damaged:\n\n1. Try downloading it again\n2. Use another decompression software (7-Zip, WinRAR)\n3. Check that you have enough disk space\n\nIf the problem persists after several attempts, contact support specifying the product concerned."
+                    }
+                },
+
+                // ============ CREATORS ============
+                creator: {
+                    becomeSeller: {
+                        q: "How do I become a seller on HytModel?",
+                        a: "To become a seller:\n\n1. Log in to your account\n2. Click 'Become a creator' in the menu\n3. Fill out the application form\n4. Attach your portfolio and links\n5. Wait for validation from our team (within a few days)\n\nWe review each application to ensure the quality of our catalog."
+                    },
+                    commissions: {
+                        q: "What are the commissions charged?",
+                        a: "Our commissions are among the lowest in the market:\n\n• Non-affiliated seller: 85% for you (15% commission)\n• Affiliated seller: 90% for you (10% commission)\n• HytStudio: 100% for the platform\n\nAffiliated status is granted to quality creators after evaluation of their sales and product quality."
+                    },
+                    uploadProduct: {
+                        q: "How do I list a product for sale?",
+                        a: "Once your creator account is validated:\n\n1. Access your Dashboard\n2. Click 'Add a product'\n3. Fill in the information (title, description, price...)\n4. Upload your files and images\n5. Submit for validation\n\nOur team verifies each product before publication to ensure quality."
+                    },
+                    whenPaid: {
+                        q: "When and how do I get paid?",
+                        a: "Payments work via Stripe Connect:\n\n1. Set up your Stripe account from the Dashboard\n2. After each sale, your share is transferred to Stripe\n3. Stripe deposits funds to your bank account\n\nTransfer times depend on your Stripe configuration (usually 2-7 business days)."
+                    },
+                    becomeAffiliated: {
+                        q: "How do I become Affiliated?",
+                        a: "Affiliated status is granted by our team based on several criteria:\n\n• Consistent quality of your products\n• Regular sales volume\n• Good reputation (ratings, reviews)\n• Compliance with guidelines\n\nYou cannot request this status directly; it will be offered automatically when you meet the criteria."
+                    },
+                    aiProducts: {
+                        q: "Can I sell products created with AI?",
+                        a: "Products generated entirely by AI are not accepted on HytModel. However, using AI tools as assistance in your creative workflow is tolerated, provided that the final work is significantly modified and improved by you."
+                    }
+                },
+
+                // ============ CUSTOM ORDERS ============
+                custom: {
+                    whatIs: {
+                        q: "What is a custom order?",
+                        a: "A custom order allows you to request the creation of a personalized asset according to your specific needs. You describe your project, set a budget, and affiliated creators make proposals to you."
+                    },
+                    howToOrder: {
+                        q: "How do I place a custom order?",
+                        a: "To place a custom order:\n\n1. Log in to your account\n2. Go to the 'Custom Orders' section\n3. Click 'New request'\n4. Describe your project in detail\n5. Indicate your budget and desired deadline\n6. Wait for proposals from creators"
+                    },
+                    whoCanRespond: {
+                        q: "Who can respond to my requests?",
+                        a: "Only Affiliated and HytStudio creators can respond to custom requests. These are verified creators whose work quality has been validated by our team."
+                    },
+                    payment: {
+                        q: "How does payment for custom orders work?",
+                        a: "Payment is made in two stages:\n\n1. 50% deposit upon acceptance of the offer\n2. 50% balance upon delivery and validation of the work\n\nThis system protects both the client and the creator."
+                    },
+                    commission: {
+                        q: "What is the commission on custom orders?",
+                        a: "The HytModel commission on custom orders is only 5% for Affiliated creators (they keep 95%). HytStudio creators keep 100% of the amount."
+                    },
+                    notSatisfied: {
+                        q: "What if I'm not satisfied with the result?",
+                        a: "Before validating the final delivery, you can request modifications within the limits of what was agreed. In case of dispute, contact our support team who will arbitrate the situation fairly."
+                    }
+                },
+
+                // ============ BUNDLES ============
+                bundle: {
+                    whatIs: {
+                        q: "What is a bundle?",
+                        a: "A bundle is a grouped offer combining several products from the same creator at a reduced price. It's an excellent way to get multiple complementary assets while saving money."
+                    },
+                    worthIt: {
+                        q: "Are bundles really worth it?",
+                        a: "Yes! Bundles typically offer between 15% and 50% discount compared to buying products separately. The savings percentage is clearly displayed on each bundle."
+                    },
+                    alreadyOwn: {
+                        q: "I already purchased a product from the bundle, can I get a discount?",
+                        a: "Unfortunately, bundles are sold as-is and do not take into account previous purchases. We recommend checking the content before purchasing if you already own some products."
+                    },
+                    createBundle: {
+                        q: "How do I create a bundle as a seller?",
+                        a: "In your creator Dashboard:\n\n1. Go to the 'Bundles' section\n2. Click 'Create a bundle'\n3. Select at least 2 of your products\n4. Set the discount (% or fixed amount)\n5. The final price must be at least €5"
+                    }
+                },
+
+                // ============ PAYMENTS ============
+                payment: {
+                    secure: {
+                        q: "Are payments secure?",
+                        a: "Absolutely! All payments are processed by Stripe, the world leader in online payments. Your banking data never passes through our servers and is protected by bank-level encryption (SSL/TLS)."
+                    },
+                    stripeConnect: {
+                        q: "How do I set up Stripe Connect (sellers)?",
+                        a: "To receive your payments:\n\n1. Access your creator Dashboard\n2. Click on the 'Set up Stripe' banner\n3. Follow the Stripe verification steps\n4. Once validated, you will receive your payments automatically\n\nStripe may request identity documents to verify your account."
+                    },
+                    currency: {
+                        q: "What currency are prices in?",
+                        a: "All prices on HytModel are displayed in Euros (€). Payment is converted to your local currency by your bank if necessary."
+                    },
+                    installments: {
+                        q: "Can I pay in installments?",
+                        a: "Installment payment is not currently available. Purchases must be paid in full at the time of order."
+                    }
+                },
+
+                // ============ LEGAL ============
+                legal: {
+                    refund: {
+                        q: "Can I get a refund?",
+                        a: "In accordance with Article L.221-28 of the Consumer Code, digital products are not refundable once the download has been made.\n\nBy purchasing on HytModel, you agree to waive your right of withdrawal to benefit from immediate download.\n\nIn case of a proven technical problem with a file, contact our support."
+                    },
+                    license: {
+                        q: "What license applies to purchased products?",
+                        a: "Each product is sold with a personal and commercial use license (unless otherwise stated). You can:\n\n✓ Use the product in your personal projects\n✓ Use the product in your commercial projects\n✓ Modify the product to suit your needs\n\nYou cannot:\n✗ Resell the product as-is\n✗ Redistribute the source files\n✗ Share your purchase with others"
+                    },
+                    gdpr: {
+                        q: "How is my personal data protected?",
+                        a: "Your data is processed in accordance with GDPR. We only collect information necessary for the operation of the service. You can consult our Privacy Policy for more details and exercise your rights (access, rectification, deletion) by contacting us."
+                    },
+                    whereLegal: {
+                        q: "Where can I find the Terms of Service and legal notices?",
+                        a: "All our legal pages are accessible from the footer of the site:\n\n• Terms of Service\n• Privacy Policy\n• Cookie Policy\n• Legal Notice"
+                    },
+                    dispute: {
+                        q: "What should I do in case of a dispute?",
+                        a: "In case of dispute, we favor amicable resolution. Contact our support detailing your situation. If no solution is found, you can resort to a consumer mediator in accordance with Articles L.616-1 and R.616-1 of the Consumer Code."
+                    }
+                }
+            }
+        },
+
+        stillNeedHelp: {
+            title: "Didn't find your answer?",
+            description: "Our team is here to help. Don't hesitate to contact us.",
+            contactUs: "Contact us",
+            joinDiscord: "Join Discord"
         }
     }
 }

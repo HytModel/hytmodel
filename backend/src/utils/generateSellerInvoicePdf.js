@@ -7,35 +7,68 @@ const BRAND_COLOR = "#2563EB";
 const DARK_COLOR  = "#111827";
 const GREY_COLOR  = "#6B7280";
 const LIGHT_BG    = "#F3F4F6";
-const BUNDLE_COLOR = "#8B5CF6"; // Violet pour les bundles
-const CUSTOM_COLOR = "#10B981"; // Vert pour les commandes sur mesure
+const BUNDLE_COLOR = "#8B5CF6";    // Violet pour les bundles
+const CUSTOM_COLOR = "#10B981";    // Vert pour les commandes sur mesure
 
 // 📐 LAYOUT
 const PAGE_LEFT  = 50;
 const PAGE_RIGHT = 545;
-
 const LOGO_WIDTH  = 90;
 const LOGO_HEIGHT = 45;
+
+/**
+ * Détermine le taux de commission selon le contexte
+ * @param {string} creatorType - 'HYTSTUDIO', 'ADMIN', 'STAFF', 'AFFILIATED', ou null
+ * @param {boolean} isCustomOrder - Est-ce une commande sur mesure ?
+ * @returns {number} Taux de commission (0, 0.05, 0.10, ou 0.15)
+ */
+function getCommissionRate(creatorType, isCustomOrder) {
+    // Comptes internes (HytStudio / Admin / Staff) → 0% (pas de commission, c'est nous)
+    if (['HYTSTUDIO', 'ADMIN', 'STAFF'].includes(creatorType)) return 0;
+
+    // Affilié + Commande sur mesure → 5%
+    if (creatorType === 'AFFILIATED' && isCustomOrder) return 0.05;
+
+    // Affilié + Produit normal → 10%
+    if (creatorType === 'AFFILIATED') return 0.10;
+
+    // Non-affilié → 15%
+    return 0.15;
+}
 
 module.exports = async function generateSellerNotePdf({
                                                           invoiceNumber,
                                                           seller,
-                                                          grossAmount,        // centimes
-                                                          commissionAmount,   // centimes
-                                                          netAmount,          // centimes
-                                                          commissionRate = 0.15, // Taux de commission (0, 0.05, 0.10, 0.15)
-                                                          creatorType = null, // 'HYTSTUDIO', 'AFFILIATED', ou null
+                                                          grossAmount,                    // centimes (prix de vente)
                                                           stripeTransferId,
                                                           createdAt,
+                                                          creatorType = null,             // 'HYTSTUDIO', 'AFFILIATED', ou null
                                                           // Infos bundle (optionnel)
                                                           isBundle = false,
                                                           bundleTitle = null,
                                                           itemCount = 0,
                                                           // Infos commande sur mesure (optionnel)
                                                           isCustomOrder = false,
-                                                          orderTitle = null
+                                                          orderTitle = null,
+                                                          // ⚠️ Ces paramètres sont calculés automatiquement si non fournis
+                                                          commissionRate = null,          // Taux de commission (calculé si null)
+                                                          commissionAmount = null,        // Montant commission en centimes (calculé si null)
+                                                          netAmount = null                // Montant net en centimes (calculé si null)
                                                       }) {
     const date = createdAt ? new Date(createdAt) : new Date();
+
+    // ─────────────────────────
+    // 💰 CALCULS AUTOMATIQUES
+    // ─────────────────────────
+
+    // Taux de commission selon le type de créateur
+    const calculatedCommissionRate = commissionRate ?? getCommissionRate(creatorType, isCustomOrder);
+
+    // Montant de la commission (sur le prix brut)
+    const calculatedCommissionAmount = commissionAmount ?? Math.round(grossAmount * calculatedCommissionRate);
+
+    // Montant net final = Brut - Commission
+    const calculatedNetAmount = netAmount ?? (grossAmount - calculatedCommissionAmount);
 
     // 📁 DOSSIER
     const dir = path.join(process.cwd(), "pdf", "seller-invoices");
@@ -62,10 +95,12 @@ module.exports = async function generateSellerNotePdf({
     doc
         .fillColor(DARK_COLOR)
         .fontSize(22)
+        .font('Helvetica-Bold')
         .text("NOTE DE PAIEMENT", 350, 45, { align: "right" });
 
     doc
         .fontSize(10)
+        .font('Helvetica')
         .fillColor(GREY_COLOR)
         .text(invoiceNumber, { align: "right" })
         .text(date.toLocaleDateString("fr-FR"), { align: "right" });
@@ -94,18 +129,27 @@ module.exports = async function generateSellerNotePdf({
     doc
         .fontSize(12)
         .fillColor(DARK_COLOR)
+        .font('Helvetica-Bold')
         .text(seller.username || "Vendeur")
+        .font('Helvetica')
         .fontSize(10)
         .fillColor(GREY_COLOR)
         .text(seller.email || "");
 
-    // Afficher le type de créateur
+    // Afficher le type de créateur avec badge coloré
     if (creatorType) {
-        const typeLabel = creatorType === 'HYTSTUDIO' ? 'HytStudio' : 'Créateur Affilié';
+        const typeConfig = {
+            'HYTSTUDIO': { label: 'HytStudio', color: BRAND_COLOR },
+            'ADMIN': { label: 'Admin', color: BRAND_COLOR },
+            'STAFF': { label: 'Staff', color: BRAND_COLOR },
+            'AFFILIATED': { label: 'Créateur Affilié', color: CUSTOM_COLOR }
+        };
+        const config = typeConfig[creatorType] || { label: 'Créateur', color: GREY_COLOR };
+
         doc
             .fontSize(9)
-            .fillColor(creatorType === 'HYTSTUDIO' ? BRAND_COLOR : CUSTOM_COLOR)
-            .text(`Statut : ${typeLabel}`);
+            .fillColor(config.color)
+            .text(`Statut : ${config.label}`);
     }
 
     doc.moveDown(1);
@@ -117,11 +161,10 @@ module.exports = async function generateSellerNotePdf({
     if (isBundle && bundleTitle) {
         doc.moveDown(1.5);
 
-        // Badge Bundle
         const badgeY = doc.y;
         doc
             .rect(PAGE_LEFT, badgeY, PAGE_RIGHT - PAGE_LEFT, 40)
-            .fill("#F3E8FF"); // Fond violet clair
+            .fill("#F3E8FF");
 
         doc
             .fillColor(BUNDLE_COLOR)
@@ -133,7 +176,7 @@ module.exports = async function generateSellerNotePdf({
             .fontSize(11)
             .font('Helvetica')
             .fillColor(DARK_COLOR)
-            .text(`"${bundleTitle}" (${itemCount} produits)`, PAGE_LEFT + 10, badgeY + 24);
+            .text(`"${bundleTitle}" (${itemCount} produit${itemCount > 1 ? 's' : ''})`, PAGE_LEFT + 10, badgeY + 24);
 
         doc.y = badgeY + 50;
     }
@@ -144,11 +187,10 @@ module.exports = async function generateSellerNotePdf({
     if (isCustomOrder && orderTitle) {
         doc.moveDown(1.5);
 
-        // Badge Custom Order
         const badgeY = doc.y;
         doc
             .rect(PAGE_LEFT, badgeY, PAGE_RIGHT - PAGE_LEFT, 40)
-            .fill("#D1FAE5"); // Fond vert clair
+            .fill("#D1FAE5");
 
         doc
             .fillColor(CUSTOM_COLOR)
@@ -172,6 +214,7 @@ module.exports = async function generateSellerNotePdf({
 
     const startY = doc.y;
 
+    // En-tête du tableau
     doc
         .rect(PAGE_LEFT - 5, startY - 5, PAGE_RIGHT - PAGE_LEFT + 10, 24)
         .fill(LIGHT_BG);
@@ -185,6 +228,7 @@ module.exports = async function generateSellerNotePdf({
 
     doc.moveDown(1);
 
+    // Fonction pour formater en euros
     const euro = v => `${(v / 100).toFixed(2)} €`;
 
     // Déterminer le label de vente
@@ -194,49 +238,51 @@ module.exports = async function generateSellerNotePdf({
     } else if (isBundle && bundleTitle) {
         saleLabel = `Vente Bundle "${bundleTitle}"`;
     } else {
-        saleLabel = "Ventes réalisées";
+        saleLabel = "Vente réalisée";
     }
 
-    // Déterminer le label de commission selon le type et le contexte
-    let commissionLabel;
-    const commissionPercent = Math.round(commissionRate * 100);
+    // Commission en pourcentage
+    const commissionPercent = Math.round(calculatedCommissionRate * 100);
 
-    if (creatorType === 'HYTSTUDIO') {
-        // HytStudio : 0% de commission
-        commissionLabel = "Commission HytStore (0%)";
-    } else if (isCustomOrder) {
-        // Commande sur mesure pour affilié : 5%
-        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
-    } else if (creatorType === 'AFFILIATED') {
-        // Produits normaux pour affilié : 10%
-        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
-    } else {
-        // Produits normaux non-affilié : 15%
-        commissionLabel = `Commission HytStore (${commissionPercent}%)`;
-    }
+    // ─────────────────────────
+    // 📝 LIGNES DU TABLEAU
+    // ─────────────────────────
 
-    // Construire les lignes
-    const lines = [
-        [saleLabel, euro(grossAmount)],
-    ];
+    // Fonction pour dessiner une ligne
+    const drawLine = (label, value, options = {}) => {
+        const { color = DARK_COLOR, italic = false } = options;
 
-    // Ajouter la ligne de commission (même si 0% pour montrer la transparence)
-    if (commissionAmount > 0) {
-        lines.push([commissionLabel, `- ${euro(commissionAmount)}`]);
-    } else {
-        // HytStudio - montrer qu'il n'y a pas de commission
-        lines.push([commissionLabel, `- ${euro(0)}`]);
-    }
-
-    lines.forEach(([label, value]) => {
         doc
-            .fillColor(DARK_COLOR)
+            .fillColor(color)
             .fontSize(11)
-            .font('Helvetica')
-            .text(label, PAGE_LEFT, doc.y, { width: 340 })
-            .text(value, 400, doc.y - 11, { width: 120, align: "right" });
+            .font(italic ? 'Helvetica-Oblique' : 'Helvetica')
+            .text(label, PAGE_LEFT, doc.y, { width: 340 });
+
+        doc
+            .fillColor(color)
+            .text(value, 400, doc.y - 13, { width: 120, align: "right" });
+
         doc.moveDown(0.8);
-    });
+    };
+
+    // 1️⃣ Prix de vente brut
+    drawLine(saleLabel, euro(grossAmount));
+
+    // 2️⃣ Commission HytStore
+    if (calculatedCommissionRate > 0) {
+        drawLine(
+            `Commission HytStore (${commissionPercent}%)`,
+            `- ${euro(calculatedCommissionAmount)}`,
+            { color: BRAND_COLOR }
+        );
+    } else {
+        // Montrer que la commission est à 0% pour HytStudio
+        drawLine(
+            `Commission HytStore (0%)`,
+            `- ${euro(0)}`,
+            { color: CUSTOM_COLOR }
+        );
+    }
 
     // ─────────────────────────
     // 💰 TOTAL NET PAYÉ
@@ -245,30 +291,66 @@ module.exports = async function generateSellerNotePdf({
 
     const totalY = doc.y;
 
+    // Box pour le total
     doc
-        .rect(300, totalY - 8, 245, 32)
+        .rect(250, totalY - 10, 300, 45)
         .fill(LIGHT_BG);
 
     doc
         .fillColor(BRAND_COLOR)
         .fontSize(12)
         .font('Helvetica-Bold')
-        .text("TOTAL NET PAYÉ", 310, totalY);
+        .text("MONTANT NET VERSÉ", 260, totalY);
 
     doc
-        .fontSize(14)
+        .fillColor(DARK_COLOR)
+        .fontSize(18)
+        .font('Helvetica-Bold')
         .text(
-            euro(netAmount),
-            300,
-            totalY,
-            { width: 235, align: "right" }
+            euro(calculatedNetAmount),
+            260,
+            totalY + 18,
+            { width: 280, align: "right" }
         );
+
+    // ─────────────────────────
+    // 📋 RÉCAPITULATIF VISUEL
+    // ─────────────────────────
+    doc.y = totalY + 60;
+    doc.moveDown(1);
+
+    // Mini-récap visuel du calcul
+    doc
+        .fontSize(9)
+        .font('Helvetica')
+        .fillColor(GREY_COLOR);
+
+    const recapY = doc.y;
+
+    doc
+        .rect(PAGE_LEFT, recapY, PAGE_RIGHT - PAGE_LEFT, 40)
+        .fill("#FAFAFA");
+
+    doc
+        .fillColor(GREY_COLOR)
+        .text("Détail du calcul :", PAGE_LEFT + 10, recapY + 8);
+
+    doc
+        .fontSize(8)
+        .text(
+            `${euro(grossAmount)} (vente) − ${euro(calculatedCommissionAmount)} (commission ${commissionPercent}%) = ${euro(calculatedNetAmount)}`,
+            PAGE_LEFT + 10,
+            recapY + 22,
+            { width: PAGE_RIGHT - PAGE_LEFT - 20 }
+        );
+
+    doc.y = recapY + 50;
 
     // ─────────────────────────
     // 🏷️ FOOTER
     // ─────────────────────────
     doc
-        .moveDown(3)
+        .moveDown(2)
         .fontSize(9)
         .font('Helvetica')
         .fillColor(GREY_COLOR)

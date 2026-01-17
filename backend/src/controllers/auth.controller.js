@@ -45,7 +45,8 @@ async function login(req, res) {
         `SELECT id, username, email, role, password_hash,
                 avatar_url, display_name, bio,
                 two_factor_enabled, two_factor_secret, two_factor_backup_codes,
-                creator_type
+                creator_type,
+                stripe_account_id, stripe_onboarded, stripe_charges_enabled, stripe_payouts_enabled
          FROM users WHERE email = $1`,
         [email]
     );
@@ -128,7 +129,11 @@ async function login(req, res) {
             display_name: user.display_name,
             bio: user.bio,
             creator_type: user.creator_type,
-            two_factor_enabled: user.two_factor_enabled
+            two_factor_enabled: user.two_factor_enabled,
+            stripe_account_id: user.stripe_account_id,
+            stripe_onboarded: user.stripe_onboarded,
+            stripe_charges_enabled: user.stripe_charges_enabled,
+            stripe_payouts_enabled: user.stripe_payouts_enabled
         },
         token
     });
@@ -138,7 +143,8 @@ async function me(req, res) {
     try {
         const { rows } = await pool.query(
             `SELECT id, username, email, role, avatar_url, display_name, bio,
-                    creator_type, two_factor_enabled
+                    creator_type, two_factor_enabled,
+                    stripe_account_id, stripe_onboarded, stripe_charges_enabled, stripe_payouts_enabled
              FROM users WHERE id = $1`,
             [req.user.id]
         );

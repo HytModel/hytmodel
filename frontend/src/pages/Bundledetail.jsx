@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
     Gift, Package, User, ShoppingCart, Check, ArrowLeft,
-    Star, Eye, Calendar, Loader2, AlertTriangle
+    Star, Eye, Calendar, Loader2, AlertTriangle, CheckSquare, Square
 } from 'lucide-react'
 import { bundlesAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -22,6 +22,7 @@ export default function BundleDetail() {
     const [loading, setLoading] = useState(true)
     const [hasPurchased, setHasPurchased] = useState(false)
     const [purchasing, setPurchasing] = useState(false)
+    const [acceptedTerms, setAcceptedTerms] = useState(false)
 
     useEffect(() => {
         loadBundle()
@@ -43,7 +44,7 @@ export default function BundleDetail() {
             }
         } catch (error) {
             console.error('Failed to load bundle:', error)
-            toast.error(t('bundleDetail.errors.notFound'))
+            toast.error('Bundle non trouvé')
             navigate('/models')
         } finally {
             setLoading(false)
@@ -52,8 +53,13 @@ export default function BundleDetail() {
 
     const handlePurchase = async () => {
         if (!isAuthenticated) {
-            toast.error(t('bundleDetail.errors.loginRequired'))
+            toast.error('Connectez-vous pour acheter')
             navigate('/login')
+            return
+        }
+
+        if (!acceptedTerms) {
+            toast.error(t('cart.errors.mustAcceptTerms'))
             return
         }
 
@@ -65,11 +71,11 @@ export default function BundleDetail() {
             if (data.url) {
                 window.location.href = data.url
             } else {
-                toast.success(t('bundleDetail.success.purchased'))
+                toast.success('Bundle acheté avec succès !')
                 setHasPurchased(true)
             }
         } catch (error) {
-            toast.error(error.response?.data?.error || t('bundleDetail.errors.purchaseFailed'))
+            toast.error(error.response?.data?.error || 'Erreur lors de l\'achat')
             setPurchasing(false)
         }
     }
@@ -95,7 +101,7 @@ export default function BundleDetail() {
                     className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5" />
-                    {t('common.back')}
+                    Retour
                 </button>
 
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -125,12 +131,12 @@ export default function BundleDetail() {
                                     >
                                         {bundle.creator_avatar ? (
                                             <img
-                                                src={`http://localhost:3001${bundle.creator_avatar}`}
+                                                src={bundle.creator_avatar}
                                                 alt={bundle.creator_username}
-                                                className="w-6 h-6 rounded-full object-cover"
+                                                className="w-6 h-6 rounded-full"
                                             />
                                         ) : (
-                                            <User className="w-6 h-6 p-1 rounded-full bg-hyt-dark" />
+                                            <User className="w-6 h-6" />
                                         )}
                                         {bundle.creator_display_name || bundle.creator_username}
                                     </Link>
@@ -142,49 +148,40 @@ export default function BundleDetail() {
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                                 <Package className="w-5 h-5 text-hyt-accent" />
-                                {t('bundleDetail.includedProducts', { count: bundle.item_count })}
+                                Produits inclus ({bundle.items?.length || 0})
                             </h2>
 
                             <div className="space-y-3">
-                                {bundle.items?.map(item => (
+                                {bundle.items?.map((item) => (
                                     <Link
                                         key={item.id}
                                         to={`/models/${item.id}`}
-                                        className="flex items-center gap-4 p-3 bg-hyt-dark rounded-lg hover:bg-hyt-border/50 transition-colors"
+                                        className="flex items-center gap-4 p-3 bg-hyt-dark rounded-lg hover:bg-hyt-dark/70 transition-colors"
                                     >
-                                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-hyt-darker flex-shrink-0">
+                                        <div className="w-16 h-16 rounded-lg bg-hyt-darker overflow-hidden flex-shrink-0">
                                             {item.thumbnail_url ? (
                                                 <img
-                                                    src={`http://localhost:3001${item.thumbnail_url}`}
+                                                    src={item.thumbnail_url}
                                                     alt={item.title}
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <Package className="w-6 h-6 text-gray-500" />
+                                                    <Package className="w-6 h-6 text-gray-600" />
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-medium text-white truncate">{item.title}</h3>
-                                            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                                                {item.game_name && (
-                                                    <span>{item.game_name}</span>
-                                                )}
-                                                {item.category_name && (
-                                                    <span className="px-2 py-0.5 bg-hyt-darker rounded text-xs">
-                                                        {item.category_name}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <h3 className="text-white font-medium truncate">{item.title}</h3>
+                                            <p className="text-sm text-gray-500">
+                                                {item.game_name} • {item.category_name}
+                                            </p>
                                         </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <p className="font-semibold text-white">
+                                        <div className="text-right">
+                                            <p className="text-gray-400 line-through text-sm">
                                                 {parseFloat(item.price).toFixed(2)}€
                                             </p>
-                                            <p className="text-xs text-green-400">
-                                                {t('bundleDetail.included')}
-                                            </p>
+                                            <p className="text-green-400 text-sm">Inclus</p>
                                         </div>
                                     </Link>
                                 ))}
@@ -197,67 +194,106 @@ export default function BundleDetail() {
                         <div className="bg-hyt-card border border-hyt-border rounded-xl p-6 sticky top-24">
                             {/* Prix */}
                             <div className="text-center mb-6">
-                                <p className="text-gray-500 line-through text-lg">
+                                <p className="text-gray-400 line-through text-lg">
                                     {parseFloat(bundle.original_price).toFixed(2)}€
                                 </p>
-                                <p className="text-4xl font-bold text-hyt-accent">
+                                <p className="text-4xl font-display font-bold text-white">
                                     {parseFloat(bundle.final_price).toFixed(2)}€
                                 </p>
                                 <p className="text-green-400 text-sm mt-1">
-                                    {t('bundleDetail.youSave', { amount: (parseFloat(bundle.original_price) - parseFloat(bundle.final_price)).toFixed(2) })}
+                                    Économisez {(parseFloat(bundle.original_price) - parseFloat(bundle.final_price)).toFixed(2)}€
                                 </p>
-                            </div>
-
-                            {/* Détails remise */}
-                            <div className="bg-hyt-dark rounded-lg p-4 mb-6">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400">{t('bundleDetail.discountApplied')}</span>
-                                    <span className="text-red-400 font-bold">
-                                        {bundle.discount_type === 'PERCENT'
-                                            ? `-${bundle.discount_value}%`
-                                            : `-${parseFloat(bundle.discount_value).toFixed(2)}€`
-                                        }
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm mt-2">
-                                    <span className="text-gray-400">{t('bundleDetail.products')}</span>
-                                    <span className="text-white">{bundle.item_count}</span>
-                                </div>
                             </div>
 
                             {/* Bouton d'achat */}
                             {isOwner ? (
                                 <div className="bg-hyt-dark rounded-lg p-4 text-center">
-                                    <p className="text-gray-400 text-sm">{t('bundleDetail.yourBundle')}</p>
+                                    <p className="text-gray-400 text-sm">C'est votre bundle</p>
                                 </div>
                             ) : hasPurchased ? (
                                 <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 text-center">
                                     <Check className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                                    <p className="text-green-400 font-medium">{t('bundleDetail.bundlePurchased')}</p>
+                                    <p className="text-green-400 font-medium">Bundle acheté</p>
                                     <Link to="/purchases" className="text-sm text-green-400/70 hover:underline">
-                                        {t('bundleDetail.viewPurchases')}
+                                        Voir mes achats
                                     </Link>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={handlePurchase}
-                                    disabled={purchasing}
-                                    className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2"
-                                >
-                                    {purchasing ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <ShoppingCart className="w-5 h-5" />
-                                            {t('bundleDetail.buyBundle')}
-                                        </>
+                                <>
+                                    {/* Acceptation des CGU */}
+                                    <div className="mb-4">
+                                        <label
+                                            className="flex items-start gap-3 cursor-pointer group"
+                                            onClick={() => setAcceptedTerms(!acceptedTerms)}
+                                        >
+                                            <div className="mt-0.5 flex-shrink-0">
+                                                {acceptedTerms ? (
+                                                    <CheckSquare className="w-5 h-5 text-hyt-accent" />
+                                                ) : (
+                                                    <Square className="w-5 h-5 text-gray-500 group-hover:text-gray-400 transition-colors" />
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-gray-400 leading-relaxed">
+                                                {t('cart.terms.accept')}{' '}
+                                                <Link
+                                                    to="/terms"
+                                                    target="_blank"
+                                                    className="text-hyt-accent hover:underline"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {t('cart.terms.termsLink')}
+                                                </Link>
+                                                {' '}{t('cart.terms.and')}{' '}
+                                                <Link
+                                                    to="/privacy"
+                                                    target="_blank"
+                                                    className="text-hyt-accent hover:underline"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {t('cart.terms.privacyLink')}
+                                                </Link>
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    {/* Notice droit de rétractation */}
+                                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
+                                        <p className="text-xs text-yellow-200/80 leading-relaxed">
+                                            {t('cart.terms.noRefundNotice')}
+                                        </p>
+                                    </div>
+
+                                    {/* Bouton achat */}
+                                    <button
+                                        onClick={handlePurchase}
+                                        disabled={purchasing || !acceptedTerms}
+                                        className={`w-full py-4 text-lg rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${
+                                            acceptedTerms
+                                                ? 'btn-primary'
+                                                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {purchasing ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <ShoppingCart className="w-5 h-5" />
+                                                Acheter le bundle
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {!acceptedTerms && (
+                                        <p className="text-xs text-center text-gray-500 mt-2">
+                                            {t('cart.terms.required')}
+                                        </p>
                                     )}
-                                </button>
+                                </>
                             )}
 
                             {/* Info */}
                             <p className="text-xs text-gray-500 text-center mt-4">
-                                {t('bundleDetail.purchaseInfo')}
+                                En achetant ce bundle, vous obtenez tous les produits inclus.
                             </p>
 
                             {/* Dates de validité */}
@@ -267,7 +303,7 @@ export default function BundleDetail() {
                                         <Calendar className="w-4 h-4" />
                                         {bundle.ends_at && (
                                             <span>
-                                                {t('bundleDetail.validUntil', { date: new Date(bundle.ends_at).toLocaleDateString('fr-FR') })}
+                                                Offre valable jusqu'au {new Date(bundle.ends_at).toLocaleDateString('fr-FR')}
                                             </span>
                                         )}
                                     </div>

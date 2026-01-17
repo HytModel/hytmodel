@@ -10,7 +10,6 @@ export default function Footer() {
     const footerLinks = {
         platform: [
             { to: '/models', label: t('footer.links.products') },
-            { to: '/games', label: t('footer.links.games') },
             { to: '/become-creator', label: t('footer.links.becomeCreator') },
         ],
         support: [

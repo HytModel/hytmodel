@@ -4,7 +4,7 @@ import {
     Store, Upload, Link as LinkIcon, FileText, Send,
     CheckCircle, Clock, XCircle, AlertTriangle, Loader2,
     Instagram, Twitter, Youtube, Globe, ArrowLeft,
-    Percent, DollarSign, Users, Star
+    Percent, DollarSign, Users, Star, Check, X, Palette
 } from 'lucide-react'
 import { creatorRequestAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -33,16 +33,13 @@ export default function BecomeCreator() {
     })
 
     useEffect(() => {
-        // Attendre que le chargement soit terminé
         if (loading) return
 
-        // Si pas connecté, rediriger vers login
         if (!user) {
             navigate('/login', { state: { from: '/become-creator' } })
             return
         }
 
-        // Si déjà créateur, rediriger vers dashboard
         if (isCreator()) {
             navigate('/dashboard')
             return
@@ -58,7 +55,7 @@ export default function BecomeCreator() {
                 setExistingRequest(data.request)
             }
         } catch (error) {
-            // Pas de demande existante, c'est OK
+            // Pas de demande existante
         } finally {
             setPageLoading(false)
         }
@@ -108,7 +105,6 @@ export default function BecomeCreator() {
     }
 
     // Si une demande existe déjà
-    // Mais si la demande est APPROVED et l'utilisateur n'est plus créateur, afficher le formulaire
     if (existingRequest && !(existingRequest.status === 'APPROVED' && user?.role === 'USER')) {
         return (
             <div className="min-h-screen pt-20">
@@ -214,6 +210,7 @@ export default function BecomeCreator() {
 
                 {/* Types de vendeurs */}
                 <div className="grid md:grid-cols-3 gap-4 mb-12">
+                    {/* Non-affilié */}
                     <div className="bg-hyt-card border border-hyt-border rounded-xl p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-lg bg-gray-500/20 flex items-center justify-center">
@@ -229,11 +226,18 @@ export default function BecomeCreator() {
                             <span className="text-2xl font-bold text-white">85%</span>
                             <span className="text-gray-400 text-sm">{t('becomeCreator.types.ofRevenue')}</span>
                         </div>
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-gray-500 text-sm mb-4">
                             {t('becomeCreator.types.commission', { percent: '15' })}
                         </p>
+                        <div className="pt-3 border-t border-hyt-border">
+                            <p className="text-gray-500 text-xs flex items-center gap-2">
+                                <X className="w-4 h-4 text-red-400" />
+                                {t('becomeCreator.types.noCustomOrders')}
+                            </p>
+                        </div>
                     </div>
 
+                    {/* Affilié */}
                     <div className="bg-hyt-card border border-hyt-accent/50 rounded-xl p-6 relative overflow-hidden">
                         <div className="absolute top-2 right-2 px-2 py-0.5 bg-hyt-accent text-black text-xs font-bold rounded">
                             {t('becomeCreator.types.popular')}
@@ -252,11 +256,22 @@ export default function BecomeCreator() {
                             <span className="text-2xl font-bold text-hyt-accent">90%</span>
                             <span className="text-gray-400 text-sm">{t('becomeCreator.types.ofRevenue')}</span>
                         </div>
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-gray-500 text-sm mb-4">
                             {t('becomeCreator.types.commission', { percent: '10' })}
                         </p>
+                        <div className="pt-3 border-t border-hyt-border space-y-2">
+                            <p className="text-hyt-accent text-xs flex items-center gap-2">
+                                <Check className="w-4 h-4" />
+                                {t('becomeCreator.types.customOrdersAccess')}
+                            </p>
+                            <p className="text-gray-400 text-xs flex items-center gap-2">
+                                <Palette className="w-4 h-4 text-hyt-accent" />
+                                <span><strong className="text-hyt-accent">95%</strong> {t('becomeCreator.types.onCustomOrders')}</span>
+                            </p>
+                        </div>
                     </div>
 
+                    {/* HytStudio */}
                     <div className="bg-hyt-card border border-purple-500/50 rounded-xl p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -272,9 +287,19 @@ export default function BecomeCreator() {
                             <span className="text-2xl font-bold text-purple-400">100%</span>
                             <span className="text-gray-400 text-sm">{t('becomeCreator.types.forPlatform')}</span>
                         </div>
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-gray-500 text-sm mb-4">
                             {t('becomeCreator.types.hytStudio.description')}
                         </p>
+                        <div className="pt-3 border-t border-hyt-border space-y-2">
+                            <p className="text-purple-400 text-xs flex items-center gap-2">
+                                <Check className="w-4 h-4" />
+                                {t('becomeCreator.types.customOrdersAccess')}
+                            </p>
+                            <p className="text-gray-400 text-xs flex items-center gap-2">
+                                <Palette className="w-4 h-4 text-purple-400" />
+                                <span><strong className="text-purple-400">100%</strong> {t('becomeCreator.types.onCustomOrders')}</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
